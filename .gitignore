@@ -1,0 +1,14 @@
+.Rproj.user
+cache
+inputs
+outputs/FRU-26
+.Rhistory
+.Rdata
+.RData
+.secret
+.secrets
+.Rprofile
+.Restart*
+.httr-oauth
+.DS_Store
+.quarto
