@@ -14,3 +14,16 @@ outputs/FRU-26
 .quarto
 outputs/*
 
+SpeciesPresentInCanadianForests.tif
+SpeciesPresentInCanadianForests.tif.aux.xml
+SpeciesPresentInCanadianForests.zip
+Ecoprovinces/ecoprovinces.dbf
+Ecoprovinces/ecoprovinces.prj
+Ecoprovinces/ecoprovinces.sbn
+Ecoprovinces/ecoprovinces.sbx
+Ecoprovinces/ecoprovinces.shp
+Ecoprovinces/ecoprovinces.shx
+gadm/gadm41_CAN_1_pk.rds
+R/studyAreaFuns.R
+ecoprovince_shp.zip
+means.png
