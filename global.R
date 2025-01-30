@@ -1,18 +1,18 @@
 # Install or update SpaDES.project & Require
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9002", "0.1.1.9006")) # only install/update if required
+getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9003", "0.1.1.9008")) # only install/update if required
 
-FRU <- 26
+FRU <- 27
 currentName <- paste0("FRU-", FRU) #toggle between Skeena and Taiga
-if (currentName == "Taiga") {
-  ecoprovince <- c("4.3")
-  studyAreaPSPprov <- c("4.3", "12.3", "14.1", "9.1") #this is a weird combination
-  snll_thresh = 3100 # 4822 after running the estimator
-} else {
-  ecoprovince <- "14.1"
-  studyAreaPSPprov <- c("14.1", "14.2", "14.3", "14.4")
-  snll_thresh = 1200
-}
+# if (currentName == "Taiga") {
+#   ecoprovince <- c("4.3")
+#   studyAreaPSPprov <- c("4.3", "12.3", "14.1", "9.1") #this is a weird combination
+#   snll_thresh = 3100 # 4822 after running the estimator
+# } else {
+#   ecoprovince <- "14.1"
+#   studyAreaPSPprov <- c("14.1", "14.2", "14.3", "14.4")
+#   snll_thresh = 1200
+# }
 
 # if (!Sys.info()[["nodename"]] == "W-VIC-A127551") {
 #   #this must be run in advance at some point -
@@ -31,12 +31,12 @@ if (FALSE) {
   pkgload::load_all("~/GitHub/LandR/");
 }
 
+setwd("~")
 #TODO change the script so that ecoprovinceNum is consistently named in functinos
 inSim <- SpaDES.project::setupProject(
   Restart = TRUE,
-  useGit= "eliotmcintire",
-  paths = list(projectPath = "~/GitHub/FireSenseTesting",
-               cachePath = "cache",
+  # useGit= "eliotmcintire",
+  paths = list(projectPath = "GitHub/FireSenseTesting",
                outputPath = file.path("outputs", currentName)
   ),
   modules = c("PredictiveEcology/fireSense_dataPrepFit@lccFix",
@@ -49,10 +49,13 @@ inSim <- SpaDES.project::setupProject(
   packages = c("PredictiveEcology/reproducible@AI",
                "PredictiveEcology/SpaDES.core@box", # needed for the functions in
                "PredictiveEcology/scfmutils@development",
+               "terra", "leaflet",
                "tidyterra"), # for FireRegime polygons
   # overwrite = TRUE,
   require = c("reproducible"), # for Cache used in pipe below
   options = options(gargle_oauth_email = "predictiveecology@gmail.com",
+                    gargle_oauth_cache = ".secret",
+                    gargle_oauth_client_type = "web", # for command line
                     spades.allowInitDuringSimInit = TRUE,
                     repos = unique(c("predictiveecology.r-universe.dev", getOption("repos"))),
                     spades.moduleCodeChecks = FALSE,
@@ -74,8 +77,8 @@ inSim <- SpaDES.project::setupProject(
                     # Eliot during development
                     fireSenseUtils.runTests = FALSE,
                     reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
-                    
-                    
+
+
   ),
   times = list(start = 2011, end = 2021),
   functions = "ianmseddy/NEBC@main/R/studyAreaFuns.R",
@@ -148,17 +151,15 @@ inSim <- SpaDES.project::setupProject(
   #                                    " + nf_dryland:CMDsm + ", paste0(unique(sppEquiv$fuel), ":CMDsm",
   #                                                                     collapse = " + ")),
   cores = {
-    # c(paste0("bc", c("97", "106", "184", "189", "213", "217", "220")),
-    #   "localhost",
-    #   paste0("n", c("14", "105")))
-    c(rep("bc213", 13),
-      rep("localhost", 13),
-      rep("n105", 13),
-      rep("n14", 13),
-      rep("bc184", 14),
-      rep("bc217", 12),
-      rep("n68", 20)
-    )
+    c(rep("localhost", 70), rep("n54", 10), rep("n14", 10), rep("n105", 10))
+    # c(rep("bc213", 13),
+    #   rep("localhost", 13),
+    #   rep("n105", 13),
+    #   rep("n14", 13),
+    #   rep("bc184", 14),
+    #   rep("bc217", 12),
+    #   rep("n68", 20)
+    # )
   },
   #params last because one of them depends on sppEquiv fuel class names
   climateVariables = list(
@@ -238,14 +239,14 @@ plotSAs <- function(inSim, country = "CAN", saCols = c("purple", "blue", "green"
   rtms <- grep(names(inSim), pattern = "rasterToMatch", value = TRUE)
   sizesRtms <- sapply(inSim[rtms], function(rtm) terra::ncell(rtm))
   ordRtms <- order(sizesRtms)
-  
+
   sas <- grep(names(inSim), pattern = "studyArea", value = TRUE)
   sizes <- sapply(sas, function(sa) areas(inSim[[sa]]))
   ord <- order(sizes)
   sizesOrdered <- rev(sizes[ord])
-  
+
   saCols <- saCols[cumsum(!duplicated(sizesOrdered))]
-  
+
   i <- 0
   subTitle <- character()
   for (rtm in inSim[rtms[min(ordRtms)]] ) {
@@ -254,17 +255,17 @@ plotSAs <- function(inSim, country = "CAN", saCols = c("purple", "blue", "green"
     # p <- p + geom_spatvector(data = inSim[[sa]], fill = saCols[i]) #, aes(fill = tavg_04)) +
     subTitle <- c(subTitle, rtms[min(ordRtms)])
   }
-  
-  
+
+
   for (sa in rev(sas[ord])) {
     i <- i + 1
     p <- p + geom_spatvector(data = inSim[[sa]], fill = NA, col = saCols[i], lwd = 0.5) #, aes(fill = tavg_04)) +
     subTitle <- c(subTitle, paste0(sa, " (", saCols[i], ")"))
   }
-  
+
   p <- p + geom_spatvector(data = Canada, fill = "NA")
-  
-  
+
+
   p +
     scale_fill_whitebox_c(
       na.value = "transparent",
@@ -284,20 +285,20 @@ plotSAsLeaflet <- function(inSim, saCols = c("purple", "blue", "green", "red"),
   rtmsNames <- grep(names(inSim), pattern = "rasterToMatch", value = TRUE)
   sizesRtms <- sapply(inSim[rtmsNames], function(rtm) terra::ncell(rtm))
   ordRtms <- order(sizesRtms)
-  
+
   sas <- grep(names(inSim), pattern = "studyArea", value = TRUE)
   sizes <- sapply(sas, function(sa) areas(inSim[[sa]]))
   ord <- order(sizes)
   sizesOrdered <- rev(sizes[ord])
-  
+
   saCols <- saCols[cumsum(!duplicated(sizesOrdered))]
-  
+
   i <- 0
   subTitle <- character()
   largest <- inSim[rtmsNames[max(ordRtms)]]
   names(largest[[1]]) <- rasterToMatchLabel
   stk <- largest
-  
+
   for (rtmName in rtmsNames[-max(ordRtms)] ) {
     # rtm[rtm[] == 0] <- NA
     rtm <- terra::extend(inSim[[rtmName]], largest[[1]])
@@ -305,14 +306,14 @@ plotSAsLeaflet <- function(inSim, saCols = c("purple", "blue", "green", "red"),
     stk <- append(list(rtm) |> setNames(rtmName), stk)
   }
   rtms <- terra::rast(stk)
-  
-  
+
+
   rtms <- terra::project(rtms, "epsg:4326") |> Cache()
   names(rtms) <- paste0(names(rtms), "_", rasterToMatchLabel)
-  a <- plet(rtms, seq_len(nlyr(rtms)), collapse = FALSE)#, maxcell=5000000)
+  a <- terra::plet(rtms, seq_len(nlyr(rtms)), collapse = FALSE)#, maxcell=5000000)
   # p <- p + geom_spatvector(data = inSim[[sa]], fill = saCols[i]) #, aes(fill = tavg_04)) +
   subTitle <- c(subTitle, rtmsNames[min(ordRtms)])
-  
+
   v <- list()
   for (sa in rev(sas[ord])) {
     i <- i + 1
@@ -379,13 +380,25 @@ SpaDES.core::Plots(inSim[grep("studyArea|rasterToMatch", names(inSim))],
 # devtools::document("~/GitHub/fireSenseUtils/");
 # clearCache(ask = F)
 # debug(messageDF)
-if (T) {
-  pkgload::load_all("~/GitHub/reproducible/");
-  pkgload::load_all("~/GitHub/SpaDES.core/");
-  # pkgload::load_all("~/GitHub/SpaDES.project/");
-  pkgload::load_all("~/GitHub/fireSenseUtils/");
-  pkgload::load_all("~/GitHub/LandR/");
+
+if (FALSE) {
+  fn <- "sim_FireSenseSpreadFit.qs"
+  saveState(filename = fn, files = FALSE)
+  inSim2 <- SpaDES.core::loadSimList(fn)
+  outSims <- restartSpades(inSim2)
+  outSims <- restartSpades()
 }
+
+
+if (FALSE) {
+  options(
+    gargle_oauth_cache = ".secret",
+    gargle_oauth_email = "predictiveecology@gmail.com",
+    gargle_oauth_client_type = "web"
+  )
+  googledrive::drive_auth(email = "predictiveecology@gmail.com", cache = "/home/emcintir/.secret/")
+}
+
 # inSim$debug <- quote(
 #   {
 #     b <- if(exists("spreadFirePoints", envir(sim))) {
@@ -397,26 +410,12 @@ if (T) {
 #   }
 # )
 
-outSims <- do.call(what = SpaDES.core::simInitAndSpades, args = inSim, quote = TRUE)
 
 if (FALSE) {
-  fn <- "sim_FireSenseSpreadFit.qs"
-  saveState(filename = fn, files = FALSE)
-  
-  inSim2 <- SpaDES.core::loadSimList(fn)
-  outSims <- restartSpades(inSim2)
-  
-  outSims <- restartSpades()
-}
-# debug(.runEvent)
-#pkgload::load_all("~/GitHub/reproducible/");
-#pkgload::load_all("~/GitHub/SpaDES.core/");
-# outSim <- do.call(what = SpaDES.core::simInitAndSpades, args = inSim)
-
-if (FALSE) {
+  pkgload::load_all("~/GitHub/reproducible/");
+  pkgload::load_all("~/GitHub/SpaDES.core/");
+  # pkgload::load_all("~/GitHub/SpaDES.project/");
   pkgload::load_all("~/GitHub/fireSenseUtils/");
-  pkgload::load_all("~/GitHub/clusters/");
-  SpaDES.core::restartSpades()
+  pkgload::load_all("~/GitHub/LandR/");
 }
-
-
+outSims <- do.call(what = SpaDES.core::simInitAndSpades, args = inSim, quote = TRUE)

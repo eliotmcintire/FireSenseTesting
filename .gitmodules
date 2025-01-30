@@ -1,0 +1,18 @@
+[submodule "modules/fireSense_dataPrepFit"]
+	path = modules/fireSense_dataPrepFit
+	url = https://github.com/PredictiveEcology/fireSense_dataPrepFit
+[submodule "modules/Biomass_borealDataPrep"]
+	path = modules/Biomass_borealDataPrep
+	url = https://github.com/PredictiveEcology/Biomass_borealDataPrep
+[submodule "modules/Biomass_speciesData"]
+	path = modules/Biomass_speciesData
+	url = https://github.com/PredictiveEcology/Biomass_speciesData
+[submodule "modules/fireSense_SpreadFit"]
+	path = modules/fireSense_SpreadFit
+	url = https://github.com/PredictiveEcology/fireSense_SpreadFit
+[submodule "modules/fireSense_IgnitionFit"]
+	path = modules/fireSense_IgnitionFit
+	url = https://github.com/PredictiveEcology/fireSense_IgnitionFit
+[submodule "modules/canClimateData"]
+	path = modules/canClimateData
+	url = https://github.com/PredictiveEcology/canClimateData
