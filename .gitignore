@@ -12,3 +12,5 @@ outputs/FRU-26
 .httr-oauth
 .DS_Store
 .quarto
+outputs/*
+
