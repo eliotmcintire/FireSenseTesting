@@ -127,16 +127,16 @@ inSim <- SpaDES.project::setupProject(
       #   youngAge = c("nf", unique(makeSppEquiv(ecoprovinceNum = ecoprovince)$fuel))
       # ),
       .useCache = FALSE,
-      iterDEoptim = 1000,
-      rep = 2, # This means that all Cache of DEoptim will now be different name
+      iterDEoptim = 10000,
+      rep = 5, # This means that all Cache of DEoptim will now be different name
       iterStep = 1, # run this many iterations before running again; this should be
       # set to itermax if Cache is not used; it is only useful for Cache
-      cores = NA, #cores, # NA, #NULL, # cores,
+      cores = cores, # NA, #NULL, # cores,
       NP = {if (identical(cores, unique(cores))) 100 else length(cores)}, # number of cores of machines
       trace = 1,
       mode = c("fit", "visualize"),
-      strategy = 6L,
-      objfunFireReps = 300L,
+      strategy = 3L,
+      objfunFireReps = 25L,
       # mode = c("debug"),
       # SNLL_FS_thresh = snll_thresh,
       doObjFunAssertions = FALSE
@@ -184,7 +184,7 @@ if (TRUE) {
   pkgload::load_all("~/GitHub/fireSenseUtils/");
   pkgload::load_all("~/GitHub/LandR/");
 }
-# outSims <- do.call(what = SpaDES.core::simInitAndSpades, args = inSim, quote = TRUE)
-restartSpades()
+outSims <- do.call(what = SpaDES.core::simInitAndSpades, args = inSim, quote = TRUE)
+# restartSpades()
 #  fn <- "sim_FireSenseSpreadFit.qs"
 # outSims <- restartSpades(fn)
