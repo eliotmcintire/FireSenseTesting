@@ -9,6 +9,12 @@ currentName <- paste0("FRU-", FRU, paste0("_minus", abs(bufferIn)))
 
 setwd("~/GitHub/FireSenseTesting/") # generic absolute path for anybody; but individual can change
 inSim <- SpaDES.project::setupProject(
+  defaultDots = list(.rep = 5,
+                     .strategy = 3L,
+                     .c = 0.5),
+  .rep = .rep,
+  .strategy = .strategy,
+  .c = .c,
   Restart = TRUE,
   # useGit= "eliotmcintire",
   paths = list(projectPath = "~/GitHub/FireSenseTesting",
@@ -127,16 +133,17 @@ inSim <- SpaDES.project::setupProject(
       #   youngAge = c("nf", unique(makeSppEquiv(ecoprovinceNum = ecoprovince)$fuel))
       # ),
       .useCache = FALSE,
-      iterDEoptim = 10000,
-      rep = 5, # This means that all Cache of DEoptim will now be different name
+      iterDEoptim = 250,
+      rep = .rep, # This means that all Cache of DEoptim will now be different name
       iterStep = 1, # run this many iterations before running again; this should be
       # set to itermax if Cache is not used; it is only useful for Cache
       cores = cores, # NA, #NULL, # cores,
       NP = {if (identical(cores, unique(cores))) 100 else length(cores)}, # number of cores of machines
       trace = 1,
       mode = c("fit", "visualize"),
-      strategy = 3L,
+      strategy = .strategy,
       objfunFireReps = 25L,
+      .c = .c,
       # mode = c("debug"),
       # SNLL_FS_thresh = snll_thresh,
       doObjFunAssertions = FALSE
@@ -163,6 +170,7 @@ SpaDES.core::Plots(inSim[grep("studyArea|rasterToMatch", names(inSim))],
 #known bugs/undesirable behavior
 #1 spreadFit dumps a bunch of figs in the project directory instead of outputs
 
+# devtools::install("~/GitHub/SpaDES.project/", upgrade = FALSE);
 # devtools::install("~/GitHub/reproducible/", upgrade = FALSE); devtools::install("~/GitHub/SpaDES.core/", upgrade = FALSE);
 # devtools::install("~/GitHub/climateData/", upgrade = FALSE);
 # devtools::install("~/GitHub/fireSenseUtils/", upgrade = FALSE);
@@ -180,10 +188,11 @@ if (FALSE) {
 if (TRUE) {
   pkgload::load_all("~/GitHub/reproducible/");
   pkgload::load_all("~/GitHub/SpaDES.core/");
-  # pkgload::load_all("~/GitHub/SpaDES.project/");
+  pkgload::load_all("~/GitHub/SpaDES.project/");
   pkgload::load_all("~/GitHub/fireSenseUtils/");
   pkgload::load_all("~/GitHub/LandR/");
 }
+print(paste0("c:", inSim$.c, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy))
 outSims <- do.call(what = SpaDES.core::simInitAndSpades, args = inSim, quote = TRUE)
 # restartSpades()
 #  fn <- "sim_FireSenseSpreadFit.qs"
