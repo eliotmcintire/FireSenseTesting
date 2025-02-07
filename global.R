@@ -1,6 +1,6 @@
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9003", "0.1.1.9012")) # only install/update if required
+getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9003", "0.1.1.9013")) # only install/update if required
 # Require::Install("PredictiveEcology/SpaDES.project@development (>=0.1.1.9012)")
 
 FRU <- 27 # On Erni et al FRU map
@@ -11,10 +11,14 @@ setwd("~/GitHub/FireSenseTesting/") # generic absolute path for anybody; but ind
 inSim <- SpaDES.project::setupProject(
   defaultDots = list(.rep = 5,
                      .strategy = 3L,
-                     .c = 0.5),
+                     .c = 0.6,
+                     .objfunFireReps = 25L,
+                     .cores = c(rep("localhost", 70), rep("n54", 10), rep("n14", 10), rep("n105", 10))),
   .rep = .rep,
   .strategy = .strategy,
   .c = .c,
+  .objfunFireReps = .objfunFireReps,
+  .cores = .cores,
   Restart = TRUE,
   # useGit= "eliotmcintire",
   paths = list(projectPath = "~/GitHub/FireSenseTesting",
@@ -23,11 +27,11 @@ inSim <- SpaDES.project::setupProject(
               "PredictiveEcology/Biomass_borealDataPrep@development",
               "PredictiveEcology/Biomass_speciesData@development",
               "PredictiveEcology/fireSense_SpreadFit@lccFix",
-              "PredictiveEcology/fireSense_IgnitionFit@biomassFuel",
+              # "PredictiveEcology/fireSense_IgnitionFit@biomassFuel",
               "PredictiveEcology/canClimateData@improveCache1"),
-  packages = c("PredictiveEcology/reproducible@AI",
-               "PredictiveEcology/SpaDES.core@box", # needed for the functions in
-               "PredictiveEcology/scfmutils@development",
+  packages = c("PredictiveEcology/reproducible@AI", # (HEAD)",
+               "PredictiveEcology/SpaDES.core@box", # (HEAD)", # needed for the functions in
+               "PredictiveEcology/scfmutils@development", # (HEAD)",
                "terra", "leaflet", "tidyterra"), # for StudyArea visualization below
   require = "reproducible",
   options = options(gargle_oauth_email = "predictiveecology@gmail.com",
@@ -100,8 +104,7 @@ inSim <- SpaDES.project::setupProject(
   #nonForestedLCCGroups = list( # these are codes on LCC -- currently NTEMS
   #  "nf_dryland" = c(50, 100, 40), # shrub, herbaceous, bryoid
   #  "nf_wetland" = c(80)), #non-treed wetland.
-  cores =
-    c(rep("localhost", 70), rep("n54", 10), rep("n14", 10), rep("n105", 10)),
+  cores = .cores,
   # c(rep("bc213", 13), rep("localhost", 13), rep("n105", 13), rep("n14", 13),
   #   rep("bc184", 14), rep("bc217", 12), rep("n68", 20)),
   #params last because one of them depends on sppEquiv fuel class names
@@ -133,16 +136,16 @@ inSim <- SpaDES.project::setupProject(
       #   youngAge = c("nf", unique(makeSppEquiv(ecoprovinceNum = ecoprovince)$fuel))
       # ),
       .useCache = FALSE,
-      iterDEoptim = 250,
+      iterDEoptim = 500,
       rep = .rep, # This means that all Cache of DEoptim will now be different name
       iterStep = 1, # run this many iterations before running again; this should be
       # set to itermax if Cache is not used; it is only useful for Cache
-      cores = cores, # NA, #NULL, # cores,
+      cores = cores,
       NP = {if (identical(cores, unique(cores))) 100 else length(cores)}, # number of cores of machines
       trace = 1,
-      mode = c("fit", "visualize"),
+      mode = c("fit"),# "visualize"),
       strategy = .strategy,
-      objfunFireReps = 25L,
+      objfunFireReps = .objfunFireReps, # this is the lowest that doesn't create an error
       .c = .c,
       # mode = c("debug"),
       # SNLL_FS_thresh = snll_thresh,
@@ -158,7 +161,6 @@ inSim <- SpaDES.project::setupProject(
     )
   )
 )
-packageVersion("SpaDES.project")
 library(SpaDES.project)
 SpaDES.core::Plots(inSim[grep("studyArea|rasterToMatch", names(inSim))],
                    title = paste0("StudyArea ", currentName),
@@ -188,12 +190,15 @@ if (FALSE) {
 if (TRUE) {
   pkgload::load_all("~/GitHub/reproducible/");
   pkgload::load_all("~/GitHub/SpaDES.core/");
-  pkgload::load_all("~/GitHub/SpaDES.project/");
+  # pkgload::load_all("~/GitHub/SpaDES.project/");
   pkgload::load_all("~/GitHub/fireSenseUtils/");
   pkgload::load_all("~/GitHub/LandR/");
 }
-print(paste0("c:", inSim$.c, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy))
-outSims <- do.call(what = SpaDES.core::simInitAndSpades, args = inSim, quote = TRUE)
+
+print(paste0("c:", inSim$.c, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
+             " .objfunFireReps:", inSim$.objfunFireReps))
+outSims <- Cache(do.call(what = SpaDES.core::simInitAndSpades, args = inSim, quote = TRUE))
+# print(paste0("Finished: ", "c:", inSim$.c, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy))
 # restartSpades()
 #  fn <- "sim_FireSenseSpreadFit.qs"
 # outSims <- restartSpades(fn)
