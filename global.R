@@ -3,20 +3,22 @@ source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/de
 getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9003", "0.1.1.9013")) # only install/update if required
 # Require::Install("PredictiveEcology/SpaDES.project@development (>=0.1.1.9012)")
 
-FRU <- 27 # On Erni et al FRU map
-bufferIn <- -135000
-currentName <- paste0("FRU-", FRU, paste0("_minus", abs(bufferIn)))
+# FRU <- 27 # On Erni et al FRU map
+bufferIn <- 0
+currentName <- paste0("FRU-", FRU)#, paste0("_minus", abs(bufferIn)))
 
 setwd("~/GitHub/FireSenseTesting/") # generic absolute path for anybody; but individual can change
 inSim <- SpaDES.project::setupProject(
-  defaultDots = list(.rep = 5,
+  defaultDots = list(.rep = 1,
                      .strategy = 3L,
-                     .c = 0.6,
+                     .cc = 0.5,
                      .objfunFireReps = 25L,
-                     .cores = c(rep("localhost", 70), rep("n54", 10), rep("n14", 10), rep("n105", 10))),
+                     .cores = c(rep("localhost", 70), rep("n54", 10), rep("n14", 10), rep("n105", 10)),
+                     FRU = 25),
   .rep = .rep,
   .strategy = .strategy,
-  .c = .c,
+  .cc = .cc,
+  FRU = FRU,
   .objfunFireReps = .objfunFireReps,
   .cores = .cores,
   Restart = TRUE,
@@ -146,7 +148,7 @@ inSim <- SpaDES.project::setupProject(
       mode = c("fit"),# "visualize"),
       strategy = .strategy,
       objfunFireReps = .objfunFireReps, # this is the lowest that doesn't create an error
-      .c = .c,
+      .c = .cc,
       # mode = c("debug"),
       # SNLL_FS_thresh = snll_thresh,
       doObjFunAssertions = FALSE
@@ -161,13 +163,13 @@ inSim <- SpaDES.project::setupProject(
     )
   )
 )
+
 library(SpaDES.project)
 SpaDES.core::Plots(inSim[grep("studyArea|rasterToMatch", names(inSim))],
                    title = paste0("StudyArea ", currentName),
                    fn = plotSAs, filename = paste0("studyAreas", currentName),
                    path = inSim$paths$inputPath,
                    types = c("screen", "png")) |> Cache()
-
 
 #known bugs/undesirable behavior
 #1 spreadFit dumps a bunch of figs in the project directory instead of outputs
@@ -194,11 +196,15 @@ if (TRUE) {
   pkgload::load_all("~/GitHub/fireSenseUtils/");
   pkgload::load_all("~/GitHub/LandR/");
 }
-
-print(paste0("c:", inSim$.c, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
+message(paste0("FRU", inSim$FRU, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
              " .objfunFireReps:", inSim$.objfunFireReps))
+
 outSims <- Cache(do.call(what = SpaDES.core::simInitAndSpades, args = inSim, quote = TRUE))
 # print(paste0("Finished: ", "c:", inSim$.c, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy))
 # restartSpades()
 #  fn <- "sim_FireSenseSpreadFit.qs"
 # outSims <- restartSpades(fn)
+
+# REsults
+# FireSense1: FRU 25, 350 iterations
+# showCache(cacheId = "cac7e2757b4eee82")
