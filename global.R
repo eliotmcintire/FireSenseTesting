@@ -1,9 +1,9 @@
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9003", "0.1.1.9013")) # only install/update if required
+getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9003", "0.1.1.9037")) # only install/update if required
 # Require::Install("PredictiveEcology/SpaDES.project@development (>=0.1.1.9012)")
 
-# FRU <- 27 # On Erni et al FRU map
+FRU <- 27 # On Erni et al FRU map
 bufferIn <- 0
 currentName <- paste0("FRU-", FRU)#, paste0("_minus", abs(bufferIn)))
 
@@ -13,7 +13,8 @@ inSim <- SpaDES.project::setupProject(
                      .strategy = 3L,
                      .cc = 0.5,
                      .objfunFireReps = 25L,
-                     .cores = c(rep("localhost", 70), rep("n54", 10), rep("n14", 10), rep("n105", 10)),
+                     .cores = c(rep("localhost", 30), rep(c("dougfir", "permafrost", "caribou", "fire", "mpb"), 14)),
+                     # .cores = c(rep("localhost", 70), rep("n54", 10), rep("n14", 10), rep("n105", 10)),
                      FRU = 25),
   .rep = .rep,
   .strategy = .strategy,
@@ -22,13 +23,13 @@ inSim <- SpaDES.project::setupProject(
   .objfunFireReps = .objfunFireReps,
   .cores = .cores,
   Restart = TRUE,
-  # useGit= "eliotmcintire",
+  useGit= "eliotmcintire",
   paths = list(projectPath = "~/GitHub/FireSenseTesting",
                outputPath = file.path("outputs", currentName)),
-  modules = c("PredictiveEcology/fireSense_dataPrepFit@lccFix",
+  modules = c("PredictiveEcology/fireSense_dataPrepFit@development",
               "PredictiveEcology/Biomass_borealDataPrep@development",
               "PredictiveEcology/Biomass_speciesData@development",
-              "PredictiveEcology/fireSense_SpreadFit@lccFix",
+              "PredictiveEcology/fireSense_SpreadFit@development",
               # "PredictiveEcology/fireSense_IgnitionFit@biomassFuel",
               "PredictiveEcology/canClimateData@improveCache1"),
   packages = c("PredictiveEcology/reproducible@AI", # (HEAD)",

@@ -7,6 +7,7 @@ FRU <- FRUs[[iter]]
                    paste0("n", rep(sort(c(181, 171, 42)), each = 33)),
                    paste0("n", rep(sort(c(18, 161, 168)), each = 33)))#, 179,
 .cores <- .coresList[[iter %% 3]]
+.cores <- c("localhost", "n181")
 
 # for (FRU in FRUs) {
 source("global.R")
