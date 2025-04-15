@@ -8,6 +8,13 @@ bufferIn <- 0
 currentName <- paste0("FRU-", FRU)#, paste0("_minus", abs(bufferIn)))
 
 setwd("~/GitHub/FireSenseTesting/") # generic absolute path for anybody; but individual can change
+# if (TRUE) {
+#   pkgload::load_all("~/GitHub/reproducible/");
+#   pkgload::load_all("~/GitHub/SpaDES.core/");
+#   # pkgload::load_all("~/GitHub/SpaDES.project/");
+#   pkgload::load_all("~/GitHub/fireSenseUtils/");
+#   pkgload::load_all("~/GitHub/LandR/");
+# }
 inSim <- SpaDES.project::setupProject(
   defaultDots = list(.rep = 1,
                      .strategy = 3L,
@@ -23,9 +30,10 @@ inSim <- SpaDES.project::setupProject(
   .objfunFireReps = .objfunFireReps,
   .cores = .cores,
   Restart = TRUE,
-  useGit= "eliotmcintire",
+  # useGit= "eliotmcintire",
   paths = list(projectPath = "~/GitHub/FireSenseTesting",
-               outputPath = file.path("outputs", currentName)),
+               outputPath = file.path("outputs", currentName),
+               cachePath = "cache"),
   modules = c("PredictiveEcology/fireSense_dataPrepFit@development",
               "PredictiveEcology/Biomass_borealDataPrep@development",
               "PredictiveEcology/Biomass_speciesData@development",
@@ -35,12 +43,14 @@ inSim <- SpaDES.project::setupProject(
   packages = c("PredictiveEcology/reproducible@AI", # (HEAD)",
                "PredictiveEcology/SpaDES.core@box", # (HEAD)", # needed for the functions in
                "PredictiveEcology/scfmutils@development", # (HEAD)",
-               "terra", "leaflet", "tidyterra"), # for StudyArea visualization below
+               "terra", "leaflet", "rvest", "tidyterra"), # for StudyArea visualization below
   require = "reproducible",
+  loadOrder = c("canClimateData", "fireSense_dataPrepFit", "fireSense_SpreadFit",
+                "Biomass_speciesData", "Biomass_borealDataPrep"),
   options = options(gargle_oauth_email = "predictiveecology@gmail.com",
                     gargle_oauth_cache = ".secret",
                     gargle_oauth_client_type = "web", # for command line
-                    spades.allowInitDuringSimInit = TRUE,
+                    spades.allowInitDuringSimInit = FALSE, # TRUE
                     # reproducible.gdalwarp = TRUE,
                     repos = unique(c("predictiveecology.r-universe.dev", getOption("repos"))),
                     spades.moduleCodeChecks = FALSE,
@@ -51,7 +61,6 @@ inSim <- SpaDES.project::setupProject(
                     SpaDES.project.fast = FALSE,
                     reproducible.shapefileRead = "terra::vect",
                     spades.recoveryMode = 1,
-                    spades.useBox = FALSE,
                     reproducible.useDBI = FALSE,
                     reproducible.overwrite = TRUE,
                     reproducible.inputPaths = "~/data",
@@ -60,6 +69,8 @@ inSim <- SpaDES.project::setupProject(
                     reproducible.showSimilar = TRUE,
                     reproducible.showSimilarDepth = 8,
                     # Eliot during development
+                    reproducible.savePreDigest = TRUE,
+                    spades.debugModule = NA, # "fireSense_dataPrepFit",
                     fireSenseUtils.runTests = FALSE,
                     reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
 
@@ -91,7 +102,7 @@ inSim <- SpaDES.project::setupProject(
                                                 method = c("near"), fun = "terra::rast") |> Cache(),
   studyAreaReporting = studyArea,
   sppEquiv = {
-    species <- LandR::speciesInStudyArea(studyArea) |> Cache()
+    species <- LandR::speciesInStudyArea(studyArea, dPath = paths$inputPath) |> Cache()
     spp <- grep("_Spp", species$speciesList, invert = TRUE, value = TRUE)
     column <- LandR::equivalentNameColumn(spp, LandR::sppEquivalencies_CA)
     LandR::sppEquivalencies_CA[which(LandR::sppEquivalencies_CA[[column]] %in% spp),]
@@ -183,6 +194,9 @@ SpaDES.core::Plots(inSim[grep("studyArea|rasterToMatch", names(inSim))],
 #
 
 if (FALSE) {
+
+  SpaDES.project::plotSAsLeaflet(inSim[grep("studyArea|rasterToMatch", names(inSim))])
+
   fn <- "sim_FireSenseSpreadFit.qs"
   # saveState(filename = fn, files = FALSE)
   inSim2 <- SpaDES.core::loadSimList(fn)
@@ -193,19 +207,14 @@ if (FALSE) {
 if (TRUE) {
   pkgload::load_all("~/GitHub/reproducible/");
   pkgload::load_all("~/GitHub/SpaDES.core/");
-  # pkgload::load_all("~/GitHub/SpaDES.project/");
+  pkgload::load_all("~/GitHub/SpaDES.project/");
+  pkgload::load_all("~/GitHub/clusters/");
   pkgload::load_all("~/GitHub/fireSenseUtils/");
   pkgload::load_all("~/GitHub/LandR/");
 }
 message(paste0("FRU", inSim$FRU, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
              " .objfunFireReps:", inSim$.objfunFireReps))
 
-outSims <- Cache(do.call(what = SpaDES.core::simInitAndSpades, args = inSim, quote = TRUE))
-# print(paste0("Finished: ", "c:", inSim$.c, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy))
-# restartSpades()
-#  fn <- "sim_FireSenseSpreadFit.qs"
-# outSims <- restartSpades(fn)
-
-# REsults
-# FireSense1: FRU 25, 350 iterations
-# showCache(cacheId = "cac7e2757b4eee82")
+inSimCopy <- reproducible::Copy(inSim)
+outSims <- Cache(do.call(what = SpaDES.core::simInitAndSpades,
+                         args = inSimCopy, quote = TRUE))
