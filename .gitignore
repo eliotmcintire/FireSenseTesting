@@ -1,4 +1,5 @@
 .Rproj.user
+.Rproj.user-old
 cache
 inputs
 outputs/FRU-26
@@ -13,6 +14,7 @@ outputs/FRU-26
 .DS_Store
 .quarto
 outputs/*
+scratch/*
 
 SpeciesPresentInCanadianForests.tif
 SpeciesPresentInCanadianForests.tif.aux.xml
