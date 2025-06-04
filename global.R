@@ -65,14 +65,21 @@ inSim <- SpaDES.project::setupProject(
                cachePath = "cache",
                inputPath = "inputs",
                scratchPath = "scratch"),
-  modules = c("PredictiveEcology/fireSense_dataPrepFit@development",
-              "PredictiveEcology/Biomass_borealDataPrep@development",
-              "PredictiveEcology/Biomass_speciesData@development",
+  modules = c("PredictiveEcology/canClimateData@improveCache1",
+
+              "PredictiveEcology/fireSense_dataPrepFit@development",
+              "PredictiveEcology/fireSense_IgnitionFit@development",
               "PredictiveEcology/fireSense_SpreadFit@development",
-              "PredictiveEcology/fireSense_dataPrepPredict@development",
-              "PredictiveEcology/fireSense_SpreadPredict@development",
-              # "PredictiveEcology/fireSense_IgnitionFit@biomassFuel",
-              "PredictiveEcology/canClimateData@improveCache1"),
+
+              "PredictiveEcology/fireSense_dataPrepPredict@development", # prepares data for predictions
+              "PredictiveEcology/fireSense_IgnitionPredict@development", # predicts ignitions & escapes
+              "PredictiveEcology/fireSense_SpreadPredict@development", # predicts raster of spreadProb
+
+              "PredictiveEcology/fireSense@development", # does burning
+
+              "PredictiveEcology/Biomass_borealDataPrep@development",
+              "PredictiveEcology/Biomass_speciesData@development"
+              ),
   packages = c(# "PredictiveEcology/reproducible@AI", # (HEAD)", # (HEAD)",
                "PredictiveEcology/SpaDES.core@box", # (HEAD)", # needed for the functions in
                "PredictiveEcology/scfmutils@development", # (HEAD)",
@@ -333,7 +340,7 @@ if (FALSE) {
   SpaDES.project::plotSAsLeaflet(inSim[grep("studyArea|rasterToMatch", names(inSim))])
 
   fn <- "sim_FireSenseSpreadFit.qs"
-  # saveState(filename = fn, files = FALSE)
+  saveState(filename = fn, files = FALSE)
   inSim2 <- SpaDES.core::loadSimList(fn)
   outSims <- restartSpades(inSim2)
   outSims <- restartSpades()
@@ -354,21 +361,23 @@ message(paste0("FRU", inSim$FRU, ", .rep:", inSim$.rep, ", .strategy:", inSim$.s
              " .objfunFireReps:", inSim$.objfunFireReps))
 
 st <- Sys.time()
-# debug(recoverModePre)
 options(
-  spades.debugPrint = NULL
+  spades.evalPostEvent = quote(print(.robustDigest(sim$rstLCC)))
     # quote({
     #   print(sim$standAgeMap); print(.robustDigest(sim$standAgeMap));
     #   print(sim$rstLCC); print(.robustDigest(sim$rstLCC));
     #   print(sim$studyArea); .robustDigest(sim$studyArea)
     # })
-  , spades.debugModule = "" # "fireSense_dataPrepFit"
-  , reproducible.useMemoise = FALSE
+  , spades.debugModule = ""#"fireSense_dataPrepFit"
+  , reproducible.useMemoise = TRUE
 )
 fn <- "simPreDispersalFit.qs"
 if (F) {
   sim <- SpaDES.core::restartOrSimInitAndSpades(inSimCopy, fn)
+  saveState(filename = fn, files = FALSE)
   # options(reproducible.showSimilar = FALSE)
 } else {
   outSims <- SpaDES.core::simInitAndSpades2(inSimCopy)
+  saveState(filename = fn, files = FALSE)
 }
+
