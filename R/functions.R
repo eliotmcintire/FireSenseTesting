@@ -1,9 +1,10 @@
-bufferOut <- function(v, spatRasSeg, spatRas, mask, field = "FRU") {
+bufferOut <- function(v, spatRasSeg, spatRas, mask, field = "FRU", desiredBuffer = 20000) {
 
   if (missing(spatRasSeg) && missing(spatRas)) {
     tmpl <- terra::rast(v, res = 5000)
     spatRas <- {tmpl |>
-        terra::rasterize(v, y = _, field = "FRU")} |> reproducible::Cache(omitArgs = "x")
+        terra::rasterize(v, y = _, field = "FRU", touches = TRUE)} |>
+      reproducible::Cache(omitArgs = "x")
     spatRasSeg <- terra::segregate(spatRas)
   }
 
@@ -18,11 +19,13 @@ bufferOut <- function(v, spatRasSeg, spatRas, mask, field = "FRU") {
   } else {
     layers <- names(spatRasSeg)
   }
+
+  lostPixels <- list()
   for (i in layers) {
     if (missing(v)) {
       tmpsrs <- spatRasSeg[[i]]
       tmpsrs[!tmpsrs[] > 0] <- NA
-      nf <- as.polygons(tmpsrs)
+      nf <- terra::as.polygons(tmpsrs)
       nf[[field]] <- names(tmpsrs)
     } else {
       nf <- v[vdf[[field]] %in% i, 1]
@@ -38,7 +41,8 @@ bufferOut <- function(v, spatRasSeg, spatRas, mask, field = "FRU") {
 
     b41 <- vCentred[[i]]
     tmpl <- terra::rast(b41, res = 5000)
-    tmpl1 <- terra::extend(tmpl, 20000/res(tmpl)[1])
+    largestBuffer <- 8e4
+    tmpl1 <- terra::extend(tmpl, largestBuffer/terra::res(tmpl)[1])
     b41Orig <- terra::rasterize(b41, y = tmpl, field = field)
     b41Extended <- terra::rasterize(b41, y = tmpl1, field = field)
     b41ToUse <- b41Extended
@@ -52,17 +56,21 @@ bufferOut <- function(v, spatRasSeg, spatRas, mask, field = "FRU") {
       # b41[!b41[] > as.integer(i)] <- NA
     }
     # do buffer on the centred polygon
-    b41 <- terra::buffer(b41, 80000)
+
+    b41 <- terra::buffer(b41, largestBuffer) # goes well past the edge of the map
     b41[b41[] %in% TRUE] <- NA
-    b41 <- terra::buffer(b41, 60000)
+    b41 <- terra::buffer(b41, largestBuffer - desiredBuffer)
     b41[] <- b41[] %in% FALSE
     b41[b41[] %in% FALSE] <- NA
     b41[] <- b41 + 0L # convert to numeric/integer
-    b41[b41ToUse[] %in% as.integer(i)] <- 2L
+    # b41[b41ToUse[] %in% as.integer(i)] <- 2L
+    b41[!is.na(b41ToUse[])] <- 2L
+    b41 <- terra::trim(b41)
+
     names(b41) <- i
     if (is.factor(b41Orig)) {
       cat <- cats(b41Orig)[[1]]$ID
-      b41OrigNew <- resample(b41Orig, b41, method = "near")
+      b41OrigNew <- terra::resample(b41Orig, b41, method = "near")
       b41[b41OrigNew[] %in% cat & !is.na(b41OrigNew[])] <- 2
     } else {
       # b41[!b41Orig[] > as.integer(i)] <- NA
@@ -78,13 +86,44 @@ bufferOut <- function(v, spatRasSeg, spatRas, mask, field = "FRU") {
     if (missing(mask)) {
       mask <- spatRasSeg[[i]]
     }
+
+
+    # need to mask 2x maybe
     r[[i]] <- maskTo(r[[i]], mask, verbose = FALSE, touches = FALSE)
     ca[[i]] <- maskTo(ca[[i]], mask, verbose = FALSE, touches = FALSE)
+
+    patchs <- terra::patches(r[[i]], allowGaps = FALSE, values = FALSE, directions = 8)
+    tab <- terra::freq(patchs)
+
+    if (NROW(tab) > 1) {
+      tooSmall <- tab$count < 500
+      if (any(tooSmall)) {
+
+        r[[i]][patchs[] %in% tab$value[tooSmall]] <- NA
+        r[[i]] <- terra::trim(r[[i]])
+        a <- ca[[i]]
+        a[ca[[i]] == 0] <- NA
+        patchsCA <- terra::patches(a, allowGaps = FALSE, values = FALSE, directions = 8)
+        # patchsCA <- terra::patches(ca[[i]] > 0, allowGaps = FALSE, values = FALSE, directions = 8)
+        tab <- terra::freq(patchsCA)
+        tooSmall <- tab$count < 500
+        wh <- which(patchsCA[] %in% tab$value[tooSmall])
+        dtLost <- data.table(pixelID = wh, value = terra::values(ca[[i]])[wh])
+
+        lostPixels[[i]] <- dtLost
+        ca[[i]][wh] <- 0
+      }
+    }
+    # r[[i]] <- maskTo(r[[i]], mask, verbose = FALSE, touches = FALSE)
+    # ca[[i]] <- maskTo(ca[[i]], mask, verbose = FALSE, touches = FALSE)
+
     print(paste0("Done ", i))
   }
-  list(rasCentered = r, rasWhole = ca)
-}
 
+  ll <- moveSliversToOtherELFs(lostPixels, lp, ca, i, r)
+
+  list(rasCentered = ll$r, rasWhole = ll$ca)
+}
 
 segregateKeepNames <- function(ecopR, omitClasses, classes = NULL) {
   uniquVals <- unique(ecopR[]) |> na.omit()
@@ -92,7 +131,7 @@ segregateKeepNames <- function(ecopR, omitClasses, classes = NULL) {
     classes <- setdiff(uniquVals, omitClasses)
   }
   if (length(setdiff(uniquVals, 0)) > 1) {
-    ecopRseg <- segregate(ecopR, classes = classes)
+    ecopRseg <- terra::segregate(ecopR, classes = classes)
     if (is.factor(ecopR)) {
       names(ecopRseg) <- cats(ecopR)[[1]][match(as.numeric(names(ecopRseg)), cats(ecopR)[[1]]$ID), 2]
       dt <- data.table(nam = names(ecopRseg), num = as.numeric(names(ecopRseg)))
@@ -102,7 +141,7 @@ segregateKeepNames <- function(ecopR, omitClasses, classes = NULL) {
       names(ecopRseg) <- paste0(nam, ".", names(ecopRseg))
       dt <- data.table(nam = names(ecopRseg), num = as.numeric(namOrig))
     }
-    setorder(dt, "num")
+    data.table::setorder(dt, "num")
     ecopR <- ecopRseg[[match(dt$nam, names(ecopRseg))]]
   }
   ecopR
@@ -145,7 +184,7 @@ mergeAndSplitRas <- function(ecopRseg, ecopLCC, biggestWeWant = 2.4e+11,
     # merge multiples into 1
     if (NROW(tmp) > 1) {
       tmp <- terra::hull(tmp)
-      values(tmp) <- data.frame(AREA = terra::expanse(tmp))
+      terra::values(tmp) <- data.frame(AREA = terra::expanse(tmp))
       # tmp[, "AREA"] <- terra::expanse(tmp)
       needUpdate <- TRUE
       tmp[, field] <- paste0(provChar, seq_len(NROW(tmp)))
@@ -161,7 +200,7 @@ mergeAndSplitRas <- function(ecopRseg, ecopLCC, biggestWeWant = 2.4e+11,
       tmp[, field] <- tmp[, "id"]
     }
     if (needUpdate) {
-      tmpRas <- try(rasterize(tmp, ecopRseg[[provChar]], field = field, touches = TRUE))
+      tmpRas <- try(terra::rasterize(tmp, ecopRseg[[provChar]], field = field, touches = TRUE))
       whChange <- tmpRas[] > 0
       a <- ecopRseg[[provChar]]
       a[whChange] <- tmpRas[whChange]
@@ -187,10 +226,145 @@ plotStack <- function(stk, omi = c(0,0,0,0), mai = c(0,0,0,0), mar = c(0,0,0,0),
   parOrig <- par(mfrow = c(hei, wid), omi = omi, mai = mai)
   on.exit(par(parOrig))
   for (i in seq(numLayers)) {
-    numInLayer <- sum(freq(stk[[i]])[-1,]$count)
+    numInLayer <- sum(terra::freq(stk[[i]])[-1,]$count)
     maxcellHere <- ifelse(numInLayer < 500, 5e5, maxcell)
     terra::plot(stk[[i]], maxnl = 1, legend = FALSE, #cex = 0.5,
                 axes = FALSE, mar = mar, main = "", maxcell=maxcellHere)
     mtext(side = 3, line = -2, names(stk)[i])
   }
+}
+
+makeELFs <- function(nationalForestPolygon, desiredBuffer = 20000, inputPath) {
+  digNFP <- reproducible::.robustDigest(nationalForestPolygon)
+  dv <- terra::vect(nationalForestPolygon) |>
+    reproducible::Cache(omitArgs = "x", .cacheExtra = digNFP)
+  ecoNames <- c("zone", "region", "province", "district")
+  makeEcoURLs <- function(ecoNames) {
+    vapply(ecoNames, FUN.VALUE = character(1), function(en)
+      paste0(paste0("https://sis.agr.gc.ca/cansis/nsdb/ecostrat/", en, "/eco", en, "_shp.zip")))
+  }
+  urls <- makeEcoURLs(ecoNames)
+  ecosLCC <- Map(nam = ecoNames, url = urls, function(nam, url) {
+    reproducible::prepInputs(url = url,
+                             destinationPath = inputPath,
+                             projectTo = nationalForestPolygon) |>
+      reproducible::Cache(omitArgs = "projectTo",
+                          .cacheExtra = list(nationalForestPolygon = digNFP))
+  })
+  tmpl <- terra::rast(ecosLCC[[1]], res = 5000)
+  hf <- terra::rasterize(nationalForestPolygon, tmpl, field = "FRU") |>
+    reproducible::Cache(omitArgs = "x", .cacheExtra = digNFP)
+  ecosR <- Map(ecoLCC = ecosLCC, nam = names(ecosLCC), function(ecoLCC, nam)
+  {
+    terra::rasterize(ecoLCC, tmpl, field = toupper(paste0("eco", substr(nam, 1, 7)))) |>
+      postProcess(maskTo = hf)
+  } |>
+    reproducible::Cache(omitArgs = "maskTo",
+                        .cacheExtra = list(hf = attr(hf, "tags"))))
+
+  ecopR <- ecosR$province
+  # Some are on the edge, e.g., in the tundra --> remove if less than 100 pixels
+  fre <- terra::freq(ecopR)
+  fre <- fre[fre$count > 100, ]
+  ecopRseg <- terra::segregate(ecopR)
+  categories <- terra::cats(ecopR)[[1]]
+  names(ecopRseg) <- categories[match(names(ecopRseg), categories$ID), "ECOPROVINC"]
+  ord <- order(as.numeric(intersect(categories$ECOPROVINC, fre$value)))
+  ecopRseg <- ecopRseg[[names(ecopRseg) %in% fre$value]][[ord]]
+
+  # plotStack(ecopRseg)
+  out <- bufferOut(dv, desiredBuffer = desiredBuffer) |>
+    reproducible::Cache(omitArgs = "v", .cacheExtra = digNFP)
+  out2 <- mergeAndSplitRas(ecopRseg, ecosLCC$province) |> Cache()
+
+  out3 <- lapply(out2, function(x) as.list(segregateKeepNames(x, omitClasses = 0))) |>
+    unlist(recursive = FALSE)
+  names(out3) <- sapply(out3, names)
+
+  ELFs <- bufferOut(spatRasSeg = out3, mask = out$rasWhole[[1]],
+                    desiredBuffer = desiredBuffer) |>
+    reproducible::Cache(omitArgs = c("spatRasSeg", "mask"),
+                        .cacheExtra = list(nationalForestPolygon = digNFP,
+                                           attr(out2, "tags"),
+                                           attr(out, "tags")
+                        ))
+
+  ELFs
+}
+
+
+
+
+moveSliversToOtherELFs <- function(lostPixels, lp, ca, i, r) {
+
+  if (exists("aaaa", envir = .GlobalEnv)) browser()
+  if (NROW(unlist(lostPixels))) {
+    if (is.null(names(lostPixels))) {
+      hasNames <- FALSE
+      haveLostPixels <- which(lengths(lostPixels) > 0)
+    } else {
+      hasNames <- TRUE
+      haveLostPixels <- names(lostPixels)
+    }
+    for (lp in haveLostPixels) {
+      numOverlap <- list()
+      for (i in seq(ca)) {
+        whPixelIDsHere <- which(ca[[i]][] > 0)
+        lostPixelsElsewhere2 <- lostPixels[[lp]][value == 2]$pixelID %in% whPixelIDsHere
+        lostPixelsElsewhere1 <- lostPixels[[lp]][value == 1]$pixelID %in% whPixelIDsHere
+        if (any(lostPixelsElsewhere2)) {
+          numOverlap[[i]] <- sum(lostPixelsElsewhere2)
+          print(paste(i, ": ", sum(lostPixelsElsewhere2), "pixels"))
+        }
+      }
+
+      # If the pixels that were lost do not show up in any other ELF blob, they are lost forever
+      #   In the examples I saw, it was tiny islands off the coast of Newfoundland
+      if (NROW(numOverlap)) {
+        if (exists("aaaa", envir = .GlobalEnv)) browser()
+        addTo <- which(sapply(numOverlap, function(x) !is.null(x)))
+        if (hasNames) {
+          addTo <- names(ca)[addTo]
+        }
+
+        a <- list()
+        sums <- list()
+        for (addToInd in addTo) {
+          curPixelVal <- ca[[addToInd]][] != 2
+          a[[addToInd]] <- ca[[addToInd]]
+          a[[addToInd]][lostPixels[[lp]]$pixelID] <- pmax(terra::values(a[[addToInd]])[lostPixels[[lp]]$pixelID], lostPixels[[lp]]$value, na.rm = TRUE)
+          theA <- terra::freq(a[[addToInd]])
+          # theA <- lapply(a, function(x) if (!is.null(x)) terra::freq(x))
+          sums[[addToInd]] <- sum(theA[-1,] - terra::freq(ca[[addToInd]])[-1,])
+        }
+        addTo <- which.min(unlist(lapply(sums, function(ss) if (is.null(ss)) 1e7 else ss )))
+        if (hasNames)
+          addTo <- names(addTo)
+        newVals <- pmax(terra::values(ca[[addTo]])[lostPixels[[lp]]$pixelID], lostPixels[[lp]]$value, na.rm = TRUE)
+        ca[[addTo]][lostPixels[[lp]]$pixelID] <- newVals
+
+        # dealt with the lp-th element in lostPixels; remove it: next line doesn't work. It shrinks the list.
+        # lostPixels[[lp]] <- NULL
+        a <- ca[[addTo]]
+        a[] <- NA
+        a[lostPixels[[lp]]$pixelID] <- newVals
+        # a[a[] == 0] <- NA
+        a <- terra::trim(a)
+        a <- terra::project(a, terra::crs(r[[addTo]]), method = "near")
+        bb <- terra::resample(a, r[[addTo]], method = "near")
+        whVals <- which(terra::values(bb) > 0)
+        r[[addTo]][whVals] <- terra::values(bb)[whVals]
+      } else {
+        numLostPixelsForever <- try(sum(lostPixels[[lp]]$value))
+        if (is(numLostPixelsForever, "try-error")) browser()
+        if (is.null(names(ca))) {
+          message("From ELF ", lp, ", lost ", numLostPixelsForever," isolated pixels that do not exist in another ELF")
+        }
+      }
+      if (exists("aaaa", envir = .GlobalEnv)) browser()
+      nam <- if (is.null(names(lostPixels))) seq(lostPixels) else names(lostPixels)
+      lostPixels <- Map(na = nam, function(na) if (na == lp) NULL else lostPixels[[na]])
+    }
+  }
+  list(ca = ca, r = r)
 }
