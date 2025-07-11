@@ -2,24 +2,26 @@ repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9003", "0.1.1.9037")) # only install/update if required
 # Require::Install("PredictiveEcology/SpaDES.project@development (>=0.1.1.9012)")
-pkgload::load_all("~/GitHub/SpaDES.project/");
+# pkgload::load_all("~/GitHub/SpaDES.project/");
 
-bufferIn <- 1000
+bufferIn <- -1000
 
-# This is running in tmux
-FRU <- 26; .rep <- 3; fnForClusters = tail # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-
-#if (!Require:::isRstudio())
-FRU <- 27; .rep <- 2; fnForClusters = head # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-#if (Require:::isRstudio())
-FRU <- 27; .rep <- 2; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-FRU <- "ELF4.3"; .rep <- 1; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-.ELFind <- "ELF4.3"; .rep <- 1; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-.ELFind <- "ELF4.3"; .rep <- 1; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
+# # This is running in tmux
+# FRU <- 26; .rep <- 3; fnForClusters = tail # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
+#
+# #if (!Require:::isRstudio())
+# FRU <- 27; .rep <- 2; fnForClusters = head # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
+# #if (Require:::isRstudio())
+# FRU <- 27; .rep <- 2; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
+# FRU <- "ELF4.3"; .rep <- 1; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
+# .ELFind <- "ELF4.3"; .rep <- 1; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
+# .ELFind <- "ELF4.3"; .rep <- 1; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
 
 # FRU <- 27; .rep <- 4; fnForClusters = head; bufferIn <- 1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-currentName <- paste0("FRU-", FRU)#, paste0("_minus", abs(bufferIn)))
-currentName <- FRU#, paste0("_minus", abs(bufferIn)))
+# currentName <- paste0("FRU-", FRU)#, paste0("_minus", abs(bufferIn)))
+
+
+fnForClusters = head
 
 setwd("~/GitHub/FireSenseTesting/") # generic absolute path for anybody; but individual can change
 # pkgload::load_all("~/GitHub/SpaDES.project/");
@@ -95,6 +97,12 @@ if (FALSE) {
 
 # Ecozone/province/region/district
 inSim <- SpaDES.project::setupProject(
+  ELFind = gsub("ELF", "", .ELFind),
+  currentName = ELFind,
+  .rep = .rep,
+  .strategy = .strategy,
+  .cc = .cc,
+  FRU = FRU,
   defaultDots = list(.strategy = 3L,
                      .cc = 0.5,
                      .objfunFireReps = 25L,
@@ -106,11 +114,6 @@ inSim <- SpaDES.project::setupProject(
                      c(rep(c("carbon", "biomass", "sbw", "birds"), 22), rep(c("caribou", "fire"), 8)),
                      sort(rep(fnForClusters(FORSITEmachines, 5), length.out = 100)),
                      FRU = 25),
-  ELFind = gsub("ELF", "", .ELFind),
-  .rep = .rep,
-  .strategy = .strategy,
-  .cc = .cc,
-  FRU = FRU,
   .objfunFireReps = .objfunFireReps,
   Restart = TRUE,
   functions = "~/GitHub/FireSenseTesting/R/functions.R",
@@ -344,8 +347,9 @@ inSim <- SpaDES.project::setupProject(
 
 library(SpaDES.project)
 SpaDES.core::Plots(inSim[grep("studyArea|rasterToMatch", names(inSim))],
-                   title = paste0("StudyArea ", currentName),
-                   fn = plotSAs, filename = paste0("studyAreas", currentName),
+                   title = paste0("StudyArea ", inSim$currentName),
+                   fn = plotSAs,
+                   filename = paste0("studyAreas", inSim$currentName),
                    path = inSim$paths$inputPath,
                    types = c("screen", "png")) |> reproducible::Cache()
 
@@ -377,10 +381,6 @@ if (FALSE) {
 }
 
 # Start quick
-pkgload::load_all("~/GitHub/reproducible/");
-pkgload::load_all("~/GitHub/SpaDES.core/");
-pkgload::load_all("~/GitHub/clusters/");
-pkgload::load_all("~/GitHub/fireSenseUtils/");
 message(paste0(inSim$FRU, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
              " .objfunFireReps:", inSim$.objfunFireReps))
 # debug(SpaDES.core::loadSimList)
