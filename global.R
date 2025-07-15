@@ -4,8 +4,7 @@ getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9003", "0.1.1.9037")) # 
 # Require::Install("PredictiveEcology/SpaDES.project@development (>=0.1.1.9012)")
 # pkgload::load_all("~/GitHub/SpaDES.project/");
 
-bufferIn <- -1000
-
+# bufferIn <- -1000
 # # This is running in tmux
 # FRU <- 26; .rep <- 3; fnForClusters = tail # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
 #
@@ -47,30 +46,12 @@ if (FALSE) {
 FORSITEmachines <- c("birds", "biomass", "camas", "carbon", "caribou", "coco",
                      "core", "dougfir", "fire", "mega", "mpb", "sbw")
 FORSITEmachinesAvailable <- setdiff(FORSITEmachines, "sbw")
-if (FALSE) {
 
-  tmpl <- terra::rast(dv, res = 5000)
-  FRUras <- {tmpl |>
-      terra::rasterize(dv, y = _, field = "FRU")} |> reproducible::Cache(omitArgs = "x")
-  fre <- freq(FRUras)
-  fre$count <- fre$count * prod(terra::res(FRUras))
-
-  biggestWeWant <- 2.37725e+11 # FRU 27 ... or FRU 26 is 4.02075e+11
-
-  boreal <- prepInputs(url = "https://d278fo2rk9arr5.cloudfront.net/downloads/boreal.zip",
-                       destinationPath = inSim$paths$inputPath) |> reproducible::Cache()
-  tmplboreal <- terra::rast(boreal, res = 5000)
-  borealras <- {tmplboreal |>
-      terra::rasterize(boreal, y = _, field = "TYPE")} |> reproducible::Cache(omitArgs = "x")
-  borealras <- postProcess(borealras, to = FRUras) |> Cache()
-
-  needToModel <- c(1, 3:11, 13:18, 21:35, 37:38, 40:43, 45:47, 49:50, 52:53, 55:59)
-}
-
-# Ecozone/province/region/district
 inSim <- SpaDES.project::setupProject(
   ELFind = gsub("ELF", "", .ELFind),
-  currentName = ELFind,
+  currentName = {
+    ELFind
+    },
   .rep = .rep,
   .strategy = .strategy,
   .cc = .cc,
@@ -111,7 +92,7 @@ inSim <- SpaDES.project::setupProject(
               "PredictiveEcology/Biomass_borealDataPrep@development",
               "PredictiveEcology/Biomass_speciesData@development"
               ),
-  packages = c(# "PredictiveEcology/reproducible@AI", # (HEAD)", # (HEAD)",
+  packages = c("PredictiveEcology/reproducible@AI", # (HEAD)", # (HEAD)",
                "PredictiveEcology/SpaDES.core@box", # (HEAD)", # needed for the functions in
                "PredictiveEcology/scfmutils@development", # (HEAD)",
                "terra", "leaflet", "rvest", "tidyterra"), # for StudyArea visualization below
@@ -131,7 +112,7 @@ inSim <- SpaDES.project::setupProject(
                     # 'reproducible.gdalwarp' = TRUE,
                     reproducible.cacheSaveFormat = "qs",
                     reproducible.useMemoise = TRUE,
-                    spades.useRequire = FALSE,
+                    spades.useRequire = TRUE,
                     spades.debug = list(file = list(file = file.path(paths$logPath,
                                                                      paste0("logfile_", ELFind, "_", gsub(":", "_", format(Sys.time())), ".txt")),
                                                     append = TRUE, level = 1)),
@@ -144,7 +125,7 @@ inSim <- SpaDES.project::setupProject(
                     reproducible.inputPaths = "~/data",
                     # reproducible.useCache = "devMode",
                     reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9",
-                    reproducible.showSimilar = TRUE,
+                    reproducible.showSimilar = FALSE,
                     reproducible.showSimilarDepth = 8,
                     # Eliot during development
                     reproducible.savePreDigest = FALSE,
@@ -376,14 +357,14 @@ options(
 )
 fn <- paste0("simPreDispersalFit", inSim$currentName, ".qs")
 if (TRUE) {
-if (FALSE) {
-  sim <- SpaDES.core::restartOrSimInitAndSpades(inSimCopy, fn) |> suppressPackageStartupMessages()
-  saveState(filename = fn, files = FALSE)
-  # options(reproducible.showSimilar = FALSE)
-} else {
-  sim <- SpaDES.core::simInitAndSpades2(inSimCopy)
-  saveState(filename = fn, files = FALSE)
-}
-#
-# file.copy(fn, )
+  if (TRUE) {
+    sim <- SpaDES.core::restartOrSimInitAndSpades(inSimCopy, fn) |> suppressPackageStartupMessages()
+    saveState(filename = fn, files = FALSE)
+    # options(reproducible.showSimilar = FALSE)
+  } else {
+    sim <- SpaDES.core::simInitAndSpades2(inSimCopy)
+    saveState(filename = fn, files = FALSE)
+  }
+  #
+  # file.copy(fn, )
 }
