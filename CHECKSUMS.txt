@@ -12,6 +12,7 @@
 "Ecoprovinces/ecoprovinces.sbx" "c76619f7345b4668" "228" "xxhash64"
 "Ecoprovinces/ecoprovinces.shp" "06b858aac394ed17" "3111740" "xxhash64"
 "Ecoprovinces/ecoprovinces.shx" "4e9c7426d2af90fa" "644" "xxhash64"
+"fireSenseParamsOldMoreRecent.rds" "4f748756324bb520" "2017" "xxhash64"
 "positive_CGflashden_1999-2024.txt" "0fe98e9514e76d9a" "12801970" "xxhash64"
 "RIA_rtm.tif" "712598ca7735af4d" "8558909" "xxhash64"
 "SpeciesPresentInAllCanadianForests.zip" "1928bbef0445c994" "3443551" "xxhash64"

@@ -24,10 +24,6 @@ bufferIn <- -1000
 fnForClusters = head
 
 setwd("~/GitHub/FireSenseTesting/") # generic absolute path for anybody; but individual can change
-# pkgload::load_all("~/GitHub/SpaDES.project/");
-# reproducible::clearCache(Function = "speciesInStudyArea", ask = FALSE)
-# try(unlink(dir(getOption('reproducible.inputPaths'), pattern = "SpeciesPresent", full.names = T)))
-# unlink(dir("inputs", pattern = "SpeciesPresent", full.names = T))
 if (FALSE) {
   pkgload::load_all("~/GitHub/SpaDES.project/");
   pkgload::load_all("~/GitHub/reproducible/");
@@ -36,6 +32,7 @@ if (FALSE) {
   pkgload::load_all("~/GitHub/LandR/");
   pkgload::load_all("~/GitHub/scfmutils/");
   pkgload::load_all("~/GitHub/fireSenseUtils/");
+  devtools::install("~/GitHub/Require/", upgrade = FALSE);
   devtools::install("~/GitHub/reproducible/", upgrade = FALSE);
   devtools::install("~/GitHub/SpaDES.core/", upgrade = FALSE);
   devtools::install("~/GitHub/SpaDES.project/", upgrade = FALSE);
@@ -45,31 +42,6 @@ if (FALSE) {
   devtools::install("~/GitHub/fireSenseUtils/", upgrade = FALSE);
 }
 
-climateLayers <- function(.climVars = "CMD_sm", historical = TRUE, projected = TRUE,
-                          fun = quote(calcAsIs)) {
-  hps <- c()
-  if (isTRUE(historical))
-    hps <- c(historical = "historical")
-  if (isTRUE(projected))
-    hps <- c(hps, future = "projected")
-
-  rr <- Map(hp = unname(hps), nam = names(hps), function(hp, nam) {
-    Map(cv = .climVars, function(cv) {
-      ll <- list(vars = paste0(nam, "_", cv),
-                 fun = fun)
-      .dots = if (nam == "historical")
-        list(1991:2022)
-      else
-        list(2011:2100)
-      ll <- append(ll, list(.dots = .dots |> setNames(paste0(nam, "_years"))))
-    })
-  }) |> unlist(recursive = FALSE)
-
-  names(rr) <- gsub("_", "", names(rr)) # removes _ in e.g., CMD_sm
-  names(rr) <- gsub("\\.", "_", names(rr)) # converts remaining . to a _ in e.g., projected_
-
-  rr
-}
 
 # These must be specified in the ~/.ssh/config file; and all ssh keys must be in place
 FORSITEmachines <- c("birds", "biomass", "camas", "carbon", "caribou", "coco",
@@ -122,6 +94,7 @@ inSim <- SpaDES.project::setupProject(
                outputPath = file.path("outputs", currentName),
                cachePath = "cache",
                inputPath = "inputs",
+               logPath = "logs",
                scratchPath = "scratch"),
   modules = c("PredictiveEcology/canClimateData@improveCache1",
 
@@ -159,6 +132,9 @@ inSim <- SpaDES.project::setupProject(
                     reproducible.cacheSaveFormat = "qs",
                     reproducible.useMemoise = TRUE,
                     spades.useRequire = FALSE,
+                    spades.debug = list(file = list(file = file.path(paths$logPath,
+                                                                     paste0("logfile_", ELFind, "_", gsub(":", "_", format(Sys.time())), ".txt")),
+                                                    append = TRUE, level = 1)),
                     SpaDES.project.fast = FALSE,
                     reproducible.shapefileRead = "terra::vect",
                     spades.recoveryMode = 1,
@@ -180,7 +156,7 @@ inSim <- SpaDES.project::setupProject(
 
 
   ),
-  times = list(start = 2011, end = 2021),
+  times = list(start = 2011, end = 2031),
   homogeneousFire = {
     scfmutils::prepInputsFireRegimePolys(type = "FRU", destinationPath = paths$inputPath) |>
       reproducible::Cache(cacheSaveFormat = "rds")
@@ -203,7 +179,9 @@ inSim <- SpaDES.project::setupProject(
       postProcess(rtml, projectTo = rastTemplate, method = "near") |>
         terra::trim()  # |>
         # terra::focal(w = 15, "modal", na.policy = "only") # fill in NAs
-    } |> Cache(omitArgs = c("x"), .cacheExtra = list(ELFs = attr(ELFs, "tags"), rastTemplate = attr(rastTemplate, "tage")))
+    } |> Cache(omitArgs = c("x"), .cacheExtra = list(ELFs = attr(ELFs, "tags"),
+                                                     ELFind = ELFind,
+                                                     rastTemplate = attr(rastTemplate, "tags")))
   },
   studyAreaLarge = {
     {
@@ -369,19 +347,19 @@ if (FALSE) {
 inSimCopy <- reproducible::Copy(inSim)
 
 
+# Start quick
 
 if (FALSE) {
   pkgload::load_all("~/GitHub/reproducible/");
   pkgload::load_all("~/GitHub/SpaDES.core/");
-  pkgload::load_all("~/GitHub/SpaDES.project/");
-#  pkgload::load_all("~/GitHub/clusters/");
+  # pkgload::load_all("~/GitHub/SpaDES.project/");
+  #  pkgload::load_all("~/GitHub/clusters/");
   pkgload::load_all("~/GitHub/LandR/");
-#  pkgload::load_all("~/GitHub/scfmutils/");
+  #  pkgload::load_all("~/GitHub/scfmutils/");
   pkgload::load_all("~/GitHub/fireSenseUtils/");
 }
 
-# Start quick
-message(paste0(inSim$FRU, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
+message(paste0(inSim$currentName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
              " .objfunFireReps:", inSim$.objfunFireReps))
 # debug(SpaDES.core::loadSimList)
 st <- Sys.time()
@@ -396,12 +374,16 @@ options(
   , spades.debugModule = NULL#"fireSense_dataPrepFit"
   , reproducible.useMemoise = TRUE
 )
-fn <- "simPreDispersalFit.qs"
+fn <- paste0("simPreDispersalFit", inSim$currentName, ".qs")
 if (TRUE) {
+if (FALSE) {
   sim <- SpaDES.core::restartOrSimInitAndSpades(inSimCopy, fn) |> suppressPackageStartupMessages()
   saveState(filename = fn, files = FALSE)
   # options(reproducible.showSimilar = FALSE)
 } else {
-  outSims <- SpaDES.core::simInitAndSpades2(inSimCopy)
+  sim <- SpaDES.core::simInitAndSpades2(inSimCopy)
   saveState(filename = fn, files = FALSE)
+}
+#
+# file.copy(fn, )
 }

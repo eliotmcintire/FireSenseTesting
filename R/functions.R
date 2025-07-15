@@ -368,3 +368,30 @@ moveSliversToOtherELFs <- function(lostPixels, lp, ca, i, r) {
   }
   list(ca = ca, r = r)
 }
+
+
+climateLayers <- function(.climVars = "CMD_sm", historical = TRUE, projected = TRUE,
+                          fun = quote(calcAsIs)) {
+  hps <- c()
+  if (isTRUE(historical))
+    hps <- c(historical = "historical")
+  if (isTRUE(projected))
+    hps <- c(hps, future = "projected")
+
+  rr <- Map(hp = unname(hps), nam = names(hps), function(hp, nam) {
+    Map(cv = .climVars, function(cv) {
+      ll <- list(vars = paste0(nam, "_", cv),
+                 fun = fun)
+      .dots = if (nam == "historical")
+        list(1991:2022)
+      else
+        list(2011:2100)
+      ll <- append(ll, list(.dots = .dots |> setNames(paste0(nam, "_years"))))
+    })
+  }) |> unlist(recursive = FALSE)
+
+  names(rr) <- gsub("_", "", names(rr)) # removes _ in e.g., CMD_sm
+  names(rr) <- gsub("\\.", "_", names(rr)) # converts remaining . to a _ in e.g., projected_
+
+  rr
+}
