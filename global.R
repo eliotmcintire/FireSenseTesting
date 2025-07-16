@@ -1,8 +1,10 @@
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9003", "0.1.1.9037")) # only install/update if required
-# Require::Install("PredictiveEcology/SpaDES.project@development (>=0.1.1.9012)")
+# Require::Install("PredictiveEcology/SpaDES.project@development (>=0.1.1.9037)")
+# Require::Install("PredictiveEcology/Require@hasHEAD (>=0.1.1.9019)")
 # pkgload::load_all("~/GitHub/SpaDES.project/");
+# debug(setupProject)
 
 # bufferIn <- -1000
 # # This is running in tmux
@@ -43,15 +45,19 @@ if (FALSE) {
 
 
 # These must be specified in the ~/.ssh/config file; and all ssh keys must be in place
-FORSITEmachines <- c("birds", "biomass", "camas", "carbon", "caribou", "coco",
-                     "core", "dougfir", "fire", "mega", "mpb", "sbw")
-FORSITEmachinesAvailable <- setdiff(FORSITEmachines, "sbw")
+# machines <- data.table::data.table(name = c("birds", "biomass", "camas", "carbon", "caribou", "coco",
+#                                 "core", "dougfir", "fire", "mpb", "sbw"), ncores = 48)
+# machines <- rbind(machines, data.table::data.table(name = c("n105", "n54", "n14"), ncores = 16))
+# machines <- rbind(machines, data.table::data.table(name = "mega", ncores = 80))
 
+# FORSITEmachinesAvailable <- setdiff(FORSITEmachines, "sbw")
+
+
+# Require::Install("PredictiveEcology/SpaDES.project@development (>=0.1.1.9012)")
+# pkgload::load_all("~/GitHub/SpaDES.project/");
 inSim <- SpaDES.project::setupProject(
   ELFind = gsub("ELF", "", .ELFind),
-  currentName = {
-    ELFind
-    },
+  currentName = ELFind,
   .rep = .rep,
   .strategy = .strategy,
   .cc = .cc,
@@ -61,11 +67,9 @@ inSim <- SpaDES.project::setupProject(
                      .objfunFireReps = 25L,
                      .rep = 1,
                      .ELFind = "4.3",
-                     # .cores = if (Require:::isRstudio()) NA else
-                     .cores = # c(rep("localhost", 30), rep(c("permafrost", "caribou", "fire", "birds", "scfm"), 14)),
-                     # c(rep(c("carbon", "biomass", "sbw", "birds", "firesense", "scfm"), 14), rep(c("caribou", "fire"), 7)),
-                     c(rep(c("carbon", "biomass", "sbw", "birds"), 22), rep(c("caribou", "fire"), 8)),
-                     sort(rep(fnForClusters(FORSITEmachines, 5), length.out = 100)),
+                     .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco",
+                                "core", "dougfir", "fire", "mpb", "sbw", "mega",
+                                "n105", "n54", "n14"),
                      FRU = 25),
   .objfunFireReps = .objfunFireReps,
   Restart = TRUE,
@@ -112,7 +116,7 @@ inSim <- SpaDES.project::setupProject(
                     # 'reproducible.gdalwarp' = TRUE,
                     reproducible.cacheSaveFormat = "qs",
                     reproducible.useMemoise = TRUE,
-                    spades.useRequire = TRUE,
+                    spades.useRequire = FALSE,
                     spades.debug = list(file = list(file = file.path(paths$logPath,
                                                                      paste0("logfile_", ELFind, "_", gsub(":", "_", format(Sys.time())), ".txt")),
                                                     append = TRUE, level = 1)),
@@ -217,7 +221,8 @@ inSim <- SpaDES.project::setupProject(
       reproducible::Cache(omitArgs = "studyArea", .cacheExtra = list(sa = attr(studyArea, "tags")))
     spp <- grep("_Spp", species$speciesList, invert = TRUE, value = TRUE)
     column <- LandR::equivalentNameColumn(spp, LandR::sppEquivalencies_CA)
-    LandR::sppEquivalencies_CA[which(LandR::sppEquivalencies_CA[[column]] %in% spp),]
+    sppEquiv <- LandR::sppEquivalencies_CA[which(LandR::sppEquivalencies_CA[[column]] %in% spp),]
+    sppEquiv[LANDIS_traits != "",]
   },
   studyAreaPSP = {
     a <- reproducible::prepInputs(url = paste0("https://sis.agr.gc.ca/cansis/nsdb/ecostrat/",
@@ -234,9 +239,8 @@ inSim <- SpaDES.project::setupProject(
   #  "nf_dryland" = c(50, 100, 40), # shrub, herbaceous, bryoid
   #  "nf_wetland" = c(80)), #non-treed wetland.
 
-  cores = if (Require:::isRstudio()) NULL else .cores,
-  # c(rep("bc213", 13), rep("localhost", 13), rep("n105", 13), rep("n14", 13),
-  #   rep("bc184", 14), rep("bc217", 12), rep("n68", 20)),
+  # cores = if (Require:::isRstudio()) NULL else coresList[[.coreListIndex]],
+  cores = .cores,
   #params last because one of them depends on sppEquiv fuel class names
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
