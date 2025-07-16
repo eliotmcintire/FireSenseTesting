@@ -332,9 +332,8 @@ if (FALSE) {
 inSimCopy <- reproducible::Copy(inSim)
 
 
-# Start quick
 
-if (TRUE) {
+if (FALSE) {
   pkgload::load_all("~/GitHub/reproducible/");
   pkgload::load_all("~/GitHub/SpaDES.core/");
   # pkgload::load_all("~/GitHub/SpaDES.project/");
