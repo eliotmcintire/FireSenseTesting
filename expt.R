@@ -6,7 +6,7 @@
               "12.1", "12.2", "12.3", "12.4", "13.1", "13.2.1", "13.2.2", "13.3",
               "14.1", "14.2", "14.3", "14.4", "15.1", "15.2.1", "15.2.2")
 # Comment this out to run just one ELF at a time
-.ELFinds <- c("5.1.3");
+# .ELFinds <- c("5.1.1");
 
 # Known fails:
 #  .ELFind <- "4.2.1" # Elements 3661396 of is.na(as.vector(sim$ecoregionMap[])) == is.na(as.vector(sim$pixelGroupMap[])) are not true
@@ -18,9 +18,9 @@ if (length(.ELFinds) == 1) {
   source("global.R", local = TRUE)
 } else {
   # If you can run them in parallel on the same linux machine:
-  expt <- expand.grid(.rep = .reps, .ELFind = .ELFinds)
+  expt <- expand.grid(.rep = .reps, .ELFind = .ELFinds[-4])
   expt <- data.frame(iter = seq_len(NROW(expt)), expt)
-  expt$.coreListIndex = expt$iter %% 2 + 1
+  # expt$.coreListIndex = expt$iter %% 2 + 1
 
   # mm1 <- mirai::daemons(1, .compute = ".plots", dispatcher = FALSE)
   if (!mirai::daemons_set("SpaDES"))

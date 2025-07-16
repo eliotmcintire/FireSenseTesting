@@ -334,15 +334,17 @@ inSimCopy <- reproducible::Copy(inSim)
 
 # Start quick
 
-if (FALSE) {
+if (TRUE) {
   pkgload::load_all("~/GitHub/reproducible/");
   pkgload::load_all("~/GitHub/SpaDES.core/");
   # pkgload::load_all("~/GitHub/SpaDES.project/");
-  #  pkgload::load_all("~/GitHub/clusters/");
+  pkgload::load_all("~/GitHub/clusters/");
   pkgload::load_all("~/GitHub/LandR/");
   #  pkgload::load_all("~/GitHub/scfmutils/");
   pkgload::load_all("~/GitHub/fireSenseUtils/");
 }
+Require::Install("pkgload")
+pkgload::load_all("~/GitHub/clusters/");
 
 message(paste0(inSim$currentName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
              " .objfunFireReps:", inSim$.objfunFireReps))
@@ -361,7 +363,7 @@ options(
 )
 fn <- paste0("simPreDispersalFit", inSim$currentName, ".qs")
 if (TRUE) {
-  if (TRUE) {
+  if (FALSE) {
     sim <- SpaDES.core::restartOrSimInitAndSpades(inSimCopy, fn) |> suppressPackageStartupMessages()
     saveState(filename = fn, files = FALSE)
     # options(reproducible.showSimilar = FALSE)
