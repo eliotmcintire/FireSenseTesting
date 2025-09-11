@@ -40,6 +40,7 @@ if (FALSE) {
   devtools::install("~/GitHub/clusters/", upgrade = FALSE);
   devtools::install("~/GitHub/LandR/", upgrade = FALSE);
   devtools::install("~/GitHub/scfmutils/", upgrade = FALSE);
+  devtools::install("~/GitHub/climateData/", upgrade = FALSE);
   devtools::install("~/GitHub/fireSenseUtils/", upgrade = FALSE);
 }
 
@@ -337,8 +338,9 @@ if (FALSE) {
   pkgload::load_all("~/GitHub/reproducible/");
   pkgload::load_all("~/GitHub/SpaDES.core/");
   # pkgload::load_all("~/GitHub/SpaDES.project/");
-  pkgload::load_all("~/GitHub/clusters/");
+  # pkgload::load_all("~/GitHub/clusters/");
   pkgload::load_all("~/GitHub/LandR/");
+  pkgload::load_all("~/GitHub/climateData/");
   #  pkgload::load_all("~/GitHub/scfmutils/");
   pkgload::load_all("~/GitHub/fireSenseUtils/");
 }
@@ -362,8 +364,15 @@ options(
 )
 fn <- paste0("simPreDispersalFit", inSim$currentName, ".qs")
 if (TRUE) {
-  if (FALSE) {
-    sim <- SpaDES.core::restartOrSimInitAndSpades(inSimCopy, fn) |> suppressPackageStartupMessages()
+  if (TRUE) {
+    # debug(SpaDES.core::restartOrSimInitAndSpades)
+    # sim <- SpaDES.core::restartOrSimInitAndSpades(inSimCopy, fn) |> suppressPackageStartupMessages()
+    sim <- try(SpaDES.core::restartSpades(verbose = FALSE), silent = TRUE) |> suppressPackageStartupMessages()
+    if (is(sim, "try-error")) {
+      message("There was no sim to restartSpades with... running simInitAndSpades")
+      sim <- SpaDES.core::simInitAndSpades2(inSimCopy)
+    }
+
     saveState(filename = fn, files = FALSE)
     # options(reproducible.showSimilar = FALSE)
   } else {
@@ -373,3 +382,5 @@ if (TRUE) {
   #
   # file.copy(fn, )
 }
+# If it makes it here, then remove it so that the next iteration doesn't pick this up
+rm(list = ".sim", envir= SpaDES.core:::savedSimEnv())
