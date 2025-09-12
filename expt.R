@@ -22,15 +22,15 @@
   # "6.3.1", "6.3.2",
   # "6.4",
   # "6.5",
-  # "6.6.1",  # interactive see below
+  # "6.6.1",  # interactive see below # still need to do
   # "6.6.2",
   # "7.1",
   # "7.2",
-  "7.3", # running on right
+  # "7.3",
   # "9.1.1",
-  "9.1.2",
-  "9.2.1",
-  # "9.2.2", # running on left
+  "9.1.2", # running on left
+  "9.2.1", # running on right
+  # "9.2.2",
   "9.2.3", "9.3",
   "11.1",  # running on right
   "11.2", "11.3", "11.4",
@@ -38,7 +38,7 @@
   "12.3", "12.4", "13.1", "13.2.1", "13.2.2", "13.3",
   "14.1", "14.2", "14.3", "14.4", "15.1", "15.2.1", "15.2.2")
 
-if (isTRUE("tools:rstudio" %in% search())) .ELFinds <- "6.6.1"
+# if (isTRUE("tools:rstudio" %in% search())) .ELFinds <- "7.3"
 # .ELFinds <- grep("^4\\.", .ELFinds, value = TRUE, invert = TRUE)
 # .ELFinds <- grep("^5\\.", .ELFinds, value = TRUE, invert = TRUE)
 # .ELFinds <- grep("^6\\.1\\.", .ELFinds, value = TRUE, invert = TRUE)
@@ -121,7 +121,8 @@ if (FALSE) {
   for (.ELFind in .ELFinds[[1]]) {
     .rep <- 1;
     runFit <- TRUE
-    source("global.R", local = TRUE)
+    message(paste0(.ELFind, ", .rep:", .rep))
+    try(source("global.R", local = TRUE))
   }
 }
 

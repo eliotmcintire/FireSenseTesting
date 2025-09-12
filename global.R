@@ -70,7 +70,8 @@ inSim <- SpaDES.project::setupProject(
                      .ELFind = "4.3",
                      .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco",
                                 "core", "dougfir", "fire", "mpb", "sbw", "mega",
-                                "n105", "n54", "n14"),
+                                "acer", # "abies",
+                                "pinus"),
                      FRU = 25),
   .objfunFireReps = .objfunFireReps,
   Restart = TRUE,
@@ -148,10 +149,11 @@ inSim <- SpaDES.project::setupProject(
       reproducible::Cache(cacheSaveFormat = "rds")
       # reproducible::Cache()
   },
-  ELFs =
-    makeELFs(homogeneousFire, desiredBuffer = 20000, inputPath = paths$inputPath) |>
+  ELFs = {
+    fireSenseUtils::makeELFs(homogeneousFire, desiredBuffer = 20000, destinationPath = paths$inputPath) |>
     Cache(omitArgs = "nationalForestPolygon",
-          .cacheExtra = list(hf = attr(homogeneousFire, "tags"), bufferOutFn = bufferOut))
+          .cacheExtra = list(hf = attr(homogeneousFire, "tags"), bufferOutFn = fireSenseUtils:::bufferOut))
+  }
   ,
   d1 = 5000,
   rastTemplate = {
@@ -370,7 +372,7 @@ if (TRUE) {
     sim <- try(SpaDES.core::restartSpades(verbose = FALSE), silent = TRUE) |> suppressPackageStartupMessages()
     if (is(sim, "try-error")) {
       message("There was no sim to restartSpades with... running simInitAndSpades")
-      sim <- SpaDES.core::simInitAndSpades2(inSimCopy)
+      sim <- SpaDES.core::simInitAndSpades2(inSimCopy) |> suppressPackageStartupMessages()
     }
 
     saveState(filename = fn, files = FALSE)
