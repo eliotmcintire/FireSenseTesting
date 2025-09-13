@@ -369,16 +369,16 @@ if (TRUE) {
   if (TRUE) {
     # debug(SpaDES.core::restartOrSimInitAndSpades)
     # sim <- SpaDES.core::restartOrSimInitAndSpades(inSimCopy, fn) |> suppressPackageStartupMessages()
-    sim <- try(SpaDES.core::restartSpades(verbose = FALSE), silent = TRUE) |> suppressPackageStartupMessages()
-    if (is(sim, "try-error")) {
+    simOut <- try(SpaDES.core::restartSpades(verbose = FALSE), silent = TRUE) |> suppressPackageStartupMessages()
+    if (is(simOut, "try-error")) {
       message("There was no sim to restartSpades with... running simInitAndSpades")
-      sim <- SpaDES.core::simInitAndSpades2(inSimCopy) |> suppressPackageStartupMessages()
+      simOut <- SpaDES.core::simInitAndSpades2(inSimCopy) |> suppressPackageStartupMessages()
     }
 
     saveState(filename = fn, files = FALSE)
     # options(reproducible.showSimilar = FALSE)
   } else {
-    sim <- SpaDES.core::simInitAndSpades2(inSimCopy)
+    simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
     saveState(filename = fn, files = FALSE)
   }
   #
