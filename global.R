@@ -346,8 +346,8 @@ if (FALSE) {
   #  pkgload::load_all("~/GitHub/scfmutils/");
   pkgload::load_all("~/GitHub/fireSenseUtils/");
 }
-Require::Install("pkgload")
-pkgload::load_all("~/GitHub/clusters/");
+# Require::Install("pkgload")
+# pkgload::load_all("~/GitHub/clusters/");
 
 message(paste0(inSim$currentName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
              " .objfunFireReps:", inSim$.objfunFireReps))

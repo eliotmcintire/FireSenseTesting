@@ -113,7 +113,7 @@ if (FALSE) {
     .rep <- 1;
     runFit <- TRUE
     message(paste0(.ELFind, ", .rep:", .rep))
-    try(source("global.R", local = TRUE))
+    source("global.R", local = TRUE)
   }
 }
 

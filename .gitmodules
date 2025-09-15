@@ -28,3 +28,6 @@
 [submodule "modules/fireSense"]
 	path = modules/fireSense
 	url = https://github.com/PredictiveEcology/fireSense
+[submodule "modules/Biomass_core"]
+	path = modules/Biomass_core
+	url = git@github.com:PredictiveEcology/Biomass_core
