@@ -1,61 +1,16 @@
+# install Require and SpaDES.project
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9003", "0.1.1.9037")) # only install/update if required
-# Require::Install("PredictiveEcology/SpaDES.project@development (>=0.1.1.9037)")
-# Require::Install("PredictiveEcology/Require@hasHEAD (>=0.1.1.9019)")
-# pkgload::load_all("~/GitHub/SpaDES.project/");
-# debug(setupProject)
 
-# bufferIn <- -1000
-# # This is running in tmux
-# FRU <- 26; .rep <- 3; fnForClusters = tail # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-#
-# #if (!Require:::isRstudio())
-# FRU <- 27; .rep <- 2; fnForClusters = head # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-# #if (Require:::isRstudio())
-# FRU <- 27; .rep <- 2; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-# FRU <- "ELF4.3"; .rep <- 1; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-# .ELFind <- "ELF4.3"; .rep <- 1; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-# .ELFind <- "ELF4.3"; .rep <- 1; fnForClusters = head; bufferIn <- -1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-
-# FRU <- 27; .rep <- 4; fnForClusters = head; bufferIn <- 1000 # On Erni et al FRU map rep 2 = 27 is running -- rep 3 = 26,
-# currentName <- paste0("FRU-", FRU)#, paste0("_minus", abs(bufferIn)))
-
-
-fnForClusters = head
-
-setwd("~/GitHub/FireSenseTesting/") # generic absolute path for anybody; but individual can change
-if (FALSE) {
-  pkgload::load_all("~/GitHub/SpaDES.project/");
-  pkgload::load_all("~/GitHub/reproducible/");
-  pkgload::load_all("~/GitHub/SpaDES.core/");
-  # pkgload::load_all("~/GitHub/clusters/");
-  pkgload::load_all("~/GitHub/LandR/");
-  pkgload::load_all("~/GitHub/scfmutils/");
-  pkgload::load_all("~/GitHub/fireSenseUtils/");
-  devtools::install("~/GitHub/Require/", upgrade = FALSE);
-  devtools::install("~/GitHub/reproducible/", upgrade = FALSE);
-  devtools::install("~/GitHub/SpaDES.core/", upgrade = FALSE);
-  devtools::install("~/GitHub/SpaDES.project/", upgrade = FALSE);
-  devtools::install("~/GitHub/clusters/", upgrade = FALSE);
-  devtools::install("~/GitHub/LandR/", upgrade = FALSE);
-  devtools::install("~/GitHub/scfmutils/", upgrade = FALSE);
-  devtools::install("~/GitHub/climateData/", upgrade = FALSE);
-  devtools::install("~/GitHub/fireSenseUtils/", upgrade = FALSE);
-}
-
-
-# These must be specified in the ~/.ssh/config file; and all ssh keys must be in place
-# machines <- data.table::data.table(name = c("birds", "biomass", "camas", "carbon", "caribou", "coco",
-#                                 "core", "dougfir", "fire", "mpb", "sbw"), ncores = 48)
-# machines <- rbind(machines, data.table::data.table(name = c("n105", "n54", "n14"), ncores = 16))
-# machines <- rbind(machines, data.table::data.table(name = "mega", ncores = 80))
-
-# FORSITEmachinesAvailable <- setdiff(FORSITEmachines, "sbw")
-
+# generic absolute path for anybody; but individual can change
+projectDir <- "~/GitHub/FireSenseTesting/"
+dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
+setwd(projectDir)
 
 # Require::Install("PredictiveEcology/SpaDES.project@development (>=0.1.1.9012)")
 # pkgload::load_all("~/GitHub/SpaDES.project/");
+pkgload::load_all("~/GitHub/SpaDES.project/");
 inSim <- SpaDES.project::setupProject(
   ELFind = gsub("ELF", "", .ELFind),
   currentName = ELFind,
@@ -75,14 +30,6 @@ inSim <- SpaDES.project::setupProject(
                      FRU = 25),
   .objfunFireReps = .objfunFireReps,
   Restart = TRUE,
-  functions = "~/GitHub/FireSenseTesting/R/functions.R",
-  # useGit= "eliotmcintire",
-  paths = list(projectPath = "~/GitHub/FireSenseTesting",
-               outputPath = file.path("outputs", currentName),
-               cachePath = "cache",
-               inputPath = "inputs",
-               logPath = "logs",
-               scratchPath = "scratch"),
   modules = c("PredictiveEcology/canClimateData@improveCache1",
 
               "PredictiveEcology/fireSense_dataPrepFit@development",
@@ -96,16 +43,22 @@ inSim <- SpaDES.project::setupProject(
               "PredictiveEcology/fireSense@development", # does burning
 
               "PredictiveEcology/Biomass_borealDataPrep@development",
-              "PredictiveEcology/Biomass_speciesData@development"
-              ),
-  packages = c("PredictiveEcology/reproducible@AI", # (HEAD)", # (HEAD)",
-               "PredictiveEcology/SpaDES.core@box", # (HEAD)", # needed for the functions in
-               "PredictiveEcology/scfmutils@development", # (HEAD)",
-               "terra", "leaflet", "rvest", "tidyterra"), # for StudyArea visualization below
-  require = "PredictiveEcology/reproducible@AI",
-  # loadOrder = c("canClimateData", "fireSense_dataPrepFit", "fireSense_SpreadFit",
-  #               "Biomass_speciesData", "Biomass_borealDataPrep",
-  #               "fireSense_dataPrepPredict", "fireSense_SpreadPredict"),
+              "PredictiveEcology/Biomass_speciesData@development",
+              "PredictiveEcology/Biomass_regeneration@development",
+              "PredictiveEcology/Biomass_core@development"
+
+  ),
+  packages = c(# "PredictiveEcology/reproducible@AI (>= 2.1.2.9063)", # (HEAD)", # (HEAD)",
+    # "PredictiveEcology/SpaDES.core@box (>= 2.1.8.9002)", # (HEAD)", # needed for the functions in
+    # "PredictiveEcology/scfmutils@development", # (HEAD)",
+    # "PredictiveEcology/fireSenseUtils@development (>= 0.0.6.9003)", #
+    # "PredictiveEcology/SHAPforxgboost (>= 0.1.3.9001)",
+    "terra", # "leaflet", "tidyterra",
+    "rvest" # needed for prepIgnitionFitData
+  ), # for StudyArea visualization below
+  require = "reproducible",
+  useGit = "eliotmcintire",
+  times = list(start = 2011, end = 2081),
   options = list(# gargle_oauth_email = "predictiveecology@gmail.com",
                     # gargle_oauth_cache = ".secret",
                     # gargle_oauth_client_type = "web", # for command line
@@ -143,7 +96,6 @@ inSim <- SpaDES.project::setupProject(
 
 
   ),
-  times = list(start = 2011, end = 2031),
   homogeneousFire = {
     scfmutils::prepInputsFireRegimePolys(type = "FRU", destinationPath = paths$inputPath) |>
       reproducible::Cache(cacheSaveFormat = "rds")
@@ -191,33 +143,6 @@ inSim <- SpaDES.project::setupProject(
       #  terra::buffer(width = -d1)
      Cache(omitArgs = c("x"), .cacheExtra = list(rtm = attr(rasterToMatch, "tags")))
   },
-  # studyAreaInit = {
-  #   homogeneousFire[homogeneousFire$FRU == FRU, 1] |>
-  #     sf::st_buffer(dist = bufferIn)
-  # },
-  # # objectSynonyms = list(c("rstLCC", "rstLCC2011"),
-  # #                       c("nonForest_timeSinceDisturbance", "nonForest_timeSinceDisturbance2011"),
-  # #                       c("landcoverDT", "landcoverDT2011"),
-  # #                       c("standAgeMap", "standAgeMap2011"),
-  # #                       c("flammableRTM", "flammableRTM2011")),
-  # rasterToMatch = {reproducible::prepInputs(destinationPath = paths$inputPath,
-  #                                           url = paste0("https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/",
-  #                                                        "canada-forests-attributes_attributs-forests-canada/",
-  #                                                        "2001-attributes_attributs-2001/",
-  #                                                        "NFI_MODIS250m_2001_kNN_Structure_Stand_Age_v1.tif"),
-  #                                           cropTo = studyAreaInit, maskTo = studyAreaInit,
-  #                                           writeTo = NULL,
-  #                                           method = c("near"), fun = "terra::rast") |> reproducible::Cache()},
-  # studyArea = reproducible::postProcessTo(studyAreaInit, projectTo = rasterToMatch) |> reproducible::Cache(),
-  # studyAreaLarge = sf::st_buffer(studyArea, dist = 20000) |> reproducible::Cache(),
-  # rasterToMatchLarge = reproducible::prepInputs(destinationPath = paths$inputPath,
-  #                                               url = paste0("https://ftp.maps.canada.ca/pub/nrcan_rncan/Forests_Foret/",
-  #                                                            "canada-forests-attributes_attributs-forests-canada/",
-  #                                                            "2001-attributes_attributs-2001/",
-  #                                                            "NFI_MODIS250m_2001_kNN_Structure_Stand_Age_v1.tif"),
-  #                                               cropTo = studyAreaLarge, maskTo = studyAreaLarge,
-  #                                               writeTo = NULL,
-  #                                               method = c("near"), fun = "terra::rast") |> reproducible::Cache(),
   studyAreaReporting = studyArea,
   sppEquiv = {
     species <- LandR::speciesInStudyArea(studyArea, dPath = paths$inputPath) |>
@@ -238,29 +163,11 @@ inSim <- SpaDES.project::setupProject(
     ecoprovinces <- unique(b$ECOPROVINC)
     a[a$ECOPROVINC %in% ecoprovinces] # |> terra::aggregate()
   },
-  #nonForestedLCCGroups = list( # these are codes on LCC -- currently NTEMS
-  #  "nf_dryland" = c(50, 100, 40), # shrub, herbaceous, bryoid
-  #  "nf_wetland" = c(80)), #non-treed wetland.
-
-  # cores = if (Require:::isRstudio()) NULL else coresList[[.coreListIndex]],
   cores = .cores,
-  #params last because one of them depends on sppEquiv fuel class names
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
    climateLayers(.climVars, fun = quote(calcAsIs))
   },
-  # climateVariables = list(
-  #   historical_CMDsm = list(
-  #     vars = "historical_CMD_sm",
-  #     fun = quote(calcAsIs),
-  #     .dots = list(historical_years = 1991:2022)
-  #   ),
-  #   projected_CMDsm = list(
-  #     vars = "future_CMD_sm",
-  #     fun = quote(calcAsIs),
-  #     .dots = list(future_years = 2011:2100)
-  #   )
-  # ),
   climateVariablesForFire = list(ignition = gsub("_", "", .climVars), # This must match a layer in climateVariables (without 'historical_')
                                  # only sm for spread
                                  spread = gsub("_", "", grep("sm$", .climVars, value = TRUE))), # This must match a layer in climateVariables (without 'historical_')
@@ -271,13 +178,6 @@ inSim <- SpaDES.project::setupProject(
       sppEquivCol = "LandR", # will get a warning if this is not here
       .useCache = c(".inputObjects", "init"),
       minCoverThreshold = 0),
-    # Biomass_borealDataPrep = list(
-    #   overrideAgeInFires = FALSE,
-    #   overrideBiomassInFires = FALSE
-    # ),
-    # canClimateData = list(
-    #   .useCloud = FALSE
-    # ),
     fireSense_SpreadFit = list(
       DEoptimTests = c("adTest", "SNLL_FS"),
       # mutuallyExclusiveCols = list(
@@ -295,7 +195,6 @@ inSim <- SpaDES.project::setupProject(
       strategy = .strategy,
       objfunFireReps = .objfunFireReps, # this is the lowest that doesn't create an error
       .c = .cc,
-      # mode = c("debug"),
       # SNLL_FS_thresh = snll_thresh,
       doObjFunAssertions = FALSE
     ),
