@@ -1,0 +1,41 @@
+# Set the Linux image for the build
+image: Ubuntu
+
+# Define environment variables (optional)
+environment:
+  R_LIBS_USER: /usr/local/lib/R/site-library
+
+# The 'install' phase to set up the build environment
+install:
+  # Update package list and install dependencies
+  - sh: sudo apt-get update
+
+# Install necessary tools for R installation
+- sh: sudo apt-get install -y --no-install-recommends software-properties-common dirmngr
+
+# Add the CRAN repository key for secure installation
+- sh: sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
+
+# Add the CRAN repository for R 4.0 and later
+- sh: sudo add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
+
+# Update package list again to include the new CRAN repo
+- sh: sudo apt-get update
+
+# Install R 4.5.x and its development dependencies
+- sh: sudo apt-get install -y --no-install-recommends r-base-dev
+
+# Check the R version
+- sh: R --version
+
+# The 'test_script' phase to run your tests
+test_script:
+  # Example: Run an R script that confirms installation and package usage
+  - sh: Rscript -e "print(paste0('R version: ', R.version.string))"
+
+# Example: Install and test a package from CRAN
+- sh: Rscript -e "install.packages('ggplot2', repos='https://cloud.r-project.org')"
+- sh: Rscript -e "library(ggplot2); print('ggplot2 installed successfully.')"
+
+# Set build to off if not needed (for .NET projects)
+build: off
