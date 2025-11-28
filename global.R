@@ -1,7 +1,7 @@
 # install Require and SpaDES.project
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9021", "0.1.1.9050")) # only install/update if required
+getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9021", "0.1.1.9049")) # only install/update if required
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
@@ -100,10 +100,10 @@ inSim <- SpaDES.project::setupProject(
     , spades.allowInitDuringSimInit = TRUE),
   sideEffects = list(
     terra::terraOptions(memfrac = 0)
-    #, pkgload::load_all("~/GitHub/reproducible/")
-    #, pkgload::load_all("~/GitHub/SpaDES.core/")
-    #, pkgload::load_all("~/GitHub/LandR/")
-    #, pkgload::load_all("~/GitHub/fireSenseUtils/")
+    , pkgload::load_all("~/GitHub/reproducible/")
+    , pkgload::load_all("~/GitHub/SpaDES.core/")
+    , pkgload::load_all("~/GitHub/LandR/")
+    , pkgload::load_all("~/GitHub/fireSenseUtils/")
     # , bbbb <<- 1 # on.exit(rm(bbbb, envir = .GlobalEnv))
   ),
   rastTemplate = {
@@ -317,15 +317,15 @@ if (TRUE) {
     if (FALSE) {
       devtools::install("~/GitHub/reproducible/", upgrade = FALSE);
       #devtools::install("~/GitHub/SpaDES.core/", upgrade = FALSE);
-      #devtools::install("~/GitHub/clusters/", upgrade = FALSE);
-      #devtools::install("~/GitHub/LandR/", upgrade = FALSE);
+      devtools::install("~/GitHub/clusters/", upgrade = FALSE);
+      devtools::install("~/GitHub/LandR/", upgrade = FALSE);
       devtools::install("~/GitHub/fireSenseUtils/", upgrade = FALSE);
-      # devtools::install("~/GitHub/climateData/", upgrade = FALSE);
+      devtools::install("~/GitHub/climateData/", upgrade = FALSE);
     }
 
   }
   # Require::Install("pkgload")
-  # pkgload::load_all("~/GitHub/clusters/");
+  pkgload::load_all("~/GitHub/clusters/");
 
 
 
@@ -335,11 +335,11 @@ if (TRUE) {
   st <- Sys.time()
   options(
     #  rstLCC in 2nd time is "8882282dd8bcd415"
-    spades.evalPostEvent = quote({# print(.robustDigest(sim$spreadFirePolys));
-      print(.robustDigest(sim$rasterToMatch_biomassParam));
-
-                                  print(.robustDigest(sim[["standAgeMap"]]))
-      })
+    spades.evalPostEvent = NULL
+    # quote({# print(.robustDigest(sim$spreadFirePolys));
+    #   print(.robustDigest(sim$rasterToMatch_biomassParam));
+    #   print(.robustDigest(sim[["standAgeMap"]]))
+    # })
     # quote({
     #   print(sim$standAgeMap); print(.robustDigest(sim$standAgeMap));
     #   print(sim$rstLCC); print(.robustDigest(sim$rstLCC));
