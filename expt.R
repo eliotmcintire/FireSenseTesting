@@ -1,11 +1,11 @@
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9021", "0.1.1.9050")) # only install/update if required
+getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9021", "0.1.1.9053")) # only install/update if required
 
-library(future)
+Require::Install(c(future, future.callr))
 future::plan("sequential")
-future::plan(future.callr::callr(workers = 2, supervise  =  TRUE))
-# future::plan(multisession(workers = 3))
+# future::plan(future.callr::callr(workers = 2, supervise  =  TRUE))
+future::plan("multisession", workers = 6)
 
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "ELFs")
 .ELFinds <- names(outs$ELFs$rasCentered)
@@ -22,5 +22,5 @@ ord <- as.numeric(!grepl(
   paste0("^", paste(top, collapse = "|")),
   expt$.ELFind   ))
 expt <- expt[order(ord), ]
-
+# debug(experiment3)
 p <- SpaDES.project::experiment3(expt)

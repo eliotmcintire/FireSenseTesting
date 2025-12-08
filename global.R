@@ -1,7 +1,7 @@
 # install Require and SpaDES.project
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9021", "0.1.1.9049")) # only install/update if required
+getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9021", "0.1.1.9053")) # only install/update if required
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
@@ -9,12 +9,12 @@ dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
 
 # pkgload::load_all("~/GitHub/SpaDES.project/");
+# debug(experiment3)
 # pkgload::load_all("~/GitHub/fireSenseUtils/");
 # undebug(makeELFs)
 # devtools::install("~/GitHub/SpaDES.project/", upgrade = FALSE);
 # debug(setupProject)
 inSim <- SpaDES.project::setupProject(
-  # useGit = "eliotmcintire",
   ELFind = gsub("ELF", "", .ELFind),
   .runName = ELFind,
   .rep = .rep,
@@ -32,9 +32,10 @@ inSim <- SpaDES.project::setupProject(
                      ),
                      FRU = 25),
   .objfunFireReps = .objfunFireReps,
+  # useGit = "eliotmcintire",
   Restart = TRUE,
   paths = list(outputPath = file.path("outputs", ELFind)),
-  modules = c("PredictiveEcology/canClimateData@improveCache1"
+  modules = c("PredictiveEcology/canClimateData@improveCache1 (HEAD)"
 
               , "PredictiveEcology/fireSense_dataPrepFit@development"
               # , "PredictiveEcology/fireSense_IgnitionFit@development"
@@ -53,13 +54,15 @@ inSim <- SpaDES.project::setupProject(
               #, "PredictiveEcology/Biomass_core@development"
 
   ),
-  packages = c("PredictiveEcology/reproducible@prepInputsWithTiles (>= 2.1.2.9086)", # (HEAD)", # (HEAD)",
-               # "PredictiveEcology/SpaDES.core@box (>= 2.1.8.9002)", # (HEAD)", # needed for the functions in
-               # "PredictiveEcology/scfmutils@development", # (HEAD)",
+  packages = c("reproducible (>= 2.1.2.99999)" # (HEAD)", # (HEAD)",
+               ,"PredictiveEcology/climateData@modsDuringFireSense3 (HEAD)"
+               ,"SpaDES.core (>= 2.1.8.9999)" # (HEAD)", # needed for the functions in
+               ,"PredictiveEcology/scfmutils@development" # (HEAD)",
                # "PredictiveEcology/fireSenseUtils@development (>= 0.0.6.9003)", #
                # "PredictiveEcology/SHAPforxgboost (>= 0.1.3.9001)",
-               "terra", # "leaflet", "tidyterra",
-               "rvest" # needed for prepIgnitionFitData
+               , "terra" # "leaflet", "tidyterra",
+               , "plyr"#, "scfmutils",
+               , "rvest" # needed for prepIgnitionFitData
   ),
   require = "reproducible",
   times = list(start = 2020, end = 2020),
@@ -67,7 +70,7 @@ inSim <- SpaDES.project::setupProject(
     # gargle_oauth_cache = ".secret",
     # gargle_oauth_client_type = "web", # for command line
     "~/googledriveAuthentication.R" # has the above lines; each user can create their own file
-    , repos = unique(c("predictiveecology.r-universe.dev", 'https://dmlc.r-universe.dev', getOption("repos")))
+    , repos = unique(c(repos[[1]], 'https://dmlc.r-universe.dev', getOption("repos")))
     , reproducible.cacheSaveFormat = "qs"
     , SpaDES.project.fast = FALSE
     , reproducible.shapefileRead = "terra::vect"
@@ -82,7 +85,7 @@ inSim <- SpaDES.project::setupProject(
     #                      "Biomass_speciesData", "Biomass_borealDataPrep"), # "fireSense_dataPrepFit", # NA
     , fireSenseUtils.runTests = FALSE
     , reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
-    , repos = unique(c('https://dmlc.r-universe.dev', getOption("repos"))) # needed for xgboost
+    # , repos = unique(c('https://dmlc.r-universe.dev', getOption("repos"))) # needed for xgboost
     , reproducible.inputPaths = "~/data" # means I can share data from other projects
     , reproducible.prepInputsUrlTiles = "https://drive.google.com/drive/folders/1IfeQ9rZ3-RIQwtcdo2T5Kn51NJJRWeox?usp=drive_link"
     , spades.useRequire = FALSE
@@ -104,6 +107,7 @@ inSim <- SpaDES.project::setupProject(
     , pkgload::load_all("~/GitHub/SpaDES.core/")
     , pkgload::load_all("~/GitHub/LandR/")
     , pkgload::load_all("~/GitHub/fireSenseUtils/")
+    , pkgload::load_all("~/GitHub/climateData/")
     # , bbbb <<- 1 # on.exit(rm(bbbb, envir = .GlobalEnv))
   ),
   rastTemplate = {
@@ -325,7 +329,7 @@ if (TRUE) {
 
   }
   # Require::Install("pkgload")
-  pkgload::load_all("~/GitHub/clusters/");
+  # pkgload::load_all("~/GitHub/clusters/");
 
 
 
