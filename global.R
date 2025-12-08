@@ -54,7 +54,7 @@ inSim <- SpaDES.project::setupProject(
               #, "PredictiveEcology/Biomass_core@development"
 
   ),
-  packages = c("reproducible (>= 2.1.2.99999)" # (HEAD)", # (HEAD)",
+  packages = c("reproducible (>= 2.1.2.999991)" # (HEAD)", # (HEAD)",
                ,"PredictiveEcology/climateData@modsDuringFireSense3 (HEAD)"
                ,"SpaDES.core (>= 2.1.8.9999)" # (HEAD)", # needed for the functions in
                ,"PredictiveEcology/scfmutils@development" # (HEAD)",
@@ -88,7 +88,7 @@ inSim <- SpaDES.project::setupProject(
     # , repos = unique(c('https://dmlc.r-universe.dev', getOption("repos"))) # needed for xgboost
     , reproducible.inputPaths = "~/data" # means I can share data from other projects
     , reproducible.prepInputsUrlTiles = "https://drive.google.com/drive/folders/1IfeQ9rZ3-RIQwtcdo2T5Kn51NJJRWeox?usp=drive_link"
-    , spades.useRequire = FALSE
+    , spades.useRequire = F
 
     # For batch runs, these should be off
     , reproducible.showSimilar = interactive()

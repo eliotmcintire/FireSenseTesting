@@ -5,7 +5,7 @@ getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9021", "0.1.1.9053")) # 
 Require::Install(c(future, future.callr))
 future::plan("sequential")
 # future::plan(future.callr::callr(workers = 2, supervise  =  TRUE))
-future::plan("multisession", workers = 6)
+future::plan("multisession", workers = 2)
 
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "ELFs")
 .ELFinds <- names(outs$ELFs$rasCentered)
