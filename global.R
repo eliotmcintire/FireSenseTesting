@@ -1,7 +1,7 @@
 # install Require and SpaDES.project
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9021", "0.1.1.9053")) # only install/update if required
+getOrUpdatePkg(c("Require", "SpaDES.project", "clusters"), c("1.0.1.9021", "0.1.1.9053")) # only install/update if required
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
@@ -27,15 +27,15 @@ inSim <- SpaDES.project::setupProject(
                      .rep = 1,
                      .ELFind = "4.3",
                      .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco",
-                                "core", "dougfir", "fire", "mpb", "sbw", "mega"#,
-                                # "acer", # "abies", "pinus"
+                                "core", "dougfir", "fire", "mpb", "sbw", "mega",
+                                "acer", "abies", "pinus"
                      ),
                      FRU = 25),
   .objfunFireReps = .objfunFireReps,
   # useGit = "eliotmcintire",
   Restart = TRUE,
   paths = list(outputPath = file.path("outputs", ELFind)),
-  modules = c("PredictiveEcology/canClimateData@improveCache1 (HEAD)"
+  modules = c("PredictiveEcology/canClimateData@improveCache1"
 
               , "PredictiveEcology/fireSense_dataPrepFit@development"
               # , "PredictiveEcology/fireSense_IgnitionFit@development"
@@ -105,6 +105,7 @@ inSim <- SpaDES.project::setupProject(
     terra::terraOptions(memfrac = 0)
     , pkgload::load_all("~/GitHub/reproducible/")
     , pkgload::load_all("~/GitHub/SpaDES.core/")
+    , pkgload::load_all("~/GitHub/clusters/")
     , pkgload::load_all("~/GitHub/LandR/")
     , pkgload::load_all("~/GitHub/fireSenseUtils/")
     , pkgload::load_all("~/GitHub/climateData/")
@@ -249,6 +250,7 @@ inSim <- SpaDES.project::setupProject(
       NP = {if (identical(cores, unique(cores))) 100 else length(cores)}, # number of cores of machines
       trace = 1,
       mode = c("fit"),# "visualize"),
+      # mode = "debug",
       strategy = .strategy,
       objfunFireReps = .objfunFireReps, # this is the lowest that doesn't create an error
       .c = .cc,
@@ -331,8 +333,6 @@ if (TRUE) {
   # Require::Install("pkgload")
   # pkgload::load_all("~/GitHub/clusters/");
 
-
-
   # debug(SpaDES.core::loadSimList)
   # options(spades.cacheChaining = TRUE)
   # debug(prepSpeciesTable)# ; undebug(cacheChainingPost)
@@ -340,6 +340,10 @@ if (TRUE) {
   options(
     #  rstLCC in 2nd time is "8882282dd8bcd415"
     spades.evalPostEvent = NULL
+      # quote({# print(.robustDigest(sim$spreadFirePolys));
+      #   print(params(sim)$fireSense_SpreadFit$mode);
+      #   # print(.robustDigest(sim[["standAgeMap"]]))
+      # })
     # quote({# print(.robustDigest(sim$spreadFirePolys));
     #   print(.robustDigest(sim$rasterToMatch_biomassParam));
     #   print(.robustDigest(sim[["standAgeMap"]]))
