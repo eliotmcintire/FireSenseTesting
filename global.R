@@ -1,7 +1,7 @@
 # install Require and SpaDES.project
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project", "clusters"), c("1.0.1.9021", "0.1.1.9053")) # only install/update if required
+getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9021", "0.1.1.9053")) # only install/update if required
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
@@ -20,8 +20,9 @@ inSim <- SpaDES.project::setupProject(
   .rep = .rep,
   .strategy = .strategy,
   .cc = .cc,
+  cores = .cores,
   FRU = FRU,
-  defaultDots = list(.strategy = 3L,
+  defaultDots = list(.strategy = 1L, # used to be 3L; but seems to get caught in local minima
                      .cc = 0.5,
                      .objfunFireReps = 25L,
                      .rep = 1,
@@ -72,6 +73,7 @@ inSim <- SpaDES.project::setupProject(
     "~/googledriveAuthentication.R" # has the above lines; each user can create their own file
     , repos = unique(c(repos[[1]], 'https://dmlc.r-universe.dev', getOption("repos")))
     , reproducible.cacheSaveFormat = "qs"
+    , reproducible.qsFormat = "qs"
     , SpaDES.project.fast = FALSE
     , reproducible.shapefileRead = "terra::vect"
     , reproducible.overwrite = TRUE
@@ -212,7 +214,6 @@ inSim <- SpaDES.project::setupProject(
     ecoprovinces <- unique(b$ECOPROVINC)
     a[a$ECOPROVINC %in% ecoprovinces] # |> terra::aggregate()
   },
-  cores = .cores,
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
     climateData::climateLayers(.climVars, fun = quote(quote(calcAsIs)))
@@ -232,7 +233,7 @@ inSim <- SpaDES.project::setupProject(
       .studyAreaName = .runName,
       .plots = "png",
       sppEquivCol = "LandR", # will get a warning if this is not here
-      .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare"),
+      .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold"),#, "spreadFitPrepare"),
       minCoverThreshold = 0),
     # canClimateData = list(.useCache = ".inputObjects"),  # init is slow to cache
     fireSense = list(.plots = c("screen", "png")),
@@ -274,76 +275,93 @@ inSim <- SpaDES.project::setupProject(
   )
 )
 
+if (FALSE) {
+  prepInputs(targetFile = "fireSenseParams.rds", url = "https://drive.google.com/file/d/1-iD7Pj4cX3kag4TEHeGxGgW42Rf0ag2l/view?usp=drivesdk",
+             destinationPath = "/home/emcintir/GitHub/FireSenseTesting/inputs",
+             useCache = TRUE, purge = 7, overwrite = TRUE)
+}
 message(paste0(inSim$.runName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
                " .objfunFireReps:", inSim$.objfunFireReps))
 
-if (TRUE) {
-  if (SpaDES.project::user("emcintir"))
-    Sys.setenv(TMPDIR = file.path("~/tmp/", attr(inSim$paths, "extraPaths")$projectPath)) #
-  # a <- fireSenseUtils::fireSenseCloudParametersMap()
-  inSim$climateVariables <- climateData::climateLayers(inSim$.climVars, fun = quote(calcAsIs))
+# if (TRUE) {
+if (SpaDES.project::user("emcintir"))
+  Sys.setenv(TMPDIR = file.path("~/tmp/", attr(inSim$paths, "extraPaths")$projectPath)) #
+message("a")
+# a <- fireSenseUtils::fireSenseCloudParametersMap()
+inSim$climateVariables <- climateData::climateLayers(inSim$.climVars, fun = quote(calcAsIs))
+message("b")
 
-  library(SpaDES.project)
+library(SpaDES.project)
+if (FALSE) {
   SpaDES.core::Plots(inSim[grep("studyArea|rasterToMatch", names(inSim))],
-                     title = paste0("StudyArea ", inSim$.runName),
-                     fn = plotSAs,
-                     filename = paste0("studyAreas", inSim$.runName),
-                     path = inSim$paths$inputPath,
-                     types = c("screen", "png")) |> reproducible::Cache(.functionName = "Plots_studyAreas")
+                       title = paste0("StudyArea ", inSim$.runName),
+                       fn = plotSAs,
+                       filename = paste0("studyAreas", inSim$.runName),
+                       path = inSim$paths$inputPath,
+                       types = c("screen", "png")) |>
+      reproducible::Cache(.functionName = "Plots_studyAreas",
+                          useCache = !identical(names(dev.cur()), "null device"))
+}
+message("c")
 
-  #known bugs/undesirable behavior
-  #1 spreadFit dumps a bunch of figs in the project directory instead of outputs
+#known bugs/undesirable behavior
+#1 spreadFit dumps a bunch of figs in the project directory instead of outputs
 
-  if (FALSE) {
+if (FALSE) {
 
-    SpaDES.project::plotSAsLeaflet(inSim[grep("studyArea|rasterToMatch", names(inSim))])
+  SpaDES.project::plotSAsLeaflet(inSim[grep("studyArea|rasterToMatch", names(inSim))])
 
-    fn <- "sim_FireSenseSpreadFit.qs"
-    saveState(filename = fn, files = FALSE)
-    inSim2 <- SpaDES.core::loadSimList(fn)
-    outSims <- restartSpades(inSim2)
-    outSims <- restartSpades()
+  fn <- "sim_FireSenseSpreadFit.qs"
+  saveState(filename = fn, files = FALSE)
+  inSim2 <- SpaDES.core::loadSimList(fn)
+  outSims <- restartSpades(inSim2)
+  outSims <- restartSpades()
+}
+inSimCopy <- reproducible::Copy(inSim)
+message("d")
+
+# pkgload::load_all("~/GitHub/climateData/");
+
+if (FALSE) {
+  if (quickPlot::isRstudioServer()) {
+    pkgload::load_all("~/GitHub/reproducible/");
+    pkgload::load_all("~/GitHub/SpaDES.core/");
   }
-  inSimCopy <- reproducible::Copy(inSim)
-
-  # pkgload::load_all("~/GitHub/climateData/");
-
-  if (FALSE) {
-    if (quickPlot::isRstudioServer()) {
-      pkgload::load_all("~/GitHub/reproducible/");
-      pkgload::load_all("~/GitHub/SpaDES.core/");
-    }
-    # pkgload::load_all("~/GitHub/SpaDES.project/");
-    # pkgload::load_all("~/GitHub/clusters/");
-    pkgload::load_all("~/GitHub/LandR/");
-    pkgload::load_all("~/GitHub/climateData/");
-    #  pkgload::load_all("~/GitHub/scfmutils/");
-    pkgload::load_all("~/GitHub/fireSenseUtils/");
-
-    if (FALSE) {
-      devtools::install("~/GitHub/reproducible/", upgrade = FALSE);
-      #devtools::install("~/GitHub/SpaDES.core/", upgrade = FALSE);
-      devtools::install("~/GitHub/clusters/", upgrade = FALSE);
-      devtools::install("~/GitHub/LandR/", upgrade = FALSE);
-      devtools::install("~/GitHub/fireSenseUtils/", upgrade = FALSE);
-      devtools::install("~/GitHub/climateData/", upgrade = FALSE);
-    }
-
-  }
-  # Require::Install("pkgload")
+  # pkgload::load_all("~/GitHub/SpaDES.project/");
   # pkgload::load_all("~/GitHub/clusters/");
+  pkgload::load_all("~/GitHub/LandR/");
+  pkgload::load_all("~/GitHub/climateData/");
+  #  pkgload::load_all("~/GitHub/scfmutils/");
+  pkgload::load_all("~/GitHub/fireSenseUtils/");
 
-  # debug(SpaDES.core::loadSimList)
-  # options(spades.cacheChaining = TRUE)
-  # debug(prepSpeciesTable)# ; undebug(cacheChainingPost)
+  if (FALSE) {
+    devtools::install("~/GitHub/SpaDES.project/", upgrade = FALSE);
+    devtools::install("~/GitHub/reproducible/", upgrade = FALSE);
+    devtools::install("~/GitHub/SpaDES.core/", upgrade = FALSE);
+    devtools::install("~/GitHub/clusters/", upgrade = FALSE);
+    devtools::install("~/GitHub/LandR/", upgrade = FALSE);
+    devtools::install("~/GitHub/fireSenseUtils/", upgrade = FALSE);
+    devtools::install("~/GitHub/climateData/", upgrade = FALSE);
+  }
+
+}
+# Require::Install("pkgload")
+# pkgload::load_all("~/GitHub/clusters/");
+
+# debug(SpaDES.core::loadSimList)
+# options(spades.cacheChaining = TRUE)
+# debug(prepSpeciesTable)# ; undebug(cacheChainingPost)
+if (TRUE) {
   st <- Sys.time()
+  message("e")
+
   options(
     #  rstLCC in 2nd time is "8882282dd8bcd415"
     spades.evalPostEvent = NULL
-      # quote({# print(.robustDigest(sim$spreadFirePolys));
-      #   print(params(sim)$fireSense_SpreadFit$mode);
-      #   # print(.robustDigest(sim[["standAgeMap"]]))
-      # })
+    # quote({# print(.robustDigest(sim$spreadFirePolys));
+    #   print(params(sim)$fireSense_SpreadFit$mode);
+    #   # print(.robustDigest(sim[["standAgeMap"]]))
+    # })
     # quote({# print(.robustDigest(sim$spreadFirePolys));
     #   print(.robustDigest(sim$rasterToMatch_biomassParam));
     #   print(.robustDigest(sim[["standAgeMap"]]))
@@ -370,10 +388,12 @@ if (TRUE) {
       saveState(filename = fn, files = FALSE)
       # options(reproducible.showSimilar = FALSE)
     } else {
+      message("f")
+
       suppressPackageStartupMessages(
         simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
       )
-      saveState(filename = fn, files = FALSE)
+      #       saveState(filename = fn, files = FALSE)
     }
     #
     # file.copy(fn, )

@@ -35,3 +35,6 @@ logs/*
 outputs
 Rplots.pdf
 outputs/4.3
+experiment*
+gtopo*
+tmux*
