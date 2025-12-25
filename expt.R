@@ -2,8 +2,8 @@ repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9021", "0.1.1.9054")) # only install/update if required
 
-Require::Install(c(future, future.callr, googlesheets4))
-future::plan("sequential")
+#Require::Install(c(future, future.callr, googlesheets4))
+#future::plan("sequential")
 # future::plan("multicore", workers = 10)
 # future::plan(future.callr::callr(workers = 1, supervise  =  TRUE))
 
@@ -11,9 +11,9 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "ELFs")
 .ELFinds <- names(outs$ELFs$rasCentered)
 
 # If you can run them in parallel on the same linux machine:
-aa <- reproducible::prepInputs(targetFile = "fireSenseParams.rds", url = "https://drive.google.com/file/d/1-iD7Pj4cX3kag4TEHeGxGgW42Rf0ag2l/view?usp=drivesdk",
-                               destinationPath = "/home/emcintir/GitHub/FireSenseTesting/inputs",
-                               useCache = TRUE, purge = 7, overwrite = TRUE)
+# aa <- reproducible::prepInputs(targetFile = "fireSenseParams.rds", url = "https://drive.google.com/file/d/1-iD7Pj4cX3kag4TEHeGxGgW42Rf0ag2l/view?usp=drivesdk",
+#                                destinationPath = "/home/emcintir/GitHub/FireSenseTesting/inputs",
+#                                useCache = TRUE, purge = 7, overwrite = TRUE)
 
 .reps <- 1
 expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, stringsAsFactors = FALSE)
@@ -29,13 +29,13 @@ ord2 <- match(vals, top)
 ord3 <- as.numeric(!ord) * (max(ord2) + 1)
 ord3[ord3 == 0] <- ord2
 expt <- expt[order(ord3), ]
-# first <- c("6.1.1", "6.1.3","4.3")
-# expt <- rbind(expt[expt$.ELFind %in% first,], expt[!expt$.ELFind %in% first,])
+first <- c("4.3", "6.1.1", "6.2.3","6.3.1")
+expt <- rbind(expt[expt$.ELFind %in% first,], expt[!expt$.ELFind %in% first,])
 # expt <- expt[1, ]
 # only do missing ones
-expt <- expt[!expt$.ELFind %in% aa$polygonID, ]
+# expt <- expt[!expt$.ELFind %in% aa$polygonID, ]
 rownames(expt) <- 1:NROW(expt)
-expt <- expt[!expt$.ELFind %in% c("6.4", "6.2.2"),]
+# expt <- expt[!expt$.ELFind %in% c("6.4", "6.2.2"),]
 
 if (FALSE) {
   future::plan("cluster", workers = min(NROW(expt), 3), persistent = TRUE)
@@ -47,31 +47,20 @@ if (FALSE) {
   
 }
 
-pkgload::load_all("~/GitHub/SpaDES.project/");
+# pkgload::load_all("~/GitHub/SpaDES.project/");
 ########
 queue_path <- "experiment_queue.rds"
 global <- "global.R"
-workers <- tmux_spawn_workers_from_df(
+workers <- SpaDES.project::tmux_spawn_workers_from_df(
   df                  = expt,          # df provided here
   global_path         = global,
   n_workers           = 4,
   start_cmd           = "R",
   queue_path          = queue_path,
   delay_before_source = 10,
-  stagger_by          = 10,
   ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
 )
 
-if (FALSE)
-  workers <- tmux_spawn_workers_from_df(
-    df                  = expt,
-    global_path         = "global.R",
-    n_workers           = 4,
-    start_cmd           = "R",
-    delay_before_source = 10,
-    stagger_by          = 10,
-    set_mouse           = TRUE
-  )
 # If something goes wrong during development:
 #' tmux_kill_panes(workers)
 

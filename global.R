@@ -93,10 +93,10 @@ inSim <- SpaDES.project::setupProject(
     , spades.useRequire = F
 
     # For batch runs, these should be off
-    , reproducible.showSimilar = interactive()
-    , reproducible.useMemoise = interactive()
-    , spades.recoveryMode = interactive() + 0
-    , spades.cacheChaining = interactive()
+    , reproducible.showSimilar = interactive() && !nzchar(Sys.getenv("TMUX"))
+    , reproducible.useMemoise = interactive() && nzchar(Sys.getenv("TMUX"))
+    , spades.recoveryMode = (interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
+    , spades.cacheChaining = TRUE
     , reproducible.cacheChaining = FALSE #interactive()
 
     , reproducible.gdalwarp = FALSE
