@@ -31,6 +31,15 @@ ord3[ord3 == 0] <- ord2
 expt <- expt[order(ord3), ]
 first <- c("4.3", "6.1.1", "6.2.3","6.3.1")
 expt <- rbind(expt[expt$.ELFind %in% first,], expt[!expt$.ELFind %in% first,])
+# done <- c("6.1.2", "4.3", "6.1.1", "6.2.3", "6.3.1")
+# expt <- expt[!expt$.ELFind %in% done, ]
+
+if (TRUE) {
+  failed <- c("5.1.2", "5.1.3", # something in climate, missing in future tile 39; only has 2011,12
+              "6.1.3",
+              "5.4") # can't get past 1000000 in DEoptim
+  expt <- expt[!expt$.ELFind %in% failed, ]
+}
 # expt <- expt[1, ]
 # only do missing ones
 # expt <- expt[!expt$.ELFind %in% aa$polygonID, ]
@@ -51,6 +60,9 @@ if (FALSE) {
 ########
 queue_path <- "experiment_queue.rds"
 global <- "global.R"
+SpaDES.project::tmux_prepare_queue_from_df(queue_path = queue_path, expt)
+SpaDES.project::tmux_refresh_queue_status(queue_path)
+
 workers <- SpaDES.project::tmux_spawn_workers_from_df(
   df                  = expt,          # df provided here
   global_path         = global,
@@ -58,6 +70,7 @@ workers <- SpaDES.project::tmux_spawn_workers_from_df(
   start_cmd           = "R",
   queue_path          = queue_path,
   delay_before_source = 10,
+  workersToMonitor = outs$cores,
   ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
 )
 
@@ -68,3 +81,9 @@ workers <- SpaDES.project::tmux_spawn_workers_from_df(
 
 # googlesheets4::gs4_auth(email = "eliotmcintire@gmail.com", cache = ".secrets")
 
+
+if (FALSE) {
+# rsync -a --info=progress2 --stats --partial --append-verify --compress --compress-choice=zstd --compress-level=3 ./outputs/ mega:~/GitHub/FireSenseTesting/outputs/
+# rsync -a --info=progress2 --stats --partial --append-verify --compress --compress-choice=zstd --compress-level=3 ./cache/ mega:~/GitHub/FireSenseTesting/cache/
+# rsync -a --info=progress2 --stats --partial --append-verify --compress --compress-choice=zstd --compress-level=3  ./inputs/ mega:~/GitHub/FireSenseTesting/inputs/
+}

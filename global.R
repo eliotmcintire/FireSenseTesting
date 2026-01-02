@@ -29,7 +29,8 @@ inSim <- SpaDES.project::setupProject(
                      .ELFind = "4.3",
                      .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco",
                                 "core", "dougfir", "fire", "mpb", "sbw", "mega",
-                                "acer", "abies", "pinus"
+                                # "acer", 
+                                "abies"#, "pinus"
                      ),
                      FRU = 25),
   .objfunFireReps = .objfunFireReps,
@@ -94,7 +95,7 @@ inSim <- SpaDES.project::setupProject(
 
     # For batch runs, these should be off
     , reproducible.showSimilar = interactive() && !nzchar(Sys.getenv("TMUX"))
-    , reproducible.useMemoise = interactive() && nzchar(Sys.getenv("TMUX"))
+    , reproducible.useMemoise = interactive() && !nzchar(Sys.getenv("TMUX"))
     , spades.recoveryMode = (interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
     , spades.cacheChaining = TRUE
     , reproducible.cacheChaining = FALSE #interactive()
@@ -347,7 +348,6 @@ if (FALSE) {
 }
 # Require::Install("pkgload")
 # pkgload::load_all("~/GitHub/clusters/");
-
 # debug(SpaDES.core::loadSimList)
 # options(spades.cacheChaining = TRUE)
 # debug(prepSpeciesTable)# ; undebug(cacheChainingPost)
@@ -374,30 +374,14 @@ if (TRUE) {
     , spades.debugModule = NULL#"fireSense_dataPrepFit"
     #, reproducible.useMemoise = FALSE
   )
-  fn <- paste0("simPreDispersalFit", inSim$.runName, ".qs")
-  if (TRUE) {
-    if (FALSE) {
-      # debug(SpaDES.core::restartOrSimInitAndSpades)
-      # sim <- SpaDES.core::restartOrSimInitAndSpades(inSimCopy, fn) |> suppressPackageStartupMessages()
-      simOut <- try(SpaDES.core::restartSpades(verbose = FALSE), silent = TRUE) |> suppressPackageStartupMessages()
-      if (is(simOut, "try-error")) {
-        message("There was no sim to restartSpades with... running simInitAndSpades")
-        simOut <- SpaDES.core::simInitAndSpades2(inSimCopy) |> suppressPackageStartupMessages()
-      }
-
-      saveState(filename = fn, files = FALSE)
-      # options(reproducible.showSimilar = FALSE)
-    } else {
-      message("f")
-
-      suppressPackageStartupMessages(
-        simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
-      )
-      #       saveState(filename = fn, files = FALSE)
-    }
-    #
-    # file.copy(fn, )
-  }
+  startedFile <- file.path("logs", paste0("Running_", .ELFind, "_", Sys.getpid(), "_.rds"))
+  saveRDS(.ELFind, file = startedFile)
+  withCallingHandlers(
+  suppressPackageStartupMessages(
+    simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
+  ), error = function(e) {
+    unlink(startedFile)  
+  })
   # If it makes it here, then remove it so that the next iteration doesn't pick this up
   # rm(list = ".sim", envir= SpaDES.core:::savedSimEnv())
 }
