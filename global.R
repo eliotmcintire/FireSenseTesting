@@ -94,7 +94,7 @@ inSim <- SpaDES.project::setupProject(
     , spades.useRequire = F
 
     # For batch runs, these should be off
-    , reproducible.showSimilar = interactive() && !nzchar(Sys.getenv("TMUX"))
+    , reproducible.showSimilar = FALSE#interactive() && !nzchar(Sys.getenv("TMUX"))
     , reproducible.useMemoise = interactive() && !nzchar(Sys.getenv("TMUX"))
     , spades.recoveryMode = (interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
     , spades.cacheChaining = TRUE
@@ -328,8 +328,8 @@ if (FALSE) {
     pkgload::load_all("~/GitHub/reproducible/");
     pkgload::load_all("~/GitHub/SpaDES.core/");
   }
-  # pkgload::load_all("~/GitHub/SpaDES.project/");
-  # pkgload::load_all("~/GitHub/clusters/");
+  pkgload::load_all("~/GitHub/SpaDES.project/");
+  pkgload::load_all("~/GitHub/clusters/");
   pkgload::load_all("~/GitHub/LandR/");
   pkgload::load_all("~/GitHub/climateData/");
   #  pkgload::load_all("~/GitHub/scfmutils/");
