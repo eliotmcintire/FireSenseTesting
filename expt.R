@@ -83,7 +83,11 @@ workers <- SpaDES.project::tmux_spawn_workers_from_df(
 
 
 if (FALSE) {
-# rsync -a --info=progress2 --stats --partial --append-verify --compress --compress-choice=zstd --compress-level=3 ./outputs/ mega:~/GitHub/FireSenseTesting/outputs/
-# rsync -a --info=progress2 --stats --partial --append-verify --compress --compress-choice=zstd --compress-level=3 ./cache/ mega:~/GitHub/FireSenseTesting/cache/
-# rsync -a --info=progress2 --stats --partial --append-verify --compress --compress-choice=zstd --compress-level=3  ./inputs/ mega:~/GitHub/FireSenseTesting/inputs/
+  # rsync -avH --delete --relative --progress --info=progress2 --stats ./data ./GitHub/FireSenseTesting/inputs mega:~
+  # rsync -avH --delete --relative --progress --info=progress2 --stats ./data ./GitHub/FireSenseTesting/cache mega:~  
+  # rsync -avH --delete --relative --progress --info=progress2 --stats ./data ./GitHub/FireSenseTesting/outputs mega:~  
+  #     
+  # # rsync -aH   --info=progress2 --stats --delete ./cache/ mega:~/GitHub/FireSenseTesting/cache/
+  # # rsync -aH   --info=progress2 --stats --delete ./outputs/ mega:~/GitHub/FireSenseTesting/outputs/
+  # # rsync -aH   --info=progress2 --stats --delete ./inputs/ mega:~/GitHub/FireSenseTesting/inputs/
 }
