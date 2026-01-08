@@ -39,6 +39,9 @@ if (TRUE) {
               "6.1.3",
               "5.4") # can't get past 1000000 in DEoptim
   expt <- expt[!expt$.ELFind %in% failed, ]
+  
+  noFires <- "12.1"
+  expt <- expt[!expt$.ELFind %in% noFires, ]
 }
 # expt <- expt[1, ]
 # only do missing ones

@@ -14,6 +14,15 @@ setwd(projectDir)
 # undebug(makeELFs)
 # devtools::install("~/GitHub/SpaDES.project/", upgrade = FALSE);
 # debug(setupProject)
+# if (exists(".ELFind")) {
+#   startedFile <- file.path("logs", paste0("Running_", .ELFind, "_", Sys.getpid(), "_.rds"))
+#   alreadyExists <- dir(dirname(startedFile), pattern = .ELFind, full.names = TRUE)
+#   if (length(alreadyExists)) {
+#     if (difftime(file.info(alreadyExists)$mtime, Sys.time()) < 20)
+#     unlink(alreadyExists)
+#   }
+#   saveRDS(.ELFind, file = startedFile)
+# }
 inSim <- SpaDES.project::setupProject(
   ELFind = gsub("ELF", "", .ELFind),
   .runName = ELFind,
@@ -28,7 +37,8 @@ inSim <- SpaDES.project::setupProject(
                      .rep = 1,
                      .ELFind = "4.3",
                      .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco",
-                                "core", "dougfir", "fire", "mpb", "sbw", "mega",
+                                "core", "dougfir", # "fire", 
+                                "mpb", "sbw", "mega",
                                 # "acer", 
                                 "abies"#, "pinus"
                      ),
@@ -287,10 +297,8 @@ message(paste0(inSim$.runName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.str
 # if (TRUE) {
 if (SpaDES.project::user("emcintir"))
   Sys.setenv(TMPDIR = file.path("~/tmp/", attr(inSim$paths, "extraPaths")$projectPath)) #
-message("a")
 # a <- fireSenseUtils::fireSenseCloudParametersMap()
 inSim$climateVariables <- climateData::climateLayers(inSim$.climVars, fun = quote(calcAsIs))
-message("b")
 
 library(SpaDES.project)
 if (FALSE) {
@@ -303,7 +311,6 @@ if (FALSE) {
       reproducible::Cache(.functionName = "Plots_studyAreas",
                           useCache = !identical(names(dev.cur()), "null device"))
 }
-message("c")
 
 #known bugs/undesirable behavior
 #1 spreadFit dumps a bunch of figs in the project directory instead of outputs
@@ -319,9 +326,6 @@ if (FALSE) {
   outSims <- restartSpades()
 }
 inSimCopy <- reproducible::Copy(inSim)
-message("d")
-
-# pkgload::load_all("~/GitHub/climateData/");
 
 if (FALSE) {
   if (quickPlot::isRstudioServer()) {
@@ -353,7 +357,6 @@ if (FALSE) {
 # debug(prepSpeciesTable)# ; undebug(cacheChainingPost)
 if (TRUE) {
   st <- Sys.time()
-  message("e")
 
   options(
     #  rstLCC in 2nd time is "8882282dd8bcd415"
