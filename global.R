@@ -227,7 +227,7 @@ inSim <- SpaDES.project::setupProject(
   },
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
-    climateData::climateLayers(.climVars, fun = quote(quote(calcAsIs)))
+    climateData::climateLayers(.climVars, fun = quote(calcAsIs))
   },
   climateVariablesForFire = list(ignition = gsub("_", "", .climVars), # This must match a layer in climateVariables (without 'historical_')
                                  # only sm for spread
