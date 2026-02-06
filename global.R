@@ -1,7 +1,23 @@
-# install Require and SpaDES.project
+# projectDir <- "/mnt/storage/md2/Eliot/FireSenseTesting/"
+# packagePath <- file.path(dirname(projectDir), "packages", "4.3")
+# dir.create(packagePath, FALSE, TRUE)
+# .libPaths(packagePath)
+# packageVersion("SpaDES.project")
+# projectDir <- "/mnt/storage/md2/Eliot/FireSenseTesting/"
+# packagePath <- file.path(dirname(projectDir), "packages", "4.3")
+# dir.create(packagePath, FALSE, TRUE)
+# .libPaths(packagePath)
+# repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
+# source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
+# Sys.setenv("R_REQUIRE_CACHE" = file.path(dirname(projectDir), "packageCache"))
+# Sys.setenv("HOME" = "/mnt/storage/md2/Eliot")
+# getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.1.9053")) # only install/update if required
+
+
+# # install Require and SpaDES.project
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9021", "0.1.1.9053")) # only install/update if required
+getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.1.9053")) # only install/update if required
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
@@ -68,6 +84,7 @@ inSim <- SpaDES.project::setupProject(
 
   ),
   packages = c("reproducible (>= 3.0.0)" # (HEAD)", # (HEAD)",
+               , "qs2"
                ,"PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9000)"
                ,"SpaDES.core (>= 3.0.0)" # (HEAD)", # needed for the functions in
                , "terra" # "leaflet", "tidyterra",
@@ -128,7 +145,7 @@ inSim <- SpaDES.project::setupProject(
     # ,  pkgload::load_all("~/GitHub/clusters/")
     , pkgload::load_all("~/GitHub/LandR/")
     , pkgload::load_all("~/GitHub/fireSenseUtils/")
-    #  , pkgload::load_all("~/GitHub/climateData/")
+     # , pkgload::load_all("~/GitHub/climateData/")
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
@@ -299,6 +316,7 @@ if (TRUE) {
   )
   # debug(rasterizeReduced)
   startedFile <- file.path("logs", paste0("Running_", inSim$ELFind, "_", Sys.getpid(), "_.rds"))
+  reproducible::checkPath(dirname(startedFile), create = TRUE)
   saveRDS(inSim$ELFind, file = startedFile)
   withCallingHandlers(
   suppressPackageStartupMessages(
