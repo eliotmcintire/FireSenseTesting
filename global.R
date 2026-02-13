@@ -64,6 +64,7 @@ inSim <- SpaDES.project::setupProject(
   Restart = TRUE,
   paths = list(outputPath = file.path("outputs", ELFind)),
   modules = c("PredictiveEcology/canClimateData@improveCache1"
+              
               , "PredictiveEcology/fireSense_ELFs@main"
 
               , "PredictiveEcology/fireSense_dataPrepFit@development"
@@ -85,6 +86,8 @@ inSim <- SpaDES.project::setupProject(
   ),
   packages = c("reproducible (>= 3.0.0)" # (HEAD)", # (HEAD)",
                , "qs2"
+               , "archive"
+               , "googlesheets4"
                ,"PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9000)"
                ,"SpaDES.core (>= 3.0.0)" # (HEAD)", # needed for the functions in
                , "terra" # "leaflet", "tidyterra",
@@ -128,7 +131,7 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.showSimilar = FALSE#interactive() && !nzchar(Sys.getenv("TMUX"))
     , reproducible.useMemoise = interactive() && !nzchar(Sys.getenv("TMUX"))
     , spades.recoveryMode = 5#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
-    , spades.cacheChaining = TRUE
+    , spades.cacheChaining = FALSE#TRUE
     , reproducible.cacheChaining = FALSE #interactive()
 
     , reproducible.gdalwarp = FALSE
@@ -178,7 +181,7 @@ inSim <- SpaDES.project::setupProject(
       cores = cores,
       NP = {if (identical(cores, unique(cores))) 100 else length(cores)}, # number of cores of machines
       trace = 1,
-      mode = "debug", #c("fit"),# "visualize"),
+      mode = "fit",# "visualize"),
       # mode = "debug",
       strategy = .strategy,
       objfunFireReps = .objfunFireReps, # this is the lowest that doesn't create an error
@@ -298,7 +301,8 @@ if (TRUE) {
       #   # run_module_X()
       #   
       # })
-      quote({print(dim(sim$rstLCC))
+      quote({print(sort(sim$sppEquiv$LandR))
+             print(names(sim$sppColorVect))
         #print(sim$sppColorVect)
         #print(.robustDigest(sim[["standAgeMap"]]))
       })
