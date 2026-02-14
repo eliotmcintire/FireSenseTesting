@@ -87,6 +87,7 @@ if (FALSE) {
   # get google authentication
   sss <- readLines("~/googledriveAuthentication.R")
   eval(parse(text = sss))
+  
 }
 queue_path <- "experiment_queue_predict5.rds"
 # queue_path <- "experiment_queue_predict.rds"
@@ -106,6 +107,13 @@ workers <- SpaDES.project::tmux_spawn_workers_from_df(
 )
 
 if (FALSE) {
+  # For estimating elapsed time
+  sim = SpaDES.core:::savedSimEnv()$.sim
+  ee = elapsedTime(sim)
+  ee[, Predict := c("Fit", "Predict")[1 + as.numeric(grepl("redict", moduleName) | grepl("Dispersal|mortalityAndGrowth|summaryBGM", eventType))]]
+  ee[, sum (elapsedTime), by = Predict]
+  sim$.runName
+  
   # If something goes wrong during development:
 #' tmux_kill_panes(workers)
 # googlesheets4::gs4_auth(email = "eliotmcintire@gmail.com", cache = ".secrets")
