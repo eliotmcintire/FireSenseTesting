@@ -8,7 +8,7 @@ getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.1.9054")) # 
 # future::plan(future.callr::callr(workers = 1, supervise  =  TRUE))
 # unlink(dir("logs", full.names = TRUE)) ; source("expt.R")
 suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there is a failure below; and this is rerun
-pkgload::load_all("~/GitHub/SpaDES.project/");
+# pkgload::load_all("~/GitHub/SpaDES.project/");
 
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 outs$modules <- grep("ELFs", outs$modules, value = TRUE)
@@ -55,8 +55,8 @@ if (TRUE) {
   expt <- expt[!expt$.ELFind %in% failed, ]
   
   # This is manually derived
-  noFit <- c("9.2.3", "6.6.1", "6.1.2")
-  expt <- expt[!expt$.ELFind %in% noFit, ]
+  #noFit <- c("9.2.3", "6.6.1", "6.1.2")
+  #expt <- expt[!expt$.ELFind %in% noFit, ]
   
   noFires <- "12.1"
   expt <- expt[!expt$.ELFind %in% noFires, ]
@@ -95,13 +95,15 @@ global <- "global.R"
 SpaDES.project::tmux_prepare_queue_from_df(queue_path = queue_path, expt)
 SpaDES.project::tmux_refresh_queue_status(queue_path)
 # debug(tmux_spawn_workers_from_df)
+nWorkers <- min(20, NROW(expt))
+nWorkers <- 5
 workers <- SpaDES.project::tmux_spawn_workers_from_df(
   df                  = expt,          # df provided here
   global_path         = global,
-  n_workers           = min(20, NROW(expt)),
+  n_workers           = nWorkers,
   start_cmd           = "R",
   queue_path          = queue_path,
-  delay_before_source = 10,
+  delay_before_source = 120,
   workersToMonitor = sim$cores,
   ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
 )

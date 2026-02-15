@@ -24,7 +24,7 @@ projectDir <- "~/GitHub/FireSenseTesting/"
 dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
 
-pkgload::load_all("~/GitHub/SpaDES.project/");
+# pkgload::load_all("~/GitHub/SpaDES.project/");
 # debug(setupProject)
 # debug(experiment3)
 # pkgload::load_all("~/GitHub/fireSenseUtils/");
@@ -53,10 +53,10 @@ inSim <- SpaDES.project::setupProject(
                      .rep = 1,
                      .ELFind = "4.3",
                      .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco",
-                                "core", "dougfir", # "fire", 
+                                "core", "dougfir", "fire", 
                                 "mpb", "sbw", "mega",
-                                # "acer", 
-                                "abies"#, "pinus"
+                                "acer", 
+                                "abies", "pinus"
                      ),
                      FRU = 25),
   .objfunFireReps = .objfunFireReps,
@@ -145,7 +145,7 @@ inSim <- SpaDES.project::setupProject(
     , pkgload::load_all("~/GitHub/reproducible/")
     , pkgload::load_all("~/GitHub/SpaDES.core/")
     , pkgload::load_all("~/GitHub/SpaDES.tools/")
-    # ,  pkgload::load_all("~/GitHub/clusters/")
+    ,  pkgload::load_all("~/GitHub/clusters/")
     , pkgload::load_all("~/GitHub/LandR/")
     , pkgload::load_all("~/GitHub/fireSenseUtils/")
      # , pkgload::load_all("~/GitHub/climateData/")
@@ -159,6 +159,7 @@ inSim <- SpaDES.project::setupProject(
                                  spread = gsub("_", "", grep("sm$", .climVars, value = TRUE))), # This must match a layer in climateVariables (without 'historical_')
   params = list(
     .globals = list(
+      spreadFitFilename = "fireSenseParams_2026_02.rds",
       # dataYear = 2011,
       .studyAreaName = .runName,
       .plots = c("png"),
@@ -286,7 +287,7 @@ if (TRUE) {
 
   options(
     #  rstLCC in 2nd time is "8882282dd8bcd415"
-    spades.evalPostEvent = #NULL
+    spades.evalPostEvent = NULL
       # quote({
       #   library(lobstr)
       #   
@@ -301,11 +302,11 @@ if (TRUE) {
       #   # run_module_X()
       #   
       # })
-      quote({print(sort(sim$sppEquiv$LandR))
-             print(names(sim$sppColorVect))
-        #print(sim$sppColorVect)
-        #print(.robustDigest(sim[["standAgeMap"]]))
-      })
+      # quote({print(sort(sim$sppEquiv$LandR))
+      #        print(names(sim$sppColorVect))
+      #   #print(sim$sppColorVect)
+      #   #print(.robustDigest(sim[["standAgeMap"]]))
+      # })
     # quote({# print(.robustDigest(sim$spreadFirePolys));
     #   print(.robustDigest(sim$rasterToMatch_biomassParam));
     #   print(.robustDigest(sim[["standAgeMap"]]))
