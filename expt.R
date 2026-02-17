@@ -1,6 +1,7 @@
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.1.9054")) # only install/update if required
+getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0")) # only install/update if required
+remotes::install_github("PredictiveEcology/SpaDES.project@cacheRequire")
 
 #Require::Install(c(future, future.callr, googlesheets4))
 #future::plan("sequential")
@@ -9,7 +10,7 @@ getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.1.9054")) # 
 # unlink(dir("logs", full.names = TRUE)) ; source("expt.R")
 suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there is a failure below; and this is rerun
 # pkgload::load_all("~/GitHub/reproducible/");
-pkgload::load_all("~/GitHub/SpaDES.project/");
+# pkgload::load_all("~/GitHub/SpaDES.project/");
 
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 outs$modules <- grep("ELFs", outs$modules, value = TRUE)
