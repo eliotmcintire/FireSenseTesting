@@ -1,19 +1,3 @@
-# projectDir <- "/mnt/storage/md2/Eliot/FireSenseTesting/"
-# packagePath <- file.path(dirname(projectDir), "packages", "4.3")
-# dir.create(packagePath, FALSE, TRUE)
-# .libPaths(packagePath)
-# packageVersion("SpaDES.project")
-# projectDir <- "/mnt/storage/md2/Eliot/FireSenseTesting/"
-# packagePath <- file.path(dirname(projectDir), "packages", "4.3")
-# dir.create(packagePath, FALSE, TRUE)
-# .libPaths(packagePath)
-# repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
-# source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-# Sys.setenv("R_REQUIRE_CACHE" = file.path(dirname(projectDir), "packageCache"))
-# Sys.setenv("HOME" = "/mnt/storage/md2/Eliot")
-# getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.1.9053")) # only install/update if required
-
-
 # # install Require and SpaDES.project
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
@@ -25,20 +9,6 @@ dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
 
 # pkgload::load_all("~/GitHub/SpaDES.project/");
-# debug(setupProject)
-# debug(experiment3)
-# pkgload::load_all("~/GitHub/fireSenseUtils/");
-# undebug(makeELFs)
-# devtools::install("~/GitHub/SpaDES.project/", upgrade = FALSE);
-# if (exists(".ELFind")) {
-#   startedFile <- file.path("logs", paste0("Running_", .ELFind, "_", Sys.getpid(), "_.rds"))
-#   alreadyExists <- dir(dirname(startedFile), pattern = .ELFind, full.names = TRUE)
-#   if (length(alreadyExists)) {
-#     if (difftime(file.info(alreadyExists)$mtime, Sys.time()) < 20)
-#     unlink(alreadyExists)
-#   }
-#   saveRDS(.ELFind, file = startedFile)
-# }
 inSim <- SpaDES.project::setupProject(
   ELFind = gsub("ELF", "", .ELFind),
   .runName = ELFind,
@@ -84,7 +54,7 @@ inSim <- SpaDES.project::setupProject(
               , "PredictiveEcology/Biomass_core@development"
 
   ),
-  packages = c("reproducible (>= 3.0.0)" # (HEAD)", # (HEAD)",
+  packages = c("reproducible (>= 3.0.0)" 
                , "qs2"
                , "archive"
                , "googlesheets4"
@@ -114,17 +84,12 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.objSize = FALSE
     # Eliot during development
     , reproducible.savePreDigest = FALSE
-    # , spades.debugModule = NA #c("canClimateData", "fireSense_dataPrepPredict",
-    #                       "fireSense_dataPrepFit", "fireSense_SpreadFit",
-    #                      "Biomass_speciesData", "Biomass_borealDataPrep"), # "fireSense_dataPrepFit", # NA
     , fireSenseUtils.runTests = FALSE
     , reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
     , reproducible.nThreads = 4 # 
-    # , repos = unique(c('https://dmlc.r-universe.dev', getOption("repos"))) # needed for xgboost
     , reproducible.inputPaths = "~/data" # means I can share data from other projects
     , reproducible.prepInputsUrlTiles = "https://drive.google.com/drive/folders/1IfeQ9rZ3-RIQwtcdo2T5Kn51NJJRWeox?usp=drive_link"
     , spades.useRequire = TRUE
-
     , error = recover
     
     # For batch runs, these should be off
@@ -148,7 +113,7 @@ inSim <- SpaDES.project::setupProject(
     ,  pkgload::load_all("~/GitHub/clusters/")
     , pkgload::load_all("~/GitHub/LandR/")
     , pkgload::load_all("~/GitHub/fireSenseUtils/")
-     # , pkgload::load_all("~/GitHub/climateData/")
+    # , pkgload::load_all("~/GitHub/climateData/")
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
@@ -216,10 +181,6 @@ if (FALSE) {
 message(paste0(inSim$.runName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
                " .objfunFireReps:", inSim$.objfunFireReps))
 
-# if (TRUE) {
-if (SpaDES.project::user("emcintir"))
-  Sys.setenv(TMPDIR = file.path("~/tmp/", attr(inSim$paths, "extraPaths")$projectPath)) #
-# a <- fireSenseUtils::fireSenseCloudParametersMap()
 inSim$climateVariables <- climateData::climateLayers(inSim$.climVars, fun = quote(calcAsIs))
 
 library(SpaDES.project)
@@ -250,86 +211,24 @@ if (FALSE) {
 inSimCopy <- reproducible::Copy(inSim)
 
 if (FALSE) {
-  if (quickPlot::isRstudioServer()) {
-    pkgload::load_all("~/GitHub/reproducible/");
-    pkgload::load_all("~/GitHub/SpaDES.core/");
-  }
-  pkgload::load_all("~/GitHub/SpaDES.project/");
-  pkgload::load_all("~/GitHub/clusters/");
-  pkgload::load_all("~/GitHub/LandR/");
-  pkgload::load_all("~/GitHub/climateData/");
-  #  pkgload::load_all("~/GitHub/scfmutils/");
-  pkgload::load_all("~/GitHub/fireSenseUtils/");
-
-  if (FALSE) {
-    devtools::install("~/GitHub/SpaDES.project/", upgrade = FALSE);
-    devtools::install("~/GitHub/reproducible/", upgrade = FALSE);
-    devtools::install("~/GitHub/SpaDES.core/", upgrade = FALSE);
-    devtools::install("~/GitHub/clusters/", upgrade = FALSE);
-    devtools::install("~/GitHub/LandR/", upgrade = FALSE);
-    devtools::install("~/GitHub/fireSenseUtils/", upgrade = FALSE);
-    devtools::install("~/GitHub/climateData/", upgrade = FALSE);
-  }
-
+  devtools::install("~/GitHub/SpaDES.project/", upgrade = FALSE);
+  devtools::install("~/GitHub/reproducible/", upgrade = FALSE);
+  devtools::install("~/GitHub/SpaDES.core/", upgrade = FALSE);
+  devtools::install("~/GitHub/clusters/", upgrade = FALSE);
+  devtools::install("~/GitHub/LandR/", upgrade = FALSE);
+  devtools::install("~/GitHub/fireSenseUtils/", upgrade = FALSE);
+  devtools::install("~/GitHub/climateData/", upgrade = FALSE);
 }
 
-memBefore <<- lobstr::mem_used()
-# Require::Install("pkgload")
-# pkgload::load_all("~/GitHub/clusters/");
-# debug(SpaDES.core::loadSimList)
-# options(spades.cacheChaining = TRUE)
-# debug(prepSpeciesTable)# ; undebug(cacheChainingPost)
-# options("spades.dotInputObjects" = FALSE)
-# browser()
-# sim <- simInit2(inSim)
-if (TRUE) {
-  st <- Sys.time()
+st <- Sys.time()
 
-  options(
-    #  rstLCC in 2nd time is "8882282dd8bcd415"
-    spades.evalPostEvent = NULL
-      # quote({
-      #   library(lobstr)
-      #   
-      #   memAfter  <<- lobstr::mem_used()
-      #   print(paste("Difference After - Before: ", capture.output(memAfter - memBefore)))
-      #   print(paste0("MemUsed: ", capture.output(lobstr::mem_used())))
-      #   
-      #   print("NEXT MODULE:")
-      #   memBefore <<- lobstr::mem_used()
-      #   gc()
-      #   
-      #   # run_module_X()
-      #   
-      # })
-      # quote({print(sort(sim$sppEquiv$LandR))
-      #        print(names(sim$sppColorVect))
-      #   #print(sim$sppColorVect)
-      #   #print(.robustDigest(sim[["standAgeMap"]]))
-      # })
-    # quote({# print(.robustDigest(sim$spreadFirePolys));
-    #   print(.robustDigest(sim$rasterToMatch_biomassParam));
-    #   print(.robustDigest(sim[["standAgeMap"]]))
-    # })
-    # quote({
-    #   print(sim$standAgeMap); print(.robustDigest(sim$standAgeMap));
-    #   print(sim$rstLCC); print(.robustDigest(sim$rstLCC));
-    #   print(sim$studyArea); .robustDigest(sim$studyArea)
-    # })
-    , spades.debugModule = NULL#"fireSense_SpreadFit"
-    #, reproducible.useMemoise = FALSE
-  )
-  # debug(rasterizeReduced)
-  startedFile <- file.path("logs", paste0("Running_", inSim$ELFind, "_", Sys.getpid(), "_.rds"))
-  reproducible::checkPath(dirname(startedFile), create = TRUE)
-  saveRDS(inSim$ELFind, file = startedFile)
-  withCallingHandlers(
-  suppressPackageStartupMessages(
-    simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
-  ), error = function(e) {
-    unlink(startedFile)  
-  })
-  # If it makes it here, then remove it so that the next iteration doesn't pick this up
-  # rm(list = ".sim", envir= SpaDES.core:::savedSimEnv())
-}
+options(
+  spades.evalPostEvent = NULL
+  # quote({# print(.robustDigest(sim$spreadFirePolys));
+  #   print(.robustDigest(sim$rasterToMatch_biomassParam));
+  #   print(.robustDigest(sim[["standAgeMap"]]))
+  # })
+  , spades.debugModule = NULL
+)
+simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
 a <- inSim$ELFind

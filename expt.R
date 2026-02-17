@@ -8,7 +8,8 @@ getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.1.9054")) # 
 # future::plan(future.callr::callr(workers = 1, supervise  =  TRUE))
 # unlink(dir("logs", full.names = TRUE)) ; source("expt.R")
 suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there is a failure below; and this is rerun
-# pkgload::load_all("~/GitHub/SpaDES.project/");
+# pkgload::load_all("~/GitHub/reproducible/");
+pkgload::load_all("~/GitHub/SpaDES.project/");
 
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 outs$modules <- grep("ELFs", outs$modules, value = TRUE)
@@ -20,20 +21,22 @@ sim <- SpaDES.core::simInitAndSpades2(outs) |>
 .ELFinds <- names(sim$ELFs$rasCentered)
 
 # If you can run them in parallel on the same linux machine:
-prepInputsFSURL <- "https://drive.google.com/file/d/1M6j3KMkr8oIgWcqrWGdyYMXskNj1deQm/view?usp=drivesdk"
-digRemote <- reproducible:::getRemoteMetadata(url = prepInputsFSURL, isGDurl = TRUE)$remoteHash
-aa = prepInputs(targetFile = "fireSenseParams.rds", 
-                url = prepInputsFSURL,
-                destinationPath = "/home/emcintir/GitHub/FireSenseTesting/inputs",
-                useCache = FALSE, purge = 7, overwrite = TRUE) |>
+
+prepInputsFSURL <- "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
+gdLs <- googledrive::drive_ls(prepInputsFSURL)
+fireSenseParamsRDS <- sim@params$.globals$spreadFitFilename
+remoteFile <- gdLs[gdLs$name %in% fireSenseParamsRDS,]
+digRemote <- remoteFile$drive_resource[[1]]$md5Checksum
+gdMeta <- googledrive::drive_download(remoteFile, 
+                            path = file.path("/home/emcintir/GitHub/FireSenseTesting/inputs", remoteFile$name),
+                            overwrite = TRUE) |> 
   reproducible::Cache(.cacheExtra = digRemote)
+aa <- readRDS(gdMeta$local_path)
+aa
 
 .reps <- 1
 expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, stringsAsFactors = FALSE)
 
-# Remove 1. and 2. as they are in the arctic
-expt <- expt[-grep("^1\\.|^2\\.", expt$.ELFind), ] # ELFs in the 1. and 2. are in the far north; no burning
-# Can specify which first, in order
 top <- c("4", "6", "5")
 ord <- grepl(
   paste(paste0("^", top), collapse = "|"),
@@ -45,8 +48,6 @@ ord3[ord3 == 0] <-
 expt <- expt[order(ord3), ]
 first <- c("4.3", "6.1.1", "6.2.3","6.3.1")
 expt <- rbind(expt[expt$.ELFind %in% first,], expt[!expt$.ELFind %in% first,])
-expt # done <- c("6.1.2", "4.3", "6.1.1", "6.2.3", "6.3.1")
-# expt <- expt[!expt$.ELFind %in% done, ]
 
 if (TRUE) {
   failed <- c("5.1.1", "5.1.2", "5.1.3", # something in climate, missing in future tile 39; only has 2011,12
@@ -62,49 +63,32 @@ if (TRUE) {
   expt <- expt[!expt$.ELFind %in% noFires, ]
 }
 
-# only run the ones that have fitted
-expt <- expt[expt$.ELFind %in% aa$polygonID,]
+# only run the ones that have not been fitted
+expt <- expt[!expt$.ELFind %in% aa$polygonID,]
 
-
-# expt <- expt[1, ]
-# only do missing ones
-# expt <- expt[!expt$.ELFind %in% aa$polygonID, ]
 rownames(expt) <- 1:NROW(expt)
-# expt <- expt[!expt$.ELFind %in% c("6.4", "6.2.2"),]
 
 if (FALSE) {
+  # This is the abandonned experiment3 way
   future::plan("cluster", workers = min(NROW(expt), 3), persistent = TRUE)
-  # future::plan(future.callr::callr(workers = min(NROW(expt), 2), supervise  =  TRUE))
-  # debug()
-  
   p <- SpaDES.project::experiment3(expt, file = "global.R",
                                    saveSimToDisk = FALSE, tmuxName = "ex8")
-  
 }
 
 ########
 if (FALSE) {
   # get google authentication
   sss <- readLines("~/googledriveAuthentication.R")
-  eval(parse(text = sss))
+  eval(parse(text = sss)) |> options()
   
 }
-queue_path <- "experiment_queue_predict5.rds"
-# queue_path <- "experiment_queue_predict.rds"
-global <- "global.R"
-SpaDES.project::tmux_prepare_queue_from_df(queue_path = queue_path, expt)
-SpaDES.project::tmux_refresh_queue_status(queue_path)
-# debug(tmux_spawn_workers_from_df)
-nWorkers <- min(20, NROW(expt))
-nWorkers <- 5
 workers <- SpaDES.project::tmux_spawn_workers_from_df(
   df                  = expt,          # df provided here
-  global_path         = global,
-  n_workers           = nWorkers,
-  start_cmd           = "R",
-  queue_path          = queue_path,
+  global_path         = "global.R",
+  n_workers           = 1,
+  queue_path          = "experiment_queue_predict5.rds",
   delay_before_source = 120,
-  workersToMonitor = sim$cores,
+  workersToMonitor = outs$cores,
   ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
 )
 
@@ -115,15 +99,4 @@ if (FALSE) {
   ee[, Predict := c("Fit", "Predict")[1 + as.numeric(grepl("redict", moduleName) | grepl("Dispersal|mortalityAndGrowth|summaryBGM", eventType))]]
   ee[, sum (elapsedTime), by = Predict]
   sim$.runName
-  
-  # If something goes wrong during development:
-#' tmux_kill_panes(workers)
-# googlesheets4::gs4_auth(email = "eliotmcintire@gmail.com", cache = ".secrets")
-  # rsync -avH --delete --relative --progress --info=progress2 --stats ./data ./GitHub/FireSenseTesting/inputs mega:~
-  # rsync -avH --delete --relative --progress --info=progress2 --stats ./data ./GitHub/FireSenseTesting/cache mega:~  
-  # rsync -avH --delete --relative --progress --info=progress2 --stats ./data ./GitHub/FireSenseTesting/outputs mega:~  
-  #     
-  # # rsync -aH   --info=progress2 --stats --delete ./cache/ mega:~/GitHub/FireSenseTesting/cache/
-  # # rsync -aH   --info=progress2 --stats --delete ./outputs/ mega:~/GitHub/FireSenseTesting/outputs/
-  # # rsync -aH   --info=progress2 --stats --delete ./inputs/ mega:~/GitHub/FireSenseTesting/inputs/
 }
