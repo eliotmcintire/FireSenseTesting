@@ -37,3 +37,6 @@
 [submodule "modules/fireSense_dataPrepPredict"]
 	path = modules/fireSense_dataPrepPredict
 	url = https://github.com/PredictiveEcology/fireSense_dataPrepPredict
+[submodule "modules/fireSense_ELFs"]
+	path = modules/fireSense_ELFs
+	url = https://github.com/PredictiveEcology/fireSense_ELFs
