@@ -200,13 +200,23 @@ Init <- function(sim) {
   objsHere <- depends(sim)@dependencies[[currentModule(sim)]]@outputObjects$objectName
   list2env(mget(objsHere, envir = environment()), envir = envir(sim))
   
-  # plot whole Canada
-  # terra::plot(ELFs$rasWhole[[11]] >= 0, col = "transparent", legend = FALSE)
-  # whole <- terra::as.polygons(ELFs$rasWhole[[11]])
+  # Check on what fireSense_SpreadFit has already been run
+  prepInputsFSURL <- Par$spreadFitGoogleDriveFolder
+  gdLs <- googledrive::drive_ls(prepInputsFSURL)
+  fireSenseParamsRDS <- Par$spreadFitFilename
+  remoteFile <- gdLs[gdLs$name %in% fireSenseParamsRDS,]
+  digRemote <- remoteFile$drive_resource[[1]]$md5Checksum
+  gdMeta <- googledrive::drive_download(remoteFile, 
+                                        path = file.path(inputPath(sim), remoteFile$name),
+                                        overwrite = TRUE) |> 
+    reproducible::Cache(.cacheExtra = digRemote)
+  aa <- readRDS(gdMeta$local_path)
   
+  browser()
   if (anyPlotting(Par$.plots)) {
+    
     Plots(fn = plotAllELFsFn, centred = ELFs$rasCentered,
-          crsToUse = terra::crs(ELFs$rasWhole[[11]]),
+          crsToUse = terra::crs(ELFs$rasWhole[[11]]), alreadyRun = aa,
           path = inputPath, deviceArgs = list(width = 11, height = 8, units = "in", res = 300),
           filename = paste0("ELF_polygons.png"), useCache = TRUE
     )
@@ -246,7 +256,7 @@ ggplotFn <- function(data, ...) {
 }
 
 
-plotAllELFsFn <- function(centred, crsToUse) {
+plotAllELFsFn <- function(centred, crsToUse, alreadyRun) {
   allELFs <- { Map(r = centred, function(r) {
     r2 <- r == 2
     r2[!terra::values(r2, mat = FALSE) %in% TRUE] <- NA
@@ -255,7 +265,14 @@ plotAllELFsFn <- function(centred, crsToUse) {
   } 
   wh <- rowSums(as.data.frame(allELFs), na.rm = TRUE) == 1
   allELFs2 <- allELFs[wh, ]
+  
   cen <- terra::centroids(allELFs2)
   terra::plot(allELFs)
+  if (!missing(alreadyRun))
+    if (is.data.frame(alreadyRun)) {
+      dones <- terra::vect(sf::st_as_sf(alreadyRun))
+      dones <- terra::project(dones, terra::crs(allELFs))
+      terra::plot(dones, add = TRUE, col = "yellow")
+    }
   terra::text(cen, label = gsub("^X", "", names(allELFs)), cex = 0.8)
 }

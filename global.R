@@ -30,7 +30,7 @@ inSim <- SpaDES.project::setupProject(
                      ),
                      FRU = 25),
   .objfunFireReps = .objfunFireReps,
-  # useGit = "eliotmcintire",
+  useGit = "eliotmcintire",
   Restart = TRUE,
   paths = list(outputPath = file.path("outputs", ELFind)),
   modules = c("PredictiveEcology/canClimateData@improveCache1"
@@ -54,12 +54,18 @@ inSim <- SpaDES.project::setupProject(
               , "PredictiveEcology/Biomass_core@development"
 
   ),
-  packages = c("reproducible (>= 3.0.0)" 
-               , "qs2"
+  packages = c(
+    "PredictiveEcology/reproducible@recovery (HEAD)"
+    , "PredictiveEcology/SpaDES.core@updatesPostHDDFail (HEAD)"
+    , "PredictiveEcology/SpaDES.project@cacheRequire (HEAD)"
+    , "PredictiveEcology/clusters@main (HEAD)"
+    , "PredictiveEcology/fireSenseUtils@development (HEAD)"
+    # "reproducible (>= 3.0.0)" 
+               , "qs2", "filelock"
                , "archive"
                , "googlesheets4"
-               ,"PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9000)"
-               ,"SpaDES.core (>= 3.0.0)" # (HEAD)", # needed for the functions in
+               , "PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9000)"
+               , "SpaDES.core (>= 3.0.0)" # (HEAD)", # needed for the functions in
                , "terra" # "leaflet", "tidyterra",
                , "plyr"#, "scfmutils",
                , "rvest" # needed for prepIgnitionFitData
@@ -90,7 +96,7 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.inputPaths = "~/data" # means I can share data from other projects
     , reproducible.prepInputsUrlTiles = "https://drive.google.com/drive/folders/1IfeQ9rZ3-RIQwtcdo2T5Kn51NJJRWeox?usp=drive_link"
     , spades.useRequire = TRUE
-    , error = recover
+    # , error = recover
     
     # For batch runs, these should be off
     , reproducible.showSimilar = FALSE#interactive() && !nzchar(Sys.getenv("TMUX"))
@@ -107,12 +113,12 @@ inSim <- SpaDES.project::setupProject(
   sideEffects = list(
     terra::terraOptions(memfrac = 0)
     , terra::gdalCache(size = 2048)   # 2 GB
-    , pkgload::load_all("~/GitHub/reproducible/")
-    , pkgload::load_all("~/GitHub/SpaDES.core/")
-    , pkgload::load_all("~/GitHub/SpaDES.tools/")
-    ,  pkgload::load_all("~/GitHub/clusters/")
-    , pkgload::load_all("~/GitHub/LandR/")
-    , pkgload::load_all("~/GitHub/fireSenseUtils/")
+    # , pkgload::load_all("~/GitHub/reproducible/")
+    # , pkgload::load_all("~/GitHub/SpaDES.core/")
+    # , pkgload::load_all("~/GitHub/SpaDES.tools/")
+    # ,  pkgload::load_all("~/GitHub/clusters/")
+    # , pkgload::load_all("~/GitHub/LandR/")
+    # , pkgload::load_all("~/GitHub/fireSenseUtils/")
     # , pkgload::load_all("~/GitHub/climateData/")
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
