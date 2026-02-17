@@ -54,7 +54,11 @@ inSim <- SpaDES.project::setupProject(
               , "PredictiveEcology/Biomass_core@development"
 
   ),
-  packages = c("reproducible (>= 3.0.0)" 
+  packages = c(
+    "PredictiveEcology/reproducible@recovery (HEAD)"
+    , "PredictiveEcology/SpaDES.core@updatesPostHDDFail (HEAD)"
+    , "PredictiveEcology/SpaDES.project@cacheRequire (HEAD)"
+    # "reproducible (>= 3.0.0)" 
                , "qs2"
                , "archive"
                , "googlesheets4"
