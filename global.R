@@ -58,12 +58,14 @@ inSim <- SpaDES.project::setupProject(
     "PredictiveEcology/reproducible@recovery (HEAD)"
     , "PredictiveEcology/SpaDES.core@updatesPostHDDFail (HEAD)"
     , "PredictiveEcology/SpaDES.project@cacheRequire (HEAD)"
+    , "PredictiveEcology/clusters@main (HEAD)"
+    , "PredictiveEcology/fireSenseUtils@development (HEAD)"
     # "reproducible (>= 3.0.0)" 
                , "qs2"
                , "archive"
                , "googlesheets4"
-               ,"PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9000)"
-               ,"SpaDES.core (>= 3.0.0)" # (HEAD)", # needed for the functions in
+               , "PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9000)"
+               , "SpaDES.core (>= 3.0.0)" # (HEAD)", # needed for the functions in
                , "terra" # "leaflet", "tidyterra",
                , "plyr"#, "scfmutils",
                , "rvest" # needed for prepIgnitionFitData
