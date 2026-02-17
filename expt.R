@@ -10,7 +10,7 @@ remotes::install_github("PredictiveEcology/SpaDES.project@cacheRequire")
 # unlink(dir("logs", full.names = TRUE)) ; source("expt.R")
 suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there is a failure below; and this is rerun
 # pkgload::load_all("~/GitHub/reproducible/");
-pkgload::load_all("~/GitHub/SpaDES.project/");
+# pkgload::load_all("~/GitHub/SpaDES.project/");
 
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 outs$modules <- grep("ELFs", outs$modules, value = TRUE)
