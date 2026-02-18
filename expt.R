@@ -1,6 +1,7 @@
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.1.9054")) # only install/update if required
+getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0")) # only install/update if required
+remotes::install_github("PredictiveEcology/SpaDES.project@cacheRequire")
 
 #Require::Install(c(future, future.callr, googlesheets4))
 #future::plan("sequential")
@@ -9,7 +10,7 @@ getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.1.9054")) # 
 # unlink(dir("logs", full.names = TRUE)) ; source("expt.R")
 suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there is a failure below; and this is rerun
 # pkgload::load_all("~/GitHub/reproducible/");
-pkgload::load_all("~/GitHub/SpaDES.project/");
+# pkgload::load_all("~/GitHub/SpaDES.project/");
 
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 outs$modules <- grep("ELFs", outs$modules, value = TRUE)
@@ -21,18 +22,18 @@ sim <- SpaDES.core::simInitAndSpades2(outs) |>
 .ELFinds <- names(sim$ELFs$rasCentered)
 
 # If you can run them in parallel on the same linux machine:
-
-prepInputsFSURL <- "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
-gdLs <- googledrive::drive_ls(prepInputsFSURL)
-fireSenseParamsRDS <- sim@params$.globals$spreadFitFilename
-remoteFile <- gdLs[gdLs$name %in% fireSenseParamsRDS,]
-digRemote <- remoteFile$drive_resource[[1]]$md5Checksum
-gdMeta <- googledrive::drive_download(remoteFile, 
-                            path = file.path("/home/emcintir/GitHub/FireSenseTesting/inputs", remoteFile$name),
-                            overwrite = TRUE) |> 
-  reproducible::Cache(.cacheExtra = digRemote)
-aa <- readRDS(gdMeta$local_path)
-aa
+# 
+# prepInputsFSURL <- "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
+# gdLs <- googledrive::drive_ls(prepInputsFSURL)
+# fireSenseParamsRDS <- sim@params$.globals$spreadFitFilename
+# remoteFile <- gdLs[gdLs$name %in% fireSenseParamsRDS,]
+# digRemote <- remoteFile$drive_resource[[1]]$md5Checksum
+# gdMeta <- googledrive::drive_download(remoteFile, 
+#                             path = file.path("/home/emcintir/GitHub/FireSenseTesting/inputs", remoteFile$name),
+#                             overwrite = TRUE) |> 
+#   reproducible::Cache(.cacheExtra = digRemote)
+# aa <- readRDS(gdMeta$local_path)
+# aa
 
 .reps <- 1
 expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, stringsAsFactors = FALSE)
