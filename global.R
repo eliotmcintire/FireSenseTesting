@@ -30,7 +30,7 @@ inSim <- SpaDES.project::setupProject(
                      ),
                      FRU = 25),
   .objfunFireReps = .objfunFireReps,
-  useGit = "eliotmcintire",
+  # useGit = "eliotmcintire",
   Restart = TRUE,
   paths = list(outputPath = file.path("outputs", ELFind)),
   modules = c("PredictiveEcology/canClimateData@improveCache1"
@@ -102,7 +102,7 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.showSimilar = FALSE#interactive() && !nzchar(Sys.getenv("TMUX"))
     , reproducible.useMemoise = interactive() && !nzchar(Sys.getenv("TMUX"))
     , spades.recoveryMode = 5#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
-    , spades.cacheChaining = FALSE#TRUE
+    , spades.cacheChaining = TRUE
     , reproducible.cacheChaining = FALSE #interactive()
 
     , reproducible.gdalwarp = FALSE
@@ -113,12 +113,12 @@ inSim <- SpaDES.project::setupProject(
   sideEffects = list(
     terra::terraOptions(memfrac = 0)
     , terra::gdalCache(size = 2048)   # 2 GB
-    # , pkgload::load_all("~/GitHub/reproducible/")
-    # , pkgload::load_all("~/GitHub/SpaDES.core/")
-    # , pkgload::load_all("~/GitHub/SpaDES.tools/")
-    # ,  pkgload::load_all("~/GitHub/clusters/")
-    # , pkgload::load_all("~/GitHub/LandR/")
-    # , pkgload::load_all("~/GitHub/fireSenseUtils/")
+    , pkgload::load_all("~/GitHub/reproducible/")
+    , pkgload::load_all("~/GitHub/SpaDES.core/")
+    , pkgload::load_all("~/GitHub/SpaDES.tools/")
+    ,  pkgload::load_all("~/GitHub/clusters/")
+    , pkgload::load_all("~/GitHub/LandR/")
+    , pkgload::load_all("~/GitHub/fireSenseUtils/")
     # , pkgload::load_all("~/GitHub/climateData/")
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
@@ -130,36 +130,37 @@ inSim <- SpaDES.project::setupProject(
                                  spread = gsub("_", "", grep("sm$", .climVars, value = TRUE))), # This must match a layer in climateVariables (without 'historical_')
   params = list(
     .globals = list(
-      spreadFitFilename = "fireSenseParams_2026_02.rds",
+      spreadFitFilename = "fireSenseParams_2026_02.rds"
       # dataYear = 2011,
-      .studyAreaName = .runName,
-      .plots = c("png"),
-      sppEquivCol = "LandR", # will get a warning if this is not here
-      .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData"),
-      minCoverThreshold = 0),
+      , .studyAreaName = .runName
+      , .plots = c("png")
+      , sppEquivCol = "LandR" # will get a warning if this is not here
+      , .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData")
+      , minCoverThreshold = 0),
     # fireSense_ELFs = list(.useCache = FALSE),
     # canClimateData = list(.useCache = ".inputObjects"),  # init is slow to cache
     # fireSense = list(.plots = c("screen", "png")),
     fireSense_SpreadFit = list(
-      DEoptimTests = c("adTest", "SNLL_FS"),
+      DEoptimTests = c("adTest", "SNLL_FS")
+      , stopIfNoPreRunFit = FALSE
       # mutuallyExclusiveCols = list(
       #   youngAge = c("nf", unique(makeSppEquiv(ecoprovinceNum = ecoprovince)$fuel))
       # ),
       # .useCache = FALSE,
-      iterDEoptim = 1000,
-      rep = .rep, # This means that all Cache of DEoptim will now be different name
-      iterStep = 1, # run this many iterations before running again; this should be
+      , iterDEoptim = 1000
+      , rep = .rep # This means that all Cache of DEoptim will now be different name
+      , iterStep = 1 # run this many iterations before running again; this should be
       # set to itermax if Cache is not used; it is only useful for Cache
-      cores = cores,
-      NP = {if (identical(cores, unique(cores))) 100 else length(cores)}, # number of cores of machines
-      trace = 1,
-      mode = "fit",# "visualize"),
+      , cores = cores
+      , NP = {if (identical(cores, unique(cores))) 100 else length(cores)} # number of cores of machines
+      , trace = 1
+      , mode = "fit"# "visualize"),
       # mode = "debug",
-      strategy = .strategy,
-      objfunFireReps = .objfunFireReps, # this is the lowest that doesn't create an error
-      .c = .cc,
+      , strategy = .strategy
+      , objfunFireReps = .objfunFireReps # this is the lowest that doesn't create an error
+      , .c = .cc
       # SNLL_FS_thresh = snll_thresh,
-      doObjFunAssertions = FALSE
+      , doObjFunAssertions = FALSE
     ),
     fireSense_dataPrepFit = list(
       # missingLCCgroup = c("nf_dryland"), # must match fuel class land cover

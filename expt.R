@@ -65,7 +65,8 @@ if (TRUE) {
 }
 
 # only run the ones that have not been fitted
-expt <- expt[!expt$.ELFind %in% aa$polygonID,]
+
+expt <- expt[!expt$.ELFind %in% sim$spreadFitPreRun$polygonID,]
 
 rownames(expt) <- 1:NROW(expt)
 
@@ -86,7 +87,7 @@ if (FALSE) {
 workers <- SpaDES.project::tmux_spawn_workers_from_df(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 1,
+  n_workers           = 6,
   queue_path          = "experiment_queue_predict5.rds",
   delay_before_source = 120,
   workersToMonitor = outs$cores,
