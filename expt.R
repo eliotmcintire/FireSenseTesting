@@ -3,37 +3,17 @@ source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/de
 getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0")) # only install/update if required
 remotes::install_github("PredictiveEcology/SpaDES.project@cacheRequire")
 
-#Require::Install(c(future, future.callr, googlesheets4))
-#future::plan("sequential")
-# future::plan("multicore", workers = 10)
-# future::plan(future.callr::callr(workers = 1, supervise  =  TRUE))
-# unlink(dir("logs", full.names = TRUE)) ; source("expt.R")
 suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there is a failure below; and this is rerun
-# pkgload::load_all("~/GitHub/reproducible/");
-# pkgload::load_all("~/GitHub/SpaDES.project/");
 
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 outs$modules <- grep("ELFs", outs$modules, value = TRUE)
+srcFiles <- asPath(dir(file.path(outs$paths$modulePath, outs$modules), 
+    pattern = "\\.R$", recursive = TRUE) |> 
+    grep(pattern = "tests\\/", invert = TRUE, value = TRUE))
 sim <- SpaDES.core::simInitAndSpades2(outs) |> 
-  Cache(.cacheExtra = list(src = asPath(file.path(outs$paths$modulePath, 
-                                                  outs$modules, paste0(outs$modules, ".R"))),
-                           objs = outs$ELFind),
+  Cache(.cacheExtra = list(src = srcFiles),
         omitArgs = "l")
 .ELFinds <- names(sim$ELFs$rasCentered)
-
-# If you can run them in parallel on the same linux machine:
-# 
-# prepInputsFSURL <- "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
-# gdLs <- googledrive::drive_ls(prepInputsFSURL)
-# fireSenseParamsRDS <- sim@params$.globals$spreadFitFilename
-# remoteFile <- gdLs[gdLs$name %in% fireSenseParamsRDS,]
-# digRemote <- remoteFile$drive_resource[[1]]$md5Checksum
-# gdMeta <- googledrive::drive_download(remoteFile, 
-#                             path = file.path("/home/emcintir/GitHub/FireSenseTesting/inputs", remoteFile$name),
-#                             overwrite = TRUE) |> 
-#   reproducible::Cache(.cacheExtra = digRemote)
-# aa <- readRDS(gdMeta$local_path)
-# aa
 
 .reps <- 1
 expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, stringsAsFactors = FALSE)
@@ -84,7 +64,7 @@ if (FALSE) {
   eval(parse(text = sss)) |> options()
   
 }
-workers <- SpaDES.project::tmux_spawn_workers_from_df(
+workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
   n_workers           = 6,
