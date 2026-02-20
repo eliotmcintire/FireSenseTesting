@@ -22,38 +22,42 @@ inSim <- SpaDES.project::setupProject(
                      .objfunFireReps = 25L,
                      .rep = 1,
                      .ELFind = "4.3",
-                     .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco",
-                                "core", "dougfir", "fire", 
-                                "mpb", "sbw", "mega",
-                                "acer", 
-                                "abies", "pinus"
+                     .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco"
+                                , "core", "dougfir", "fire"
+                                , "mpb", "sbw", "mega"
+                                , "acer"
+                                , "abies"
+                                , "pinus"
                      ),
-                     FRU = 25),
+                     FRU = 25,
+                     .times = list(start = 2020, end = 2100),
+                     .modules = c("PredictiveEcology/canClimateData@improveCache1"
+                                  
+                                  , "PredictiveEcology/fireSense_ELFs@main"
+                                  
+                                  , "PredictiveEcology/fireSense_dataPrepFit@development"
+                                  , "PredictiveEcology/fireSense_IgnitionFit@development"
+                                  , "PredictiveEcology/fireSense_SpreadFit@development"
+                                  
+                                  , "PredictiveEcology/fireSense_dataPrepPredict@development" # prepares data for predictions
+                                  , "PredictiveEcology/fireSense_IgnitionPredict@development" # predicts ignitions & escapes
+                                  , "PredictiveEcology/fireSense_SpreadPredict@development" # predicts raster of spreadProb
+                                  
+                                  , "PredictiveEcology/fireSense@development" # does burning
+                                  
+                                  , "PredictiveEcology/Biomass_borealDataPrep@development"
+                                  , "PredictiveEcology/Biomass_speciesParameters@development"
+                                  , "PredictiveEcology/Biomass_speciesData@development"
+                                  , "PredictiveEcology/Biomass_regeneration@development"
+                                  , "PredictiveEcology/Biomass_core@development"
+                                  
+                     )),
   .objfunFireReps = .objfunFireReps,
   # useGit = "eliotmcintire",
   Restart = TRUE,
   paths = list(outputPath = file.path("outputs", ELFind)),
-  modules = c("PredictiveEcology/canClimateData@improveCache1"
-              
-              , "PredictiveEcology/fireSense_ELFs@main"
-
-              , "PredictiveEcology/fireSense_dataPrepFit@development"
-              , "PredictiveEcology/fireSense_IgnitionFit@development"
-              , "PredictiveEcology/fireSense_SpreadFit@development"
-
-              , "PredictiveEcology/fireSense_dataPrepPredict@development" # prepares data for predictions
-              , "PredictiveEcology/fireSense_IgnitionPredict@development" # predicts ignitions & escapes
-              , "PredictiveEcology/fireSense_SpreadPredict@development" # predicts raster of spreadProb
-
-              , "PredictiveEcology/fireSense@development" # does burning
-
-              , "PredictiveEcology/Biomass_borealDataPrep@development"
-              , "PredictiveEcology/Biomass_speciesParameters@development"
-              , "PredictiveEcology/Biomass_speciesData@development"
-              , "PredictiveEcology/Biomass_regeneration@development"
-              , "PredictiveEcology/Biomass_core@development"
-
-  ),
+  times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
+  modules = unlist(.modules),
   packages = c(
     "PredictiveEcology/reproducible@recovery (HEAD)"
     , "PredictiveEcology/SpaDES.core@updatesPostHDDFail (HEAD)"
@@ -61,23 +65,23 @@ inSim <- SpaDES.project::setupProject(
     , "PredictiveEcology/clusters@main (HEAD)"
     , "PredictiveEcology/fireSenseUtils@development (HEAD)"
     # "reproducible (>= 3.0.0)" 
-               , "qs2", "filelock"
-               , "archive"
-               , "googlesheets4"
-               , "PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9000)"
-               , "SpaDES.core (>= 3.0.0)" # (HEAD)", # needed for the functions in
-               , "terra" # "leaflet", "tidyterra",
-               , "plyr"#, "scfmutils",
-               , "rvest" # needed for prepIgnitionFitData
+    , "qs2", "filelock"
+    , "archive"
+    , "googlesheets4"
+    , "PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9000)"
+    , "SpaDES.core (>= 3.0.0)" # (HEAD)", # needed for the functions in
+    , "terra" # "leaflet", "tidyterra",
+    , "plyr"#, "scfmutils",
+    , "rvest" # needed for prepIgnitionFitData
   ),
   require = "reproducible",
-  times = list(start = 2020, end = 2100),
   options = list(# gargle_oauth_email = "predictiveecology@gmail.com",
     # gargle_oauth_cache = ".secret",
     # gargle_oauth_client_type = "web", # for command line
     "~/googledriveAuthentication.R" # has the above lines; each user can create their own file
-    , repos = unique(c(# repos[[1]], 
-                       'https://dmlc.r-universe.dev', getOption("repos")))
+    , repos = unique(c(repos[[1]]
+                       # , 'https://dmlc.r-universe.dev'
+                       , getOption("repos")))
     , reproducible.cacheSaveFormat = "qs2"
     , reproducible.qsFormat = "qs2"
     , reproducible.useTry = FALSE
@@ -99,7 +103,7 @@ inSim <- SpaDES.project::setupProject(
     # , error = recover
     
     # For batch runs, these should be off
-    , reproducible.showSimilar = FALSE#interactive() && !nzchar(Sys.getenv("TMUX"))
+    , reproducible.showSimilar = FALSE #interactive() && !nzchar(Sys.getenv("TMUX"))
     , reproducible.useMemoise = interactive() && !nzchar(Sys.getenv("TMUX"))
     , spades.recoveryMode = 5#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
     , spades.cacheChaining = TRUE
@@ -109,7 +113,13 @@ inSim <- SpaDES.project::setupProject(
     , Require.cloneFrom = Sys.getenv("R_LIBS_USER")
     , spades.moduleCodeChecks = FALSE
     # , spades.memoryUseInterval = 2
-    , spades.allowInitDuringSimInit = TRUE),
+    , spades.allowInitDuringSimInit = TRUE
+    , spades.evalPostEvent = NULL
+    # quote({# print(.robustDigest(sim$spreadFirePolys));
+    #   print(.robustDigest(sim$rasterToMatch_biomassParam));
+    #   print(.robustDigest(sim[["standAgeMap"]]))
+    # })
+    , spades.debugModule = NULL),
   sideEffects = list(
     terra::terraOptions(memfrac = 0)
     , terra::gdalCache(size = 2048)   # 2 GB
@@ -178,20 +188,17 @@ inSim <- SpaDES.project::setupProject(
     )
   )
 )
+message(paste0(inSim$.runName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
+               " .objfunFireReps:", inSim$.objfunFireReps))
+
+inSim$climateVariables <- climateData::climateLayers(inSim$.climVars, fun = quote(calcAsIs))
+inSimCopy <- reproducible::Copy(inSim)
 
 
 if (FALSE) {
   prepInputs(targetFile = "fireSenseParams.rds", url = "https://drive.google.com/file/d/1-iD7Pj4cX3kag4TEHeGxGgW42Rf0ag2l/view?usp=drivesdk",
              destinationPath = "/home/emcintir/GitHub/FireSenseTesting/inputs",
              useCache = TRUE, purge = 7, overwrite = TRUE)
-}
-message(paste0(inSim$.runName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
-               " .objfunFireReps:", inSim$.objfunFireReps))
-
-inSim$climateVariables <- climateData::climateLayers(inSim$.climVars, fun = quote(calcAsIs))
-
-library(SpaDES.project)
-if (FALSE) {
   SpaDES.core::Plots(inSim[grep("studyArea|rasterToMatch", names(inSim))],
                        title = paste0("StudyArea ", inSim$.runName),
                        fn = plotSAs,
@@ -200,12 +207,6 @@ if (FALSE) {
                        types = c("screen", "png")) |>
       reproducible::Cache(.functionName = "Plots_studyAreas",
                           useCache = !identical(names(dev.cur()), "null device"))
-}
-
-#known bugs/undesirable behavior
-#1 spreadFit dumps a bunch of figs in the project directory instead of outputs
-
-if (FALSE) {
 
   SpaDES.project::plotSAsLeaflet(inSim[grep("studyArea|rasterToMatch", names(inSim))])
 
@@ -214,10 +215,6 @@ if (FALSE) {
   inSim2 <- SpaDES.core::loadSimList(fn)
   outSims <- restartSpades(inSim2)
   outSims <- restartSpades()
-}
-inSimCopy <- reproducible::Copy(inSim)
-
-if (FALSE) {
   devtools::install("~/GitHub/SpaDES.project/", upgrade = FALSE);
   devtools::install("~/GitHub/reproducible/", upgrade = FALSE);
   devtools::install("~/GitHub/SpaDES.core/", upgrade = FALSE);
@@ -227,15 +224,4 @@ if (FALSE) {
   devtools::install("~/GitHub/climateData/", upgrade = FALSE);
 }
 
-st <- Sys.time()
-
-options(
-  spades.evalPostEvent = NULL
-  # quote({# print(.robustDigest(sim$spreadFirePolys));
-  #   print(.robustDigest(sim$rasterToMatch_biomassParam));
-  #   print(.robustDigest(sim[["standAgeMap"]]))
-  # })
-  , spades.debugModule = NULL
-)
 simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
-a <- inSim$ELFind

@@ -22,5 +22,8 @@
 			"path": "../LandR"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"positron.r.useNativePipe": true,
+		"positron.r.pipe": "|>"
+	}
 }
