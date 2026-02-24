@@ -16,7 +16,7 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 # RUN fireSense_ELFs to get the ELF map
 ####################
 
-.ELFinds <- fireSenseUtils::runELFs(preRunSetupProject)
+.ELFinds <- fireSenseUtils::runELFs(outs)
 
 ####################
 # SET UP EXPERIMENT
@@ -33,11 +33,14 @@ rownames(expt) <- 1:NROW(expt) # re-number each row
 
 ####################
 # Run the experiment -- this must be run at a command prompt, inside tmux
+#  --> MUST MONITOR `activeRunningPath`. It should represent only "currently running ELFs".
+#      If an ELF has stopped running, and the log file is still present, then it must be
+#      manually deleted (automated deletion has failed)
 ####################
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 2,
+  n_workers           = 8,
   queue_path          = "predict_queue.rds",
   delay_before_source = 15,
   workersToMonitor = NULL,

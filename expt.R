@@ -17,7 +17,7 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 ####################
 
 # Get all ELFs
-.ELFinds <- fireSenseUtils::runELFs(preRunSetupProject, onlyFittedELFs = FALSE)
+.ELFinds <- fireSenseUtils::runELFs(outs, onlyFittedELFs = FALSE)
 
 ####################
 # SET UP EXPERIMENT
