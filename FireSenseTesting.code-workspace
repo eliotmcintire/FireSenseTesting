@@ -1,0 +1,29 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../SpaDES.core"
+		},
+		{
+			"path": "../SpaDES.project"
+		},
+		{
+			"path": "../fireSenseUtils"
+		},
+		{
+			"path": "../clusters"
+		},
+		{
+			"path": "../reproducible"
+		},
+		{
+			"path": "../LandR"
+		}
+	],
+	"settings": {
+		"positron.r.useNativePipe": true,
+		"positron.r.pipe": "|>"
+	}
+}
