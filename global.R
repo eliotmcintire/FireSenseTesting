@@ -66,7 +66,6 @@ inSim <- SpaDES.project::setupProject(
     , "PredictiveEcology/SpaDES.project@cacheRequire (>= 0.1.4.9008)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
     , "PredictiveEcology/fireSenseUtils@development (>= 0.0.11)"
-    # "reproducible (>= 3.0.0)" 
     , "qs2", "filelock"
     , "archive"
     , "googlesheets4"

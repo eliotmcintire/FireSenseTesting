@@ -7,36 +7,16 @@ getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0")) # only install
 suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there is a failure below; and this is rerun
 
 ####################
-# RUN fireSense_ELFs to get the ELF map
+# pre RUN the global.R setupProject
 ####################
 
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 
-# system.time({
-outs$modules <- grep("ELFs", outs$modules, value = TRUE)
-# For digesting; i.e., whether it needs to be re-run
-srcFiles <- asPath(dir(file.path(outs$paths$modulePath, outs$modules), 
-                       pattern = "\\.R$", recursive = TRUE, full.names = TRUE) |> 
-                     grep(pattern = "tests\\/", invert = TRUE, value = TRUE))
-urlELFresults <- "https://drive.google.com/file/d/1tkC944mPzR9-y-qCMDB5o2cAR_1MoDz4/view?usp=drive_link"
-md <- reproducible:::getRemoteMetadata(url = urlELFresults)
-outs$params$fireSense_ELFs$hashSpreadFitRemoteFile <- md$remoteHas
+####################
+# RUN fireSense_ELFs to get the ELF map
+####################
 
-# Run the module
-sim <- SpaDES.core::simInitAndSpades2(outs) |> 
-  Cache(.cacheExtra = list(src = srcFiles, remoteHash = md$remoteHash),
-        omitArgs = "l")
-
-# Upload if it is emcintir; and if it has changed
-if (SpaDES.project::user() %in% "emcintir") {
-  cid <- cacheId(sim)
-  ll <- googledrive::drive_update(file = urlELFresults,
-                                  media = grep("ELF", sim@outputs$file, value = TRUE)) |> 
-    Cache(omitArgs = c("file", "media"), .cacheExtra = list(cacheId = cid))
-}
-# })
-
-.ELFinds <- sim$spreadFitPreRun$polygonID
+.ELFinds <- fireSenseUtils::runELFs(preRunSetupProject)
 
 ####################
 # SET UP EXPERIMENT
@@ -49,6 +29,8 @@ if (exists(".modules"))
 if (exists(".times"))
   expt <- cbind(expt, .times = I(lapply(seq_len(NROW(expt)), function(x) .times)))
 rownames(expt) <- 1:NROW(expt) # re-number each row
+
+
 ####################
 # Run the experiment -- this must be run at a command prompt, inside tmux
 ####################
