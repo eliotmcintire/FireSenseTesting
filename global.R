@@ -1,7 +1,9 @@
 # # install Require and SpaDES.project
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.1.9053")) # only install/update if required
+# getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.4.9008")) # only install/update if required
+getOrUpdatePkg(c("Require"), c("1.0.1.9013")) # only install/update if required
+remotes::install_github("PredictiveEcology/SpaDES.project@cacheRequire")
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
@@ -59,11 +61,11 @@ inSim <- SpaDES.project::setupProject(
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
-    "PredictiveEcology/reproducible@recovery (HEAD)"
-    , "PredictiveEcology/SpaDES.core@updatesPostHDDFail (HEAD)"
-    , "PredictiveEcology/SpaDES.project@cacheRequire (HEAD)"
-    , "PredictiveEcology/clusters@main (HEAD)"
-    , "PredictiveEcology/fireSenseUtils@development (HEAD)"
+    "PredictiveEcology/reproducible@recovery (>= 3.0.0.9004)"
+    , "PredictiveEcology/SpaDES.core@updatesPostHDDFail"
+    , "PredictiveEcology/SpaDES.project@cacheRequire"
+    , "PredictiveEcology/clusters@main"
+    , "PredictiveEcology/fireSenseUtils@development"
     # "reproducible (>= 3.0.0)" 
     , "qs2", "filelock"
     , "archive"
@@ -125,11 +127,11 @@ inSim <- SpaDES.project::setupProject(
     , terra::gdalCache(size = 2048)   # 2 GB
     , pkgload::load_all("~/GitHub/reproducible/")
     , pkgload::load_all("~/GitHub/SpaDES.core/")
-    , pkgload::load_all("~/GitHub/SpaDES.tools/")
-    ,  pkgload::load_all("~/GitHub/clusters/")
-    , pkgload::load_all("~/GitHub/LandR/")
-    , pkgload::load_all("~/GitHub/fireSenseUtils/")
-    # , pkgload::load_all("~/GitHub/climateData/")
+    # , pkgload::load_all("~/GitHub/SpaDES.tools/")
+    # ,  pkgload::load_all("~/GitHub/clusters/")
+    # , pkgload::load_all("~/GitHub/LandR/")
+    # , pkgload::load_all("~/GitHub/fireSenseUtils/")
+    # # , pkgload::load_all("~/GitHub/climateData/")
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
@@ -152,7 +154,7 @@ inSim <- SpaDES.project::setupProject(
     # fireSense = list(.plots = c("screen", "png")),
     fireSense_SpreadFit = list(
       DEoptimTests = c("adTest", "SNLL_FS")
-      , stopIfNoPreRunFit = FALSE
+      , stopIfNoPreRunFit = SpaDES.project::user("emcintir") %in% FALSE
       # mutuallyExclusiveCols = list(
       #   youngAge = c("nf", unique(makeSppEquiv(ecoprovinceNum = ecoprovince)$fuel))
       # ),
@@ -160,7 +162,7 @@ inSim <- SpaDES.project::setupProject(
       , iterDEoptim = 1000
       , rep = .rep # This means that all Cache of DEoptim will now be different name
       , iterStep = 1 # run this many iterations before running again; this should be
-      # set to itermax if Cache is not used; it is only useful for Cache
+                     # set to itermax if Cache is not used; it is only useful for Cache
       , cores = cores
       , NP = {if (identical(cores, unique(cores))) 100 else length(cores)} # number of cores of machines
       , trace = 1
@@ -175,7 +177,7 @@ inSim <- SpaDES.project::setupProject(
     fireSense_dataPrepFit = list(
       # missingLCCgroup = c("nf_dryland"), # must match fuel class land cover
       .useCache = c(".inputObjects",
-                    "init", # CAN'T cache this one because it is the trigger to "skip" a whole bunch if SpreadParams exist for the StudyArea
+                    # "init", # CAN'T cache this one because it is the trigger to "skip" a whole bunch if SpreadParams exist for the StudyArea
                     "dataPrepInit",
                     "prepEscapeFitData",
                     "prepSpreadFitData",

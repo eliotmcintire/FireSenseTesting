@@ -39,3 +39,4 @@ experiment*
 gtopo*
 tmux*
 fireSenseParams.rds
+*.lock
