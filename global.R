@@ -62,10 +62,10 @@ inSim <- SpaDES.project::setupProject(
   modules = unlist(.modules),
   packages = c(
     "PredictiveEcology/reproducible@recovery (>= 3.0.0.9004)"
-    , "PredictiveEcology/SpaDES.core@updatesPostHDDFail"
-    , "PredictiveEcology/SpaDES.project@cacheRequire"
-    , "PredictiveEcology/clusters@main"
-    , "PredictiveEcology/fireSenseUtils@development"
+    , "PredictiveEcology/SpaDES.core@updatesPostHDDFail (>= 3.0.3.9005)"
+    , "PredictiveEcology/SpaDES.project@cacheRequire (>= 0.1.4.9008)"
+    , "PredictiveEcology/clusters@main (>= 0.0.22)"
+    , "PredictiveEcology/fireSenseUtils@development (>= 0.0.11)"
     # "reproducible (>= 3.0.0)" 
     , "qs2", "filelock"
     , "archive"
