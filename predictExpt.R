@@ -28,7 +28,7 @@ if (exists(".modules"))
   expt <- cbind(expt, .modules = I(lapply(seq_len(NROW(expt)), function(x) .modules)))
 if (exists(".times"))
   expt <- cbind(expt, .times = I(lapply(seq_len(NROW(expt)), function(x) .times)))
-expt <- expt[order(expt[, 1], expt[, 2]),]
+# expt <- expt[order(expt[, 1], expt[, 2]),] # do all reps of each ELF first, then next ELF
 rownames(expt) <- 1:NROW(expt) # re-number each row
 
 
