@@ -2,7 +2,6 @@
 .Rproj.user-old
 cache
 inputs
-outputs/FRU-26
 .Rhistory
 .Rdata
 .RData
@@ -13,7 +12,6 @@ outputs/FRU-26
 .httr-oauth
 .DS_Store
 .quarto
-outputs/*
 scratch/*
 
 SpeciesPresentInCanadianForests.tif
@@ -34,11 +32,9 @@ FRU.zip
 logs/*
 outputs
 Rplots.pdf
-outputs/4.3
 experiment*
 gtopo*
 tmux*
 *arams.rds
 *.lock
 predict_queue.rds
-
