@@ -22,12 +22,13 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 # SET UP EXPERIMENT
 ####################
 
-.reps <- 1
+.reps <- 1:2
 expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, stringsAsFactors = FALSE)
 if (exists(".modules"))
   expt <- cbind(expt, .modules = I(lapply(seq_len(NROW(expt)), function(x) .modules)))
 if (exists(".times"))
   expt <- cbind(expt, .times = I(lapply(seq_len(NROW(expt)), function(x) .times)))
+expt <- expt[order(expt[, 1], expt[, 2]),]
 rownames(expt) <- 1:NROW(expt) # re-number each row
 
 
@@ -43,7 +44,7 @@ workers <- SpaDES.project::experimentTmux(
   n_workers           = 8,
   queue_path          = "predict_queue.rds",
   delay_before_source = 15,
-  workersToMonitor = NULL,
+  workersToMonitor = "localhost",
   ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
 )
 

@@ -38,5 +38,7 @@ outputs/4.3
 experiment*
 gtopo*
 tmux*
-fireSenseParams.rds
+*arams.rds
 *.lock
+predict_queue.rds
+
