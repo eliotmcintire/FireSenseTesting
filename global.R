@@ -3,7 +3,7 @@ repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 # getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.4.9008")) # only install/update if required
 getOrUpdatePkg(c("Require"), c("1.0.1.9013")) # only install/update if required
-# remotes::install_github("PredictiveEcology/SpaDES.project@cacheRequire")
+remotes::install_github("PredictiveEcology/SpaDES.project@cacheRequire")
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"

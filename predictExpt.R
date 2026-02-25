@@ -22,7 +22,7 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 # SET UP EXPERIMENT
 ####################
 
-.reps <- 1:2
+.reps <- 1:2 # how many reps do we want?
 expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, stringsAsFactors = FALSE)
 if (exists(".modules"))
   expt <- cbind(expt, .modules = I(lapply(seq_len(NROW(expt)), function(x) .modules)))
