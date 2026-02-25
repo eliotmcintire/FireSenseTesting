@@ -67,11 +67,12 @@ rownames(expt) <- 1:NROW(expt) # re-number each row
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 6,
+  n_workers           = 1,
   queue_path          = "experiment_queue_predict5.rds",
   delay_before_source = 120,
-  heartbeatFolder = file.path("outputs", runName, "figures", "hists"),
+  heartbeatFolder = quote(file.path("outputs", runName, "figures", "hists")),
   workersToMonitor = outs$cores,
+  # runNameLabel = quote(colnames(q)[1]), # just first column in the queue
   ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
 )
 
