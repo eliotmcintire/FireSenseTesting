@@ -124,8 +124,8 @@ inSim <- SpaDES.project::setupProject(
   sideEffects = list(
     terra::terraOptions(memfrac = 0)
     , terra::gdalCache(size = 2048)   # 2 GB
-    , pkgload::load_all("~/GitHub/reproducible/")
-    , pkgload::load_all("~/GitHub/SpaDES.core/")
+    # , pkgload::load_all("~/GitHub/reproducible/")
+    # , pkgload::load_all("~/GitHub/SpaDES.core/")
     # , pkgload::load_all("~/GitHub/SpaDES.tools/")
     # ,  pkgload::load_all("~/GitHub/clusters/")
     # , pkgload::load_all("~/GitHub/LandR/")
@@ -148,7 +148,7 @@ inSim <- SpaDES.project::setupProject(
       , sppEquivCol = "LandR" # will get a warning if this is not here
       , .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData")
       , minCoverThreshold = 0),
-    # fireSense_ELFs = list(.useCache = FALSE),
+    # fireSense_ELFs = list(queue_path = "experiment_queue_predict5.rds"),
     # canClimateData = list(.useCache = ".inputObjects"),  # init is slow to cache
     # fireSense = list(.plots = c("screen", "png")),
     fireSense_SpreadFit = list(

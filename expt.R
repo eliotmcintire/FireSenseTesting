@@ -17,6 +17,8 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 ####################
 
 # Get all ELFs
+queue_path <- "experiment_queue_predict5.rds"
+outs$params$fireSense_ELFs$queue_path <- queue_path
 .ELFinds <- fireSenseUtils::runELFs(outs, onlyFittedELFs = FALSE)
 
 ####################
@@ -67,12 +69,19 @@ rownames(expt) <- 1:NROW(expt) # re-number each row
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 1,
-  queue_path          = "experiment_queue_predict5.rds",
+  n_workers           = 7,
+  queue_path          = queue_path,
   delay_before_source = 120,
-  heartbeatFolder = quote(file.path("outputs", runName, "figures", "hists")),
+  folderWithDoneIndicator = quote({dd <- dir(file.path("outputs", runName), recursive = TRUE, full.names = TRUE)
+                                  ee <- grep(value = TRUE, pattern = "objFun.*png$", dd)
+                                  fi <- file.info(ee)
+                                  tail(fi[order(fi$mtime),], 1) |> rownames() |> dirname()}),
+  folderWithIterInFilename = quote({dd <- dir(file.path("outputs", runName), recursive = TRUE, full.names = TRUE)
+                                   ee <- grep(value = TRUE, pattern = "hists", dd)
+                                   fi <- file.info(ee)
+                                   tail(fi[order(fi$mtime),], 1) |> rownames() |> dirname()}),
   workersToMonitor = outs$cores,
-  # runNameLabel = quote(colnames(q)[1]), # just first column in the queue
+  runNameLabel = quote(colnames(q)[1]), # just first column in the queue
   ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
 )
 
