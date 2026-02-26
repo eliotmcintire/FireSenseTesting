@@ -37,4 +37,5 @@ gtopo*
 tmux*
 *arams.rds
 *.lock
-predict_queue.rds
+*.rds
+
