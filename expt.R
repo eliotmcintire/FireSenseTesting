@@ -38,7 +38,7 @@ failed <- c("5.1.1", "5.1.2", "5.1.3" # something in climate, missing in future 
             # , "5.4"# can't get past 1000000 in DEoptim
             , "3.1.1" # 
             
-            , "5.2.2", "5.4" # Error in purrr::pmap(.l = list(igOrEsc = whichProcessesToFit), sim = sim,  :
+            , "5.2.2", "5.4", "11.2", "11.1"  # Error in purrr::pmap(.l = list(igOrEsc = whichProcessesToFit), sim = sim,  :
             #ℹ In index: 2.
             #ℹ With name: fireSense_EscapeFitted.
             #Caused by error in `roc.default()`:
