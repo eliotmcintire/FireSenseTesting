@@ -13,23 +13,23 @@ if (Sys.info()["user"] == "ieddy"){
 dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
 
-# pkgload::load_all("~/GitHub/SpaDES.project/");
 inSim <- SpaDES.project::setupProject(
   ELFind = gsub("ELF", "", .ELFind),
   .runName = ELFind,
   .rep = .rep,
-  
   .strategy = .strategy,
   .cc = .cc,
   cores = .cores,
   FRU = FRU,
-  .SSP = 370,
-  .GCM = "CNRM-ESM2-1",
+  .SSP = .SSP,
+  .GCM = .GCM,
   defaultDots = list(.strategy = 1L, # used to be 3L; but seems to get caught in local minima
                      .cc = 0.5,
                      .objfunFireReps = 25L,
                      .rep = 1,
                      .ELFind = "4.3",
+                     .SSP = 370,
+                     .GCM = "CNRM-ESM2-1",
                      .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
                                 , "mpb", "sbw", "mega"
