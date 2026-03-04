@@ -23,7 +23,7 @@ inSim <- SpaDES.project::setupProject(
   .cc = .cc,
   cores = .cores,
   FRU = FRU,
-  .climateSSP = 370,
+  .SSP = 370,
   .GCM = "CNRM-ESM2-1",
   defaultDots = list(.strategy = 1L, # used to be 3L; but seems to get caught in local minima
                      .cc = 0.5,
