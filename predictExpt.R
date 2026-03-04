@@ -23,7 +23,9 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 ####################
 
 .reps <- 1:2 # how many reps do we want?
-expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, stringsAsFactors = FALSE)
+.GCM <- "CNRM-ESM2-1"
+.climateSSP <- 370
+expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, .GCM, .climateSSP, stringsAsFactors = FALSE)
 if (exists(".modules"))
   expt <- cbind(expt, .modules = I(lapply(seq_len(NROW(expt)), function(x) .modules)))
 if (exists(".times"))

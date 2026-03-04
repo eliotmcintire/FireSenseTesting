@@ -3,10 +3,13 @@ repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 # getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.4.9008")) # only install/update if required
 getOrUpdatePkg(c("Require"), c("1.0.1.9013")) # only install/update if required
-remotes::install_github("PredictiveEcology/SpaDES.project@cacheRequire", upgrade = FALSE)
+# remotes::install_github("PredictiveEcology/SpaDES.project@cacheRequire", upgrade = FALSE)
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
+if (Sys.info()["user"] == "ieddy"){
+  projectDir <- "~/git/FireSenseTesting"
+}
 dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
 
@@ -15,10 +18,13 @@ inSim <- SpaDES.project::setupProject(
   ELFind = gsub("ELF", "", .ELFind),
   .runName = ELFind,
   .rep = .rep,
+  
   .strategy = .strategy,
   .cc = .cc,
   cores = .cores,
   FRU = FRU,
+  .climateSSP = 370,
+  .GCM = "CNRM-ESM2-1",
   defaultDots = list(.strategy = 1L, # used to be 3L; but seems to get caught in local minima
                      .cc = 0.5,
                      .objfunFireReps = 25L,
@@ -34,7 +40,7 @@ inSim <- SpaDES.project::setupProject(
                      FRU = 25,
                      .times = list(start = 2020, end = 2100),
                      .modules = c("PredictiveEcology/canClimateData@improveCache1"
-                                  
+                                  ,"PredictiveEcology/climateYear@main"
                                   , "PredictiveEcology/fireSense_ELFs@main"
                                   
                                   , "PredictiveEcology/fireSense_dataPrepFit@development"
@@ -52,12 +58,15 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/Biomass_speciesData@development"
                                   , "PredictiveEcology/Biomass_regeneration@development"
                                   , "PredictiveEcology/Biomass_core@development"
+                                  # summary modules 
+                                  , "FOR-CAST/NRV_summary@development"
+                                  , "PredictiveEcology/burnSummaries@development"
                                   
                      )),
   .objfunFireReps = .objfunFireReps,
   # useGit = "eliotmcintire",
   Restart = TRUE,
-  paths = list(outputPath = file.path("outputs", ELFind, paste0("rep", .rep))),
+  paths = list(outputPath = file.path("outputs", ELFind, .GCM, .SSP, paste0("rep", .rep))),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
@@ -149,7 +158,11 @@ inSim <- SpaDES.project::setupProject(
       , .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData")
       , minCoverThreshold = 0),
     # fireSense_ELFs = list(queue_path = "experiment_queue_predict5.rds"),
-    # canClimateData = list(.useCache = ".inputObjects"),  # init is slow to cache
+    canClimateData = list(
+      climateGCM = .GCM
+      ,climateSSP = .SSP
+      # ,.useCache = ".inputObjects" # init is slow to cache
+    ),  
     # fireSense = list(.plots = c("screen", "png")),
     fireSense_SpreadFit = list(
       DEoptimTests = c("adTest", "SNLL_FS")
@@ -186,8 +199,32 @@ inSim <- SpaDES.project::setupProject(
     fireSense_IgnitionFit = list(
       rescalers = c("CMDsm" = 1000),
       .useCache = c(".inputObjects", "init", "prepIgnitionFitData", "run")
+    ),
+    burnSummaries = list(mode=  "single", reps = .rep),
+    NRV_summary = list(mode = "single", reps = .rep)
+  ), 
+  outputs =  {
+    outputs <- rbind(
+      data.table(objectName = "pixelGroupMap", saveTime = c(seq(times$start, times$end, 10)), 
+                 exts = ".tif", fun = "writeRaster", package = "terra"), 
+      data.table(objectName = "cohortData", saveTime = c(seq(times$start, times$end, 10))), 
+      data.table(objectName = "speciesEcoregion", saveTime = times$end), 
+      data.table(objectName = "ecoregion", saveTime = times$end), 
+      data.table(objectName = "species", saveTime = times$end),
+      data.table(objectName = "ecoregionMap", saveTime = times$end, exts = ".tif", 
+                 fun = "writeRaster", package = "terra"),
+      data.table(objectName =  "standAgeMap", saveTime = times$end, 
+                 exts = ".tif", fun = "writeRaster", package = "terra"),
+      data.table(objectName =  "nonForest_timeSinceDisturbance", saveTime = times$end, 
+                 exts = ".tif", fun = "writeRaster", package = "terra"),
+      
+      fill = TRUE
     )
-  )
+    outputs[is.na(fun), c("exts", "fun", "package") := .("rds", "saveRDS", "base")]
+    outputs <- as.data.frame(outputs)
+    outputs$arguments <- list(overwrite = TRUE)
+    return(outputs)
+  }
 )
 message(paste0(inSim$.runName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
                " .objfunFireReps:", inSim$.objfunFireReps))
@@ -225,4 +262,27 @@ if (FALSE) {
   devtools::install("~/GitHub/climateData/", upgrade = FALSE);
 }
 
-simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
+# simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
+
+fsim <- simFile(
+  name = .runName, 
+  path = outputPath(simOut),   ## should be based on <run_name>
+  time = out$times$end,
+  ext = "rds"             ## do not use qs!
+)
+saveSimList(
+  sim = mySimOut,
+  filename = fsim,
+  ## avoid costly zip/unzip operations:
+  inputs = FALSE,
+  outputs = FALSE,
+  cache = FALSE,
+  files = FALSE)
+  
+#compress outputs, upload 
+resultsDir <- outputPath(simOut)
+tarball <- paste0(resultsDir, ".tar.gz")
+archive::archive_write_dir(tarball, resultsDir, format = "tar", filter = "gzip")
+gFolder <- googledrive::as_id("https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link")
+googledrive::drive_upload(tarball, path = gFolder,
+                          name = tarball, overwrite = TRUE)
