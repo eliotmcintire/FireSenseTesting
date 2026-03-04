@@ -66,7 +66,7 @@ inSim <- SpaDES.project::setupProject(
   .objfunFireReps = .objfunFireReps,
   # useGit = "eliotmcintire",
   Restart = TRUE,
-  paths = list(outputPath = file.path("outputs", ELFind, .GCM, .SSP, paste0("rep", .rep))),
+  paths = list(outputPath = file.path("outputs", ELFind, paste0(.GCM, "_ssp", .SSP), paste0("rep", .rep))),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
@@ -85,10 +85,11 @@ inSim <- SpaDES.project::setupProject(
     , "rvest" # needed for prepIgnitionFitData
   ),
   require = "reproducible",
-  options = list(# gargle_oauth_email = "predictiveecology@gmail.com",
+  options = list(
+    # gargle_oauth_email = "predictiveecology@gmail.com",
     # gargle_oauth_cache = ".secret",
     # gargle_oauth_client_type = "web", # for command line
-    "~/googledriveAuthentication.R" # has the above lines; each user can create their own file
+    "~/googledriveAuthentication.R" # has the above lines in a list; each user can create their own file
     , repos = unique(c(repos[[1]]
                        # , 'https://dmlc.r-universe.dev'
                        , getOption("repos")))
