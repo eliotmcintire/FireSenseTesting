@@ -130,6 +130,9 @@ inSim <- SpaDES.project::setupProject(
     #   print(.robustDigest(sim$rasterToMatch_biomassParam));
     #   print(.robustDigest(sim[["standAgeMap"]]))
     # })
+    , warnPartialMatchArgs = TRUE #fireSense has objects that will be fooled by partial matching (rstLCC, rstLCCs)
+    , warnPartialMatchAttr = TRUE
+    , warnPartialMatchDollar = TRUE
     , spades.debugModule = NULL),
   sideEffects = list(
     terra::terraOptions(memfrac = 0)
@@ -263,27 +266,27 @@ if (FALSE) {
   devtools::install("~/GitHub/climateData/", upgrade = FALSE);
 }
 
-# simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
+simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
 
-fsim <- simFile(
-  name = .runName, 
-  path = outputPath(simOut),   ## should be based on <run_name>
-  time = out$times$end,
-  ext = "rds"             ## do not use qs!
-)
-saveSimList(
-  sim = mySimOut,
-  filename = fsim,
-  ## avoid costly zip/unzip operations:
-  inputs = FALSE,
-  outputs = FALSE,
-  cache = FALSE,
-  files = FALSE)
-  
-#compress outputs, upload 
-resultsDir <- outputPath(simOut)
-tarball <- paste0(resultsDir, ".tar.gz")
-archive::archive_write_dir(tarball, resultsDir, format = "tar", filter = "gzip")
-gFolder <- googledrive::as_id("https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link")
-googledrive::drive_upload(tarball, path = gFolder,
-                          name = tarball, overwrite = TRUE)
+# fsim <- SpaDES.core::simFile(
+#   name = .runName, 
+#   path = outputPath(simOut),   ## should be based on <run_name>
+#   time = out$times$end,
+#   ext = "rds"             ## do not use qs!
+# )
+# saveSimList(
+#   sim = mySimOut,
+#   filename = fsim,
+#   ## avoid costly zip/unzip operations:
+#   inputs = FALSE,
+#   outputs = FALSE,
+#   cache = FALSE,
+#   files = FALSE)
+#   
+# #compress outputs, upload 
+# resultsDir <- outputPath(simOut)
+# tarball <- paste0(resultsDir, ".tar.gz")
+# archive::archive_write_dir(tarball, resultsDir, format = "tar", filter = "gzip")
+# gFolder <- googledrive::as_id("https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link")
+# googledrive::drive_upload(tarball, path = gFolder,
+#                           name = tarball, overwrite = TRUE)
