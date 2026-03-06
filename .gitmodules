@@ -40,3 +40,12 @@
 [submodule "modules/fireSense_ELFs"]
 	path = modules/fireSense_ELFs
 	url = https://github.com/PredictiveEcology/fireSense_ELFs
+[submodule "modules/climateYear"]
+	path = modules/climateYear
+	url = git@github.com:PredictiveEcology/climateYear
+[submodule "modules/burnSummaries"]
+	path = modules/burnSummaries
+	url = git@github.com:PredictiveEcology/burnSummaries
+[submodule "modules/NRV_summary"]
+	path = modules/NRV_summary
+	url = git@github.com:PredictiveEcology/NRV_summary
