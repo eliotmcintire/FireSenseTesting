@@ -21,6 +21,7 @@ inSim <- SpaDES.project::setupProject(
   .cc = .cc,
   cores = .cores,
   FRU = FRU,
+  .rvPeriod = .rvPeriod,
   .SSP = .SSP,
   .GCM = .GCM,
   defaultDots = list(.strategy = 1L, # used to be 3L; but seems to get caught in local minima
@@ -30,6 +31,7 @@ inSim <- SpaDES.project::setupProject(
                      .ELFind = "4.3",
                      .SSP = 370,
                      .GCM = "CNRM-ESM2-1",
+                     .rvPeriod = c(1990, 2020), # length 2 numeric
                      .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
                                 , "mpb", "sbw", "mega"
@@ -66,7 +68,10 @@ inSim <- SpaDES.project::setupProject(
   .objfunFireReps = .objfunFireReps,
   # useGit = "eliotmcintire",
   Restart = TRUE,
-  paths = list(outputPath = file.path("outputs", ELFind, paste0(.GCM, "_ssp", .SSP), paste0("rep", .rep))),
+  paths = list(outputPath = file.path("outputs", ELFind, 
+                                      paste(.rvPeriod, collapse = "-"), 
+                                      paste0(.GCM, "_ssp", .SSP), 
+                                      paste0("rep", .rep))),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
