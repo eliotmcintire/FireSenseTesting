@@ -207,6 +207,7 @@ inSim <- SpaDES.project::setupProject(
     burnSummaries = list(mode=  "single", reps = .rep),
     NRV_summary = list(mode = "single", reps = .rep)
   ), 
+  objectSynonyms = list(c("flammableRTM", "flammableMap")),
   outputs =  {
     outputs <- rbind(
       data.table(objectName = "pixelGroupMap", saveTime = c(seq(times$start, times$end, 10)), 
