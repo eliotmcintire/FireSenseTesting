@@ -84,10 +84,10 @@ inSim <- SpaDES.project::setupProject(
     , "archive"
     , "googlesheets4"
     , "PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9000)"
-    , "SpaDES.core (>= 3.0.0)" # (HEAD)", # needed for the functions in
     , "terra" # "leaflet", "tidyterra",
     , "plyr"#, "scfmutils",
     , "rvest" # needed for prepIgnitionFitData
+    , "extraPackages.R" # file not used currently; should just skip it
   ),
   require = "reproducible",
   options = list(
