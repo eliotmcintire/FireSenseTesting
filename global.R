@@ -108,7 +108,6 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9"
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
-    # Eliot during development
     , reproducible.savePreDigest = FALSE
     , fireSenseUtils.runTests = FALSE
     , reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
@@ -128,7 +127,6 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.gdalwarp = FALSE
     , Require.cloneFrom = Sys.getenv("R_LIBS_USER")
     , spades.moduleCodeChecks = FALSE
-    # , spades.memoryUseInterval = 2
     , spades.allowInitDuringSimInit = TRUE
     , spades.evalPostEvent = NULL
     # quote({# print(.robustDigest(sim$spreadFirePolys));
@@ -142,13 +140,7 @@ inSim <- SpaDES.project::setupProject(
   sideEffects = list(
     terra::terraOptions(memfrac = 0)
     , terra::gdalCache(size = 2048)   # 2 GB
-    # , pkgload::load_all("~/GitHub/reproducible/")
-    # , pkgload::load_all("~/GitHub/SpaDES.core/")
-    # , pkgload::load_all("~/GitHub/SpaDES.tools/")
-    # ,  pkgload::load_all("~/GitHub/clusters/")
-    # , pkgload::load_all("~/GitHub/LandR/")
-    # , pkgload::load_all("~/GitHub/fireSenseUtils/")
-    # # , pkgload::load_all("~/GitHub/climateData/")
+    , "~/OtherExtras.R" # Eliot has some dev things he does incl pkgload::
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
@@ -212,7 +204,7 @@ inSim <- SpaDES.project::setupProject(
     burnSummaries = list(mode=  "single", reps = .rep),
     NRV_summary = list(mode = "single", reps = .rep)
   ), 
-  objectSynonyms = list(c("flammableRTM", "flammableMap")),
+  # objectSynonyms = list(c("flammableRTM", "flammableMap")),
   outputs =  {
     outputs <- rbind(
       data.table(objectName = "pixelGroupMap", saveTime = c(seq(times$start, times$end, 10)), 
@@ -263,13 +255,6 @@ if (FALSE) {
   inSim2 <- SpaDES.core::loadSimList(fn)
   outSims <- restartSpades(inSim2)
   outSims <- restartSpades()
-  devtools::install("~/GitHub/SpaDES.project/", upgrade = FALSE);
-  devtools::install("~/GitHub/reproducible/", upgrade = FALSE);
-  devtools::install("~/GitHub/SpaDES.core/", upgrade = FALSE);
-  devtools::install("~/GitHub/clusters/", upgrade = FALSE);
-  devtools::install("~/GitHub/LandR/", upgrade = FALSE);
-  devtools::install("~/GitHub/fireSenseUtils/", upgrade = FALSE);
-  devtools::install("~/GitHub/climateData/", upgrade = FALSE);
 }
 
 simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
