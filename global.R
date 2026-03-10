@@ -87,7 +87,7 @@ inSim <- SpaDES.project::setupProject(
     , "terra" # "leaflet", "tidyterra",
     , "plyr"#, "scfmutils",
     , "rvest" # needed for prepIgnitionFitData
-    , "extraPackages.R" # file not used currently; should just skip it
+    # , "extraPackages.R" # file not used currently; should just skip it
   ),
   require = "reproducible",
   options = list(
