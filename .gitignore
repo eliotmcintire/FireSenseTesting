@@ -39,3 +39,4 @@ tmux*
 *.lock
 *.rds
 
+.vscode/settings.json
