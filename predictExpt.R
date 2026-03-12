@@ -1,6 +1,6 @@
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
-source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0")) # only install/update if required
+# source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
+# getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0")) # only install/update if required
 # remotes::install_github("PredictiveEcology/SpaDES.project@cacheRequire")
 
 
@@ -43,7 +43,7 @@ rownames(expt) <- 1:NROW(expt) # re-number each row
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 8,
+  n_workers           = 20,
   queue_path          = "predict_queue.rds",
   delay_before_source = 15,
   workersToMonitor = "localhost",
