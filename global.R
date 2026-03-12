@@ -79,7 +79,7 @@ inSim <- SpaDES.project::setupProject(
     , "PredictiveEcology/SpaDES.core@updatesPostHDDFail (>= 3.0.3.9005)"
     , "PredictiveEcology/SpaDES.project@cacheRequire (>= 0.1.4.9010)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
-    , "PredictiveEcology/fireSenseUtils@development (>= 0.0.11)"
+    # , "PredictiveEcology/fireSenseUtils@development (>= 0.1.0)"
     , "qs2", "filelock"
     , "archive"
     , "googlesheets4"
@@ -257,7 +257,9 @@ if (FALSE) {
   outSims <- restartSpades()
 }
 
-simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
+suppressPackageStartupMessages(
+  simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
+)
 
 # fsim <- SpaDES.core::simFile(
 #   name = .runName, 
