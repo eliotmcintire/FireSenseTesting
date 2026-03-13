@@ -43,10 +43,22 @@ rownames(expt) <- 1:NROW(expt) # re-number each row
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 20,
+  n_workers           = 10,
   queue_path          = "predict_queue.rds",
   delay_before_source = 15,
   workersToMonitor = "localhost",
+  endTime = outs$times$end,
+  outputPath = outs$paths$outputPath,
+  doneAndFinishedTimeIndicator = quote({
+    dirWithUpdatedElf <- gsub("4.3", strsplit(runName, "-")[[1]][[1]], outputPath)
+    dirWithUpdatedElf <- gsub("rep1", paste0("rep", strsplit(runName, "-")[[1]][[2]]), dirWithUpdatedElf)
+    dd <- dir(dirWithUpdatedElf, recursive = TRUE, full.names = TRUE)
+    ee <- grep(value = TRUE, pattern = "burnMap.*tif$", dd)
+    done <- grepl(paste0("year", endTime), ee)
+    finishedFile <- ee[done]
+    finished_at <- if (length(finishedFile) > 0) as.character(file.info(ee[done])[, "mtime"]) else NA
+    done <- any(done)
+  }),
   ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
 )
 
