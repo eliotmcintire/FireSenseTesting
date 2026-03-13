@@ -72,7 +72,7 @@ workers <- SpaDES.project::experimentTmux(
   n_workers           = 7,
   queue_path          = queue_path,
   delay_before_source = 120,
-  folderWithDoneIndicator = quote({dd <- dir(file.path("outputs", runName), recursive = TRUE, full.names = TRUE)
+  doneAndFinishedTimeIndicator = quote({dd <- dir(file.path("outputs", runName), recursive = TRUE, full.names = TRUE)
                                   ee <- grep(value = TRUE, pattern = "objFun.*png$", dd)
                                   fi <- file.info(ee)
                                   tail(fi[order(fi$mtime),], 1) |> rownames() |> dirname()}),
