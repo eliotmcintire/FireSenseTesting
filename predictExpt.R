@@ -47,18 +47,37 @@ workers <- SpaDES.project::experimentTmux(
   queue_path          = "predict_queue.rds",
   delay_before_source = 15,
   workersToMonitor = "localhost",
-  endTime = outs$times$end,
+  times = outs$times,
   outputPath = outs$paths$outputPath,
-  doneAndFinishedTimeIndicator = quote({
+  statusCalculate = # statusCalculator(type = "fireSense")
+    quote({
     dirWithUpdatedElf <- gsub("4.3", strsplit(runName, "-")[[1]][[1]], outputPath)
     dirWithUpdatedElf <- gsub("rep1", paste0("rep", strsplit(runName, "-")[[1]][[2]]), dirWithUpdatedElf)
     dd <- dir(dirWithUpdatedElf, recursive = TRUE, full.names = TRUE)
     ee <- grep(value = TRUE, pattern = "burnMap.*tif$", dd)
-    done <- grepl(paste0("year", endTime), ee)
+    done <- grepl(paste0("year", times$end), ee)
+    if (all(done %in% FALSE)) { # running
+      runningFile <- dir(activeRunningPathForTmux(queue_path = queue_path), pattern = runName, full.names = TRUE)
+      ff <- grep(value = TRUE, pattern = "Annual Fire Maps", dd)
+      fi2 <- file.info(ff)
+      
+      if (length(runningFile)) {
+        fi <- file.info(runningFile)
+        started_at <- format(fi[, "mtime"])
+        mostRecentFile <- tail(ff[fi2[, "mtime"] > fi[, "mtime"]], 1)
+        heartbeat_at <- if (length(mostRecentFile) > 0) format(file.info(mostRecentFile)[, "mtime"]) else NA
+        heartbeat_iter <- if (is.na(heartbeat_at)) times$start else gsub(".+Maps ([[:digit:]]{4,4}).+", "\\1", mostRecentFile)
+      }
+      
+    }
     finishedFile <- ee[done]
-    finished_at <- if (length(finishedFile) > 0) as.character(file.info(ee[done])[, "mtime"]) else NA
-    done <- any(done)
-  }),
+    if (length(finishedFile)) {
+      iterationsTotal <- gsub(".+year([[:digit:]]{4,4}).+", "\\1", finishedFile)
+      finished_at <- if (length(finishedFile) > 0) format(file.info(finishedFile)[, "mtime"]) else NA
+      done <- any(done)
+    }
+  })
+  ,
   ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
 )
 
