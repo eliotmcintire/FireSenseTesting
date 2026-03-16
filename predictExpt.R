@@ -17,15 +17,20 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 ####################
 
 .ELFinds <- fireSenseUtils::runELFs(outs)
-
+.ELFinds <- c("6.2.2", "6.3.1", "6.6.1", "6.5", "6.6.2", "9.1.1")
+.ELFinds <- paste0("ELF", .ELFinds)
 ####################
 # SET UP EXPERIMENT
 ####################
 
 .reps <- 1:2 # how many reps do we want?
-.GCM <- "CNRM-ESM2-1"
+.GCM <- c("CNRM-ESM2-1", "NRV")
+# .GCM <- "NRV" #for test
 .SSP <- 370
-expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, .GCM, .SSP, stringsAsFactors = FALSE)
+.samplingRange <- c(2100)
+
+expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, .GCM = .GCM, .SSP = .SSP, 
+                    .samplingRange = .samplingRange, stringsAsFactors = FALSE)
 if (exists(".modules"))
   expt <- cbind(expt, .modules = I(lapply(seq_len(NROW(expt)), function(x) .modules)))
 if (exists(".times"))
@@ -33,6 +38,10 @@ if (exists(".times"))
 # expt <- expt[order(expt[, 1], expt[, 2]),] # do all reps of each ELF first, then next ELF
 rownames(expt) <- 1:NROW(expt) # re-number each row
 
+expt[expt$.GCM == "NRV",]$.samplingRange <- c(2020)
+expt[expt$.GCM == "NRV",]$.SSP <- 370 #in case more SSP added, make these non-unique so below works
+#make unique in case we add more sampling ranges
+expt <- unique(expt)
 
 ####################
 # Run the experiment -- this must be run at a command prompt, inside tmux

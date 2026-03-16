@@ -24,6 +24,7 @@ inSim <- SpaDES.project::setupProject(
   .rvPeriod = .rvPeriod,
   .SSP = .SSP,
   .GCM = .GCM,
+  .samplingRange = 2100,
   defaultDots = list(.strategy = 1L, # used to be 3L; but seems to get caught in local minima
                      .cc = 0.5,
                      .objfunFireReps = 25L,
@@ -31,6 +32,7 @@ inSim <- SpaDES.project::setupProject(
                      .ELFind = "4.3",
                      .SSP = 370,
                      .GCM = "CNRM-ESM2-1",
+                     .samplingRange = 2100,
                      .rvPeriod = c(1990, 2020), # length 2 numeric
                      .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
@@ -40,7 +42,7 @@ inSim <- SpaDES.project::setupProject(
                                 , "pinus"
                      ),
                      FRU = 25,
-                     .times = list(start = 2020, end = 2100),
+                     .times = list(start = 2020, end = 3020),
                      .modules = c("PredictiveEcology/canClimateData@improveCache1"
                                   ,"PredictiveEcology/climateYear@main"
                                   , "PredictiveEcology/fireSense_ELFs@main"
@@ -163,7 +165,11 @@ inSim <- SpaDES.project::setupProject(
       climateGCM = .GCM
       ,climateSSP = .SSP
       # ,.useCache = ".inputObjects" # init is slow to cache
-    ),  
+    ),
+    climateYear = list(
+      samplingRange = c(c(.samplingRange-30):.samplingRange),
+      samplingStartYear = max(.samplingRange) +1
+    ),
     # fireSense = list(.plots = c("screen", "png")),
     fireSense_SpreadFit = list(
       DEoptimTests = c("adTest", "SNLL_FS")
@@ -207,9 +213,9 @@ inSim <- SpaDES.project::setupProject(
   # objectSynonyms = list(c("flammableRTM", "flammableMap")),
   outputs =  {
     outputs <- rbind(
-      data.table(objectName = "pixelGroupMap", saveTime = c(seq(times$start, times$end, 10)), 
+      data.table(objectName = "pixelGroupMap", saveTime = c(seq(times$start, times$end, 50)), 
                  exts = ".tif", fun = "writeRaster", package = "terra"), 
-      data.table(objectName = "cohortData", saveTime = c(seq(times$start, times$end, 10))), 
+      data.table(objectName = "cohortData", saveTime = c(seq(times$start, times$end, 50))), 
       data.table(objectName = "speciesEcoregion", saveTime = times$end), 
       data.table(objectName = "ecoregion", saveTime = times$end), 
       data.table(objectName = "species", saveTime = times$end),
@@ -231,7 +237,20 @@ inSim <- SpaDES.project::setupProject(
 message(paste0(inSim$.runName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
                " .objfunFireReps:", inSim$.objfunFireReps))
 
-inSim$climateVariables <- climateData::climateLayers(inSim$.climVars, fun = quote(calcAsIs))
+if (".GCM" == "NRV") {
+  inSim$paths$outputPath <- file.path("outputs", ELFind, 
+                                      paste(.rvPeriod, collapse = "-"), 
+                                      paste0(.GCM), 
+                                      paste0("rep", .rep))
+  #change params so canClimateData doesn't error
+  inSim$params$canClimateData$climateGCM <- 'CNRM-ESM2-1' #avoids a stopifnot
+  
+}
+#don't make this object if unneeded - mainly for safety
+getProjected <- ifelse(.GCM == "NRV", FALSE, TRUE)
+inSim$climateVariables <- climateData::climateLayers(inSim$.climVars, fun = quote(calcAsIs),
+                                                     historical = TRUE,
+                                                     projected = getProjected)
 inSimCopy <- reproducible::Copy(inSim)
 
 
