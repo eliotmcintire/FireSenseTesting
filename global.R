@@ -237,8 +237,8 @@ inSim <- SpaDES.project::setupProject(
 message(paste0(inSim$.runName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
                " .objfunFireReps:", inSim$.objfunFireReps))
 
-if (".GCM" == "NRV") {
-  inSim$paths$outputPath <- file.path("outputs", ELFind, 
+if (.GCM == "NRV") {
+  inSim$paths$outputPath <- file.path("outputs", .ELFind, 
                                       paste(.rvPeriod, collapse = "-"), 
                                       paste0(.GCM), 
                                       paste0("rep", .rep))
