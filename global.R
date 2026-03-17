@@ -237,17 +237,16 @@ inSim <- SpaDES.project::setupProject(
 message(paste0(inSim$.runName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
                " .objfunFireReps:", inSim$.objfunFireReps))
 
-if (.GCM == "NRV") {
+if (inSim$.GCM == "NRV") {
   inSim$paths$outputPath <- file.path("outputs", inSim$ELFind,
                                       paste(inSim$.rvPeriod, collapse = "-"),
                                       paste0(inSim$.GCM),
                                       paste0("rep", inSim$.rep))
   #change params so canClimateData doesn't error
   inSim$params$canClimateData$climateGCM <- 'CNRM-ESM2-1' #avoids a stopifnot
-  
 }
 #don't make this object if unneeded - mainly for safety
-getProjected <- ifelse(.GCM == "NRV", FALSE, TRUE)
+getProjected <- ifelse(inSim$.GCM == "NRV", FALSE, TRUE)
 inSim$climateVariables <- climateData::climateLayers(inSim$.climVars, fun = quote(calcAsIs),
                                                      historical = TRUE,
                                                      projected = getProjected)
