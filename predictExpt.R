@@ -1,7 +1,8 @@
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 # source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 # getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0")) # only install/update if required
-# remotes::install_github("PredictiveEcology/SpaDES.project@cacheRequire")
+remotes::install_github("PredictiveEcology/SpaDES.project", upgrade = FALSE)
+# remotes::install_github("PredictiveEcology/SpaDES.projec")
 
 
 suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there is a failure below; and this is rerun
