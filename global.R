@@ -79,7 +79,7 @@ inSim <- SpaDES.project::setupProject(
   packages = c(
     "PredictiveEcology/reproducible@recovery (>= 3.0.0.9004)"
     , "PredictiveEcology/SpaDES.core@updatesPostHDDFail (>= 3.0.4.9002)"
-    , "PredictiveEcology/SpaDES.project@cacheRequire (>= 0.1.4.9010)"
+    , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
     # , "PredictiveEcology/fireSenseUtils@development (>= 0.1.0)"
     , "qs2", "filelock"
@@ -160,6 +160,11 @@ inSim <- SpaDES.project::setupProject(
       , sppEquivCol = "LandR" # will get a warning if this is not here
       , .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData")
       , minCoverThreshold = 0),
+    climateYear = list(
+      samplingEndYear = max(.rvPeriod),
+      samplingRange = seq(.rvPeriod[[1]], .rvPeriod[[2]]),
+      samplingStartYear = min(.rvPeriod)
+    ),
     # fireSense_ELFs = list(queue_path = "experiment_queue_predict5.rds"),
     canClimateData = list(
       climateGCM = .GCM

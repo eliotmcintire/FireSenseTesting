@@ -24,24 +24,40 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 # SET UP EXPERIMENT
 ####################
 
-.reps <- 1:2 # how many reps do we want?
-.GCM <- c("CNRM-ESM2-1", "NRV")
-# .GCM <- "NRV" #for test
-.SSP <- 370
-.samplingRange <- c(2100)
+if (TRUE) { # This is Ian/Jonathan's stuff
+  .reps <- 1:2 # how many reps do we want?
+  .GCM <- c("CNRM-ESM2-1", "NRV")
+  # .GCM <- "NRV" #for test
+  .SSP <- 370
+  .samplingRange <- c(2100)
+  
+  expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, .GCM = .GCM, .SSP = .SSP, 
+                      .samplingRange = .samplingRange, stringsAsFactors = FALSE)
+  if (exists(".modules"))
+    expt <- cbind(expt, .modules = I(lapply(seq_len(NROW(expt)), function(x) .modules)))
+  if (exists(".times"))
+    expt <- cbind(expt, .times = I(lapply(seq_len(NROW(expt)), function(x) .times)))
+  # expt <- expt[order(expt[, 1], expt[, 2]),] # do all reps of each ELF first, then next ELF
+  rownames(expt) <- 1:NROW(expt) # re-number each row
+  
+  expt[expt$.GCM == "NRV",]$.samplingRange <- c(2020)
+  expt[expt$.GCM == "NRV",]$.SSP <- 370 #in case more SSP added, make these non-unique so below works
+  #make unique in case we add more sampling ranges
+  
+} else { # This is Eliot's stuff
+  .reps <- 1:5 # how many reps do we want?
+  .GCM <- "CNRM-ESM2-1"
+  .SSP <- 370
+  .times <- list(start = 2020, end = 2020 + 1000)
+  firstElfs <- "6.|9."
+  .ELFinds <- c(grep(firstElfs, .ELFinds, value = TRUE), grep(firstElfs, .ELFinds, value = TRUE, invert = TRUE))
+  expt <- expand.grid(.rep = .reps, .ELFind = .ELFinds, .GCM, .SSP, stringsAsFactors = FALSE)
+  # if (exists(".modules"))
+  #   expt <- cbind(expt, .modules = I(lapply(seq_len(NROW(expt)), function(x) .modules)))
+  # if (exists(".times"))
+  #   expt <- cbind(expt, .times = I(lapply(seq_len(NROW(expt)), function(x) .times)))
+}
 
-expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, .GCM = .GCM, .SSP = .SSP, 
-                    .samplingRange = .samplingRange, stringsAsFactors = FALSE)
-if (exists(".modules"))
-  expt <- cbind(expt, .modules = I(lapply(seq_len(NROW(expt)), function(x) .modules)))
-if (exists(".times"))
-  expt <- cbind(expt, .times = I(lapply(seq_len(NROW(expt)), function(x) .times)))
-# expt <- expt[order(expt[, 1], expt[, 2]),] # do all reps of each ELF first, then next ELF
-rownames(expt) <- 1:NROW(expt) # re-number each row
-
-expt[expt$.GCM == "NRV",]$.samplingRange <- c(2020)
-expt[expt$.GCM == "NRV",]$.SSP <- 370 #in case more SSP added, make these non-unique so below works
-#make unique in case we add more sampling ranges
 expt <- unique(expt)
 
 ####################
@@ -53,11 +69,12 @@ expt <- unique(expt)
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 10,
-  queue_path          = "predict_queue.rds",
+  n_workers           = 5,
+  queue_path          = "longRuns.rds",
   delay_before_source = 15,
   workersToMonitor = "localhost",
   times = outs$times,
+  on_interrupt = "fail",
   outputPath = outs$paths$outputPath,
   statusCalculate = # statusCalculator(type = "fireSense")
     quote({
