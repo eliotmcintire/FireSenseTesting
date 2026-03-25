@@ -157,7 +157,7 @@ inSim <- SpaDES.project::setupProject(
       spreadFitFilename = "fireSenseParams_2026_02.rds"
       # dataYear = 2011,
       , .studyAreaName = ELFind
-      , .runName = runName, 
+      , .runName = runName
       , .plotInterval = saveAndPlotInterval
       , .plots = c("png")
       , sppEquivCol = "LandR" # will get a warning if this is not here
