@@ -65,7 +65,7 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/Biomass_summary@main"
                      )),
   .objfunFireReps = .objfunFireReps,
-  # useGit = "eliotmcintire",
+  useGit = "eliotmcintire",
   Restart = TRUE,
   paths = list(outputPath = file.path("outputs", .ELFind, 
                                       paste(range(.samplingRange), collapse = "-"), 
