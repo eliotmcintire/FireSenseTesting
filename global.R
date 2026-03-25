@@ -15,7 +15,6 @@ setwd(projectDir)
 
 inSim <- SpaDES.project::setupProject(
   ELFind = gsub("ELF", "", .ELFind),
-  .runName = ELFind,
   .rep = .rep,
   .strategy = .strategy,
   .cc = .cc,
@@ -74,6 +73,8 @@ inSim <- SpaDES.project::setupProject(
                                       paste(.rvPeriod, collapse = "-"), 
                                       paste0(.GCM, "_ssp", .SSP), 
                                       paste0("rep", .rep))),
+  runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
+    gsub("outputs_", replacement = ""),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
@@ -125,7 +126,7 @@ inSim <- SpaDES.project::setupProject(
     , spades.recoveryMode = 5#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
     , spades.cacheChaining = TRUE
     , reproducible.cacheChaining = FALSE #interactive()
-
+    
     , reproducible.gdalwarp = FALSE
     , Require.cloneFrom = Sys.getenv("R_LIBS_USER")
     , spades.moduleCodeChecks = FALSE
@@ -146,16 +147,20 @@ inSim <- SpaDES.project::setupProject(
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
-    climateData::climateLayers(.climVars, fun = quote(quote(calcAsIs)))
+    climateData::climateLayers(.climVars, fun = quote(quote(calcAsIs)), 
+                              projected = ifelse(identical(.GCM, "NRV"), FALSE, TRUE))
   },
   climateVariablesForFire = list(ignition = gsub("_", "", .climVars), # This must match a layer in climateVariables (without 'historical_')
                                  # only sm for spread
                                  spread = gsub("_", "", grep("sm$", .climVars, value = TRUE))), # This must match a layer in climateVariables (without 'historical_')
+  saveAndPlotInterval = 100,
   params = list(
     .globals = list(
       spreadFitFilename = "fireSenseParams_2026_02.rds"
       # dataYear = 2011,
-      , .studyAreaName = .runName
+      , .studyAreaName = ELFind
+      , .runName = runName, 
+      , .plotInterval = saveAndPlotInterval
       , .plots = c("png")
       , sppEquivCol = "LandR" # will get a warning if this is not here
       , .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData")
@@ -167,8 +172,8 @@ inSim <- SpaDES.project::setupProject(
     ),
     # fireSense_ELFs = list(queue_path = "experiment_queue_predict5.rds"),
     canClimateData = list(
-      climateGCM = .GCM
-      ,climateSSP = .SSP
+      climateGCM =  ifelse(identical(.GCM, "NRV"), "CNRM-ESM2-1", .GCM) 
+      ,climateSSP =  ifelse(identical(.SSP, ""), 370, .SSP) 
       # ,.useCache = ".inputObjects" # init is slow to cache
     ),
     climateYear = list(
@@ -186,7 +191,7 @@ inSim <- SpaDES.project::setupProject(
       , iterDEoptim = 1000
       , rep = .rep # This means that all Cache of DEoptim will now be different name
       , iterStep = 1 # run this many iterations before running again; this should be
-                     # set to itermax if Cache is not used; it is only useful for Cache
+      # set to itermax if Cache is not used; it is only useful for Cache
       , cores = cores
       , NP = {if (identical(cores, unique(cores))) 100 else length(cores)} # number of cores of machines
       , trace = 1
@@ -218,9 +223,9 @@ inSim <- SpaDES.project::setupProject(
   # objectSynonyms = list(c("flammableRTM", "flammableMap")),
   outputs =  {
     outputs <- rbind(
-      data.table(objectName = "pixelGroupMap", saveTime = c(seq(times$start, times$end, 50)), 
+      data.table(objectName = "pixelGroupMap", saveTime = c(seq(times$start, times$end, saveAndPlotInterval)), 
                  exts = ".tif", fun = "writeRaster", package = "terra"), 
-      data.table(objectName = "cohortData", saveTime = c(seq(times$start, times$end, 50))), 
+      data.table(objectName = "cohortData", saveTime = c(seq(times$start, times$end, saveAndPlotInterval))), 
       data.table(objectName = "speciesEcoregion", saveTime = times$end), 
       data.table(objectName = "ecoregion", saveTime = times$end), 
       data.table(objectName = "species", saveTime = times$end),
@@ -239,19 +244,10 @@ inSim <- SpaDES.project::setupProject(
     return(outputs)
   }
 )
-message(paste0(inSim$.runName, ", .rep:", inSim$.rep, ", .strategy:", inSim$.strategy,
+message(paste0(inSim$runName, ", .strategy:", inSim$.strategy,
                " .objfunFireReps:", inSim$.objfunFireReps))
 
-if (inSim$.GCM == "NRV") {
-  inSim$paths$outputPath <- file.path("outputs", inSim$ELFind,
-                                      paste(inSim$.rvPeriod, collapse = "-"),
-                                      paste0(inSim$.GCM),
-                                      paste0("rep", inSim$.rep))
-  #change params so canClimateData doesn't error
-  inSim$params$canClimateData$climateGCM <- 'CNRM-ESM2-1' #avoids a stopifnot
-}
-#don't make this object if unneeded - mainly for safety
-getProjected <- ifelse(inSim$.GCM == "NRV", FALSE, TRUE)
+
 inSim$climateVariables <- climateData::climateLayers(inSim$.climVars, fun = quote(calcAsIs),
                                                      historical = TRUE,
                                                      projected = getProjected)
@@ -284,25 +280,32 @@ suppressPackageStartupMessages(
   simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
 )
 
-# fsim <- SpaDES.core::simFile(
-#   name = .runName, 
-#   path = outputPath(simOut),   ## should be based on <run_name>
-#   time = out$times$end,
-#   ext = "rds"             ## do not use qs!
-# )
-# saveSimList(
-#   sim = mySimOut,
-#   filename = fsim,
-#   ## avoid costly zip/unzip operations:
-#   inputs = FALSE,
-#   outputs = FALSE,
-#   cache = FALSE,
-#   files = FALSE)
+
+
+#TODO: projected and historical climate rasters- I assume we want to keep them
+
+
+fsim <- SpaDES.core::simFile(
+  name = inSim$runName, #TODO: was .runName, changing to theRunName, which has the SSP, GCM etc
+  path = outputPath(simOut),   ## should be based on <run_name>
+  time = out$times$end,
+  ext = "rds"             ## do not use qs!
+)
+
+saveSimList(
+  sim = simOut,
+  filename = fsim,
+  ## avoid costly zip/unzip operations:
+  inputs = FALSE,
+  outputs = FALSE,
+  cache = FALSE,
+  files = FALSE)
 #   
 # #compress outputs, upload 
-# resultsDir <- outputPath(simOut)
-# tarball <- paste0(resultsDir, ".tar.gz")
-# archive::archive_write_dir(tarball, resultsDir, format = "tar", filter = "gzip")
-# gFolder <- googledrive::as_id("https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link")
-# googledrive::drive_upload(tarball, path = gFolder,
-#                           name = tarball, overwrite = TRUE)
+resultsDir <- outputPath(simOut)
+#need a runName
+tarball <- paste0(inSim$runName, ".tar.gz")
+archive::archive_write_dir(archive = tarball, dir = resultsDir, format = "tar")
+gFolder <- googledrive::as_id("https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link")
+googledrive::drive_upload(tarball, path = gFolder,
+                          name = tarball, overwrite = TRUE)
