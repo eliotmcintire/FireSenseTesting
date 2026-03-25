@@ -20,7 +20,7 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 .ELFs <- fireSenseUtils::runELFs(outs, whatOut = "maps")
 .ELFinds <- names(.ELFs$rasCentered)
 .ELFinds <- c("6.2.2", "6.3.1", "6.6.1", "6.5", "6.6.2", "9.1.1") #TODO: this is a subset of well-behaved ELFs
-.ELFinds <- paste0("ELF", .ELFinds)
+# .ELFinds <- paste0("ELF", .ELFinds)
 ####################
 # SET UP EXPERIMENT
 ####################
@@ -86,13 +86,13 @@ workers <- SpaDES.project::experimentTmux(
   outputPath = outs$paths$outputPath,
   statusCalculate = # statusCalculator(type = "fireSense")
     quote({
-      dirWithUpdatedElf <- gsub("4.3", strsplit(runName, "-")[[1]][[1]], outputPath)
-      dirWithUpdatedElf <- gsub("rep1", paste0("rep", strsplit(runName, "-")[[1]][[2]]), dirWithUpdatedElf)
+      dirWithUpdatedElf <- gsub("4.3", strsplit(.ELFind, "-")[[1]][[1]], outputPath)
+      dirWithUpdatedElf <- gsub("rep1", paste0("rep", strsplit(.ELFind, "-")[[1]][[2]]), dirWithUpdatedElf)
       dd <- dir(dirWithUpdatedElf, recursive = TRUE, full.names = TRUE)
       ee <- grep(value = TRUE, pattern = "burnMap.*tif$", dd)
       done <- grepl(paste0("year", times$end), ee)
       if (all(done %in% FALSE)) { # running
-        runningFile <- dir(activeRunningPathForTmux(queue_path = queue_path), pattern = runName, full.names = TRUE)
+        runningFile <- dir(activeRunningPathForTmux(queue_path = queue_path), pattern = .ELFind, full.names = TRUE)
         ff <- grep(value = TRUE, pattern = "Annual Fire Maps", dd)
         fi2 <- file.info(ff)
         
@@ -131,5 +131,5 @@ if (FALSE) {
   ee = elapsedTime(sim)
   ee[, Predict := c("Fit", "Predict")[1 + as.numeric(grepl("redict", moduleName) | grepl("Dispersal|mortalityAndGrowth|summaryBGM", eventType))]]
   ee[, sum (elapsedTime), by = Predict]
-  sim$.runName
+  sim$..ELFind
 }

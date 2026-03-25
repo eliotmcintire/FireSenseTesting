@@ -14,8 +14,9 @@ dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
 
 inSim <- SpaDES.project::setupProject(
-  ELFind = gsub("ELF", "", .ELFind),
+ 
   .rep = .rep,
+  .ELFind = .ELFind,
   .strategy = .strategy,
   .cc = .cc,
   cores = .cores,
@@ -43,7 +44,6 @@ inSim <- SpaDES.project::setupProject(
                      .modules = c("PredictiveEcology/canClimateData@improveCache1"
                                   ,"PredictiveEcology/climateYear@main"
                                   , "PredictiveEcology/fireSense_ELFs@main"
-                                  
                                   , "PredictiveEcology/fireSense_dataPrepFit@development"
                                   , "PredictiveEcology/fireSense_IgnitionFit@development"
                                   , "PredictiveEcology/fireSense_SpreadFit@development"
@@ -51,9 +51,8 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/fireSense_dataPrepPredict@development" # prepares data for predictions
                                   , "PredictiveEcology/fireSense_IgnitionPredict@development" # predicts ignitions & escapes
                                   , "PredictiveEcology/fireSense_SpreadPredict@development" # predicts raster of spreadProb
-                                  
                                   , "PredictiveEcology/fireSense@development" # does burning
-                                  
+                                  # biomass modules
                                   , "PredictiveEcology/Biomass_borealDataPrep@development"
                                   , "PredictiveEcology/Biomass_speciesParameters@development"
                                   , "PredictiveEcology/Biomass_speciesData@development"
@@ -62,17 +61,18 @@ inSim <- SpaDES.project::setupProject(
                                   # summary modules 
                                   , "FOR-CAST/NRV_summary@development"
                                   , "PredictiveEcology/burnSummaries@development"
-                                  
+                                  , "PredictiveEcology/fireSense_summary@development"
+                                  , "PredictiveEcology/Biomass_summary@main"
                      )),
   .objfunFireReps = .objfunFireReps,
   # useGit = "eliotmcintire",
   Restart = TRUE,
-  paths = list(outputPath = file.path("outputs", ELFind, 
+  paths = list(outputPath = file.path("outputs", .ELFind, 
                                       paste(range(.samplingRange), collapse = "-"), 
                                       paste0(.GCM, "_ssp", .SSP), 
                                       paste0("rep", .rep))),
-  runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
-    gsub("outputs_", replacement = ""),
+  runName = gsub("/", "_", fs::path_rel(inSim$paths$outputPath)) |>
+    gsub(pattern = "outputs_", replacement = ""),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
@@ -156,7 +156,7 @@ inSim <- SpaDES.project::setupProject(
     .globals = list(
       spreadFitFilename = "fireSenseParams_2026_02.rds"
       # dataYear = 2011,
-      , .studyAreaName = ELFind
+      , .studyAreaName = paste0("ELF", .ELFind)
       , .runName = runName
       , .plotInterval = saveAndPlotInterval
       , .plots = c("png")
@@ -215,8 +215,16 @@ inSim <- SpaDES.project::setupProject(
       rescalers = c("CMDsm" = 1000),
       .useCache = c(".inputObjects", "init", "prepIgnitionFitData", "run")
     ),
-    burnSummaries = list(mode=  "single", reps = .rep),
-    NRV_summary = list(mode = "single", reps = .rep)
+    burnSummaries = list(mode=  "single", reps = .rep), #TODO confirm all params
+    NRV_summary = list(mode = "single", reps = .rep), #TODO: confirm if all prams okay 
+    fireSense_summary = list(mode = "single",
+                             studyAreaName  = paste0("ELF", .ELFind), 
+                             #reps = .rep,  
+                             years = c(times$start, times$end)), 
+    Biomass_summary = list(years = c(times$start, times$end), 
+                           studyAreaName  = paste0("ELF", .ELFind) 
+                           #reps = .rep #only needed for multi, and would be the total reps
+                           )
   ), 
   # objectSynonyms = list(c("flammableRTM", "flammableMap")),
   outputs =  {
@@ -246,9 +254,6 @@ message(paste0(inSim$runName, ", .strategy:", inSim$.strategy,
                " .objfunFireReps:", inSim$.objfunFireReps))
 
 
-inSim$climateVariables <- climateData::climateLayers(inSim$.climVars, fun = quote(calcAsIs),
-                                                     historical = TRUE,
-                                                     projected = getProjected)
 inSimCopy <- reproducible::Copy(inSim)
 
 

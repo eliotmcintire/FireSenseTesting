@@ -49,3 +49,6 @@
 [submodule "modules/NRV_summary"]
 	path = modules/NRV_summary
 	url = git@github.com:PredictiveEcology/NRV_summary
+[submodule "modules/Biomass_summary"]
+	path = modules/Biomass_summary
+	url = https://github.com/PredictiveEcology/Biomass_summary
