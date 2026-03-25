@@ -20,7 +20,6 @@ inSim <- SpaDES.project::setupProject(
   .cc = .cc,
   cores = .cores,
   FRU = FRU,
-  .rvPeriod = .rvPeriod,
   .SSP = .SSP,
   .GCM = .GCM,
   .samplingRange = 2100,
@@ -31,8 +30,7 @@ inSim <- SpaDES.project::setupProject(
                      .ELFind = "4.3",
                      .SSP = 370,
                      .GCM = "CNRM-ESM2-1",
-                     .samplingRange = 2100,
-                     .rvPeriod = c(1990, 2020), # length 2 numeric
+                     .samplingRange = 1990:2020, # vector
                      .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
                                 , "mpb", "sbw", "mega"
@@ -70,7 +68,7 @@ inSim <- SpaDES.project::setupProject(
   # useGit = "eliotmcintire",
   Restart = TRUE,
   paths = list(outputPath = file.path("outputs", ELFind, 
-                                      paste(.rvPeriod, collapse = "-"), 
+                                      paste(range(.samplingRange), collapse = "-"), 
                                       paste0(.GCM, "_ssp", .SSP), 
                                       paste0("rep", .rep))),
   runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
@@ -166,9 +164,9 @@ inSim <- SpaDES.project::setupProject(
       , .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData")
       , minCoverThreshold = 0),
     climateYear = list(
-      samplingEndYear = max(.rvPeriod),
-      samplingRange = seq(.rvPeriod[[1]], .rvPeriod[[2]]),
-      samplingStartYear = min(.rvPeriod)
+      samplingEndYear = max(.samplingRange),
+      samplingRange = range(.samplingRange),
+      samplingStartYear = min(.samplingRange)
     ),
     # fireSense_ELFs = list(queue_path = "experiment_queue_predict5.rds"),
     canClimateData = list(
