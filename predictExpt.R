@@ -14,12 +14,6 @@ suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there 
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 
 ####################
-# pre RUN the global.R setupProject
-####################
-
-outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
-
-####################
 # RUN fireSense_ELFs to get the ELF map
 ####################
 
