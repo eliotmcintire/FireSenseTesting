@@ -32,7 +32,8 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 # RUN fireSense_ELFs to get the ELF map
 ####################
 
-.ELFinds <- fireSenseUtils::runELFs(outs)
+.ELFs <- fireSenseUtils::runELFs(outs, whatOut = "maps")
+.ELFinds <- names(.ELFs$rasCentered)
 .ELFinds <- c("6.2.2", "6.3.1", "6.6.1", "6.5", "6.6.2", "9.1.1") #TODO: this is a subset of well-behaved ELFs
 .ELFinds <- paste0("ELF", .ELFinds)
 ####################

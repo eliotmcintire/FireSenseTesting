@@ -80,7 +80,7 @@ inSim <- SpaDES.project::setupProject(
     , "PredictiveEcology/SpaDES.core@updatesPostHDDFail (>= 3.0.4.9002)"
     , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
-    # , "PredictiveEcology/fireSenseUtils@development (>= 0.1.0)"
+    , "PredictiveEcology/fireSenseUtils@development (>= 0.1.3)"
     , "qs2", "filelock"
     , "archive"
     , "googlesheets4"
