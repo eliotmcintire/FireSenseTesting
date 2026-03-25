@@ -41,6 +41,8 @@ inSim <- SpaDES.project::setupProject(
                      FRU = 25,
                      .times = list(start = 2020, end = 3020),
                      .modules = c("PredictiveEcology/canClimateData@improveCache1"
+                                  , "PredictiveEcology/fireSense_summaries@main"
+                                  , "PredictiveEcology/biomass_summary@main"
                                   ,"PredictiveEcology/climateYear@main"
                                   , "PredictiveEcology/fireSense_ELFs@main"
                                   
@@ -62,9 +64,6 @@ inSim <- SpaDES.project::setupProject(
                                   # summary modules 
                                   , "FOR-CAST/NRV_summary@development"
                                   , "PredictiveEcology/burnSummaries@development"
-                                  , "PredictiveEcology/fireSense_summaries@development"
-                                  , "PredictiveEcology/biomass_summary@main"
-                                  
                      )),
   .objfunFireReps = .objfunFireReps,
   useGit = "eliotmcintire",
