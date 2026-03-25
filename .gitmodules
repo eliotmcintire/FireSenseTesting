@@ -49,3 +49,9 @@
 [submodule "modules/NRV_summary"]
 	path = modules/NRV_summary
 	url = git@github.com:PredictiveEcology/NRV_summary
+[submodule "modules/fireSense_summary"]
+	path = modules/fireSense_summary
+	url = https://github.com/PredictiveEcology/fireSense_summary
+[submodule "modules/biomass_summary"]
+	path = modules/biomass_summary
+	url = https://github.com/PredictiveEcology/biomass_summary
