@@ -62,17 +62,19 @@ inSim <- SpaDES.project::setupProject(
                                   # summary modules 
                                   , "FOR-CAST/NRV_summary@development"
                                   , "PredictiveEcology/burnSummaries@development"
+                                  , "PredictiveEcology/fireSense_summaries@development"
+                                  , "PredictiveEcology/biomass_summary@main"
                                   
                      )),
   .objfunFireReps = .objfunFireReps,
-  # useGit = "eliotmcintire",
+  useGit = "eliotmcintire",
   Restart = TRUE,
   paths = list(outputPath = file.path("outputs", ELFind, 
                                       paste(range(.samplingRange), collapse = "-"), 
                                       paste0(.GCM, "_ssp", .SSP), 
                                       paste0("rep", .rep))),
   runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
-    gsub("outputs_", replacement = ""),
+    gsub(pattern = "outputs_", replacement = ""),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
@@ -157,7 +159,7 @@ inSim <- SpaDES.project::setupProject(
       spreadFitFilename = "fireSenseParams_2026_02.rds"
       # dataYear = 2011,
       , .studyAreaName = ELFind
-      , .runName = runName, 
+      , .runName = runName
       , .plotInterval = saveAndPlotInterval
       , .plots = c("png")
       , sppEquivCol = "LandR" # will get a warning if this is not here
@@ -286,18 +288,28 @@ suppressPackageStartupMessages(
 fsim <- SpaDES.core::simFile(
   name = inSim$runName, #TODO: was .runName, changing to theRunName, which has the SSP, GCM etc
   path = outputPath(simOut),   ## should be based on <run_name>
-  time = out$times$end,
+  time = inSim$times$end,
   ext = "rds"             ## do not use qs!
 )
-
-saveSimList(
+if (FALSE) { # if you don't have 
+  inSim$runName = gsub("/", "_", fs::path_rel(inSim$paths$outputPath)) |>
+    gsub(pattern = "outputs_", replacement = "")
+  fsim <- SpaDES.core::simFile(
+    name = inSim$runName, #TODO: was .runName, changing to theRunName, which has the SSP, GCM etc
+    path = outputPath(simOut),   ## should be based on <run_name>
+    time = inSim$times$end,
+    ext = "rds"             ## do not use qs!
+  )
+}
+dir.create(dirname(fsim), showWarnings = FALSE, recursive = TRUE)
+system.time(saveSimList(
   sim = simOut,
   filename = fsim,
   ## avoid costly zip/unzip operations:
   inputs = FALSE,
   outputs = FALSE,
   cache = FALSE,
-  files = FALSE)
+  files = FALSE))
 #   
 # #compress outputs, upload 
 resultsDir <- outputPath(simOut)
