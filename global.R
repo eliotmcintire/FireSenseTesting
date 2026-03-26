@@ -214,14 +214,15 @@ inSim <- SpaDES.project::setupProject(
       rescalers = c("CMDsm" = 1000),
       .useCache = c(".inputObjects", "init", "prepIgnitionFitData", "run")
     ),
-    burnSummaries = list(mode=  "single", reps = .rep), #TODO confirm all params
+    burnSummaries = list(mode = "single", reps = .rep), #TODO confirm all params
     NRV_summary = list(mode = "single", reps = .rep), #TODO: confirm if all prams okay 
     fireSense_summary = list(mode = "single",
                              studyAreaName  = paste0("ELF", .ELFind), 
                              #reps = .rep,  
                              years = c(times$start, times$end)), 
     Biomass_summary = list(years = c(times$start, times$end), 
-                           studyAreaName  = paste0("ELF", .ELFind) 
+                           studyAreaName  = paste0("ELF", .ELFind),
+                           mode = "single"
                            #reps = .rep #only needed for multi, and would be the total reps
                            )
   ), 
@@ -240,6 +241,9 @@ inSim <- SpaDES.project::setupProject(
                  exts = ".tif", fun = "writeRaster", package = "terra"),
       data.table(objectName =  "nonForest_timeSinceDisturbance", saveTime = times$end, 
                  exts = ".tif", fun = "writeRaster", package = "terra"),
+      data.table(objectName =  "rstLCC", saveTime = times$end, 
+                 exts = ".tif", fun = "writeRaster", package = "terra"),
+      data.table(objectName = "climateYearRecord", saveTime = times$end),
       
       fill = TRUE
     )
