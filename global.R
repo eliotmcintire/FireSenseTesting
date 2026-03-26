@@ -64,7 +64,7 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/Biomass_summary@main"
                      )),
   .objfunFireReps = .objfunFireReps,
-  useGit = "eliotmcintire",
+  # useGit = "eliotmcintire",
   Restart = TRUE,
   paths = list(outputPath = file.path("outputs", .ELFind, 
                                       paste(range(.samplingRange), collapse = "-"), 
@@ -144,7 +144,7 @@ inSim <- SpaDES.project::setupProject(
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
-    climateData::climateLayers(.climVars, fun = quote(quote(calcAsIs)), 
+    climateData::climateLayers(.climVars, fun = quote(calcAsIs), 
                               projected = ifelse(identical(.GCM, "NRV"), FALSE, TRUE))
   },
   climateVariablesForFire = list(ignition = gsub("_", "", .climVars), # This must match a layer in climateVariables (without 'historical_')
