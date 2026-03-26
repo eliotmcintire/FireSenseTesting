@@ -40,3 +40,4 @@ tmux*
 *.rds
 
 .vscode/settings.json
+*.tar.gz
