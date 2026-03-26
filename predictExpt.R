@@ -86,7 +86,7 @@ workers <- SpaDES.project::experimentTmux(
   outputPath = outs$paths$outputPath,
   statusCalculate = # statusCalculator(type = "fireSense")
     quote({
-      browser()
+      # browser()
       dirWithUpdatedElf <- gsub("4.3", strsplit(.ELFind, "-")[[1]][[1]], outputPath)
       dirWithUpdatedElf <- gsub("rep1", paste0("rep", strsplit(.ELFind, "-")[[1]][[2]]), dirWithUpdatedElf)
       dd <- dir(dirWithUpdatedElf, recursive = TRUE, full.names = TRUE)
