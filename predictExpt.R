@@ -1,7 +1,7 @@
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 # source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 # getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0")) # only install/update if required
-remotes::install_github("PredictiveEcology/SpaDES.project", upgrade = FALSE)
+# remotes::install_github("PredictiveEcology/SpaDES.project", upgrade = FALSE)
 # remotes::install_github("PredictiveEcology/SpaDES.projec")
 
 
@@ -19,14 +19,14 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 
 .ELFs <- fireSenseUtils::runELFs(outs, whatOut = "maps")
 .ELFinds <- names(.ELFs$rasCentered)
-.ELFinds <- c("6.2.2", "6.3.1", "6.6.1", "6.5", "6.6.2", "9.1.1") #TODO: this is a subset of well-behaved ELFs
+.ELFinds <- c("6.1.1", "6.1.2", "6.1.1", "6.2.2", "6.3.1", "6.6.1", "6.5", "6.6.2", "9.1.1") #TODO: this is a subset of well-behaved ELFs
 # .ELFinds <- paste0("ELF", .ELFinds)
 ####################
 # SET UP EXPERIMENT
 ####################
 
 if (TRUE) { # This is Ian/Jonathan's stuff
-  .reps <- 1:2 # how many reps do we want?
+  .reps <- 2:5 # how many reps do we want?
   .GCMs <- list(future = c("CNRM-ESM2-1"), past = "NRV")
   .SSPs <- list(future = 370, past = "")
   .samplingRanges <- list(future = list(2071:2100), past = list(1991:2020))
@@ -53,7 +53,7 @@ if (TRUE) { # This is Ian/Jonathan's stuff
   
   #make unique in case we add more sampling ranges
 } else { # This is Eliot's stuff
-  .reps <- 1:5 # how many reps do we want?
+  .reps <- 2:5 # how many reps do we want?
   .GCM <- "CNRM-ESM2-1"
   .SSP <- 370
   .times <- list(start = 2020, end = 2020 + 1000)
@@ -66,7 +66,7 @@ if (TRUE) { # This is Ian/Jonathan's stuff
   #   expt <- cbind(expt, .times = I(lapply(seq_len(NROW(expt)), function(x) .times)))
 }
 
-expt <- unique(expt)
+expt <- unique(expt, by = colnames(expt)[!sapply(expt, is, "list")])
 
 ####################
 # Run the experiment -- this must be run at a command prompt, inside tmux
@@ -77,7 +77,7 @@ expt <- unique(expt)
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 5,
+  n_workers           = 12,
   queue_path          = "longRuns.rds",
   delay_before_source = 15,
   workersToMonitor = "localhost",
@@ -86,6 +86,7 @@ workers <- SpaDES.project::experimentTmux(
   outputPath = outs$paths$outputPath,
   statusCalculate = # statusCalculator(type = "fireSense")
     quote({
+      browser()
       dirWithUpdatedElf <- gsub("4.3", strsplit(.ELFind, "-")[[1]][[1]], outputPath)
       dirWithUpdatedElf <- gsub("rep1", paste0("rep", strsplit(.ELFind, "-")[[1]][[2]]), dirWithUpdatedElf)
       dd <- dir(dirWithUpdatedElf, recursive = TRUE, full.names = TRUE)

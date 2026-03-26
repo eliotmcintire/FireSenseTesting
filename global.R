@@ -3,7 +3,7 @@ repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 # source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 # getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.4.9008")) # only install/update if required
 # getOrUpdatePkg(c("Require"), c("1.0.1.9013")) # only install/update if required
-remotes::install_github("PredictiveEcology/SpaDES.project", upgrade = FALSE)
+# remotes::install_github("PredictiveEcology/SpaDES.project", upgrade = FALSE)
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
@@ -14,7 +14,6 @@ dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
 
 inSim <- SpaDES.project::setupProject(
- 
   .rep = .rep,
   .ELFind = .ELFind,
   .strategy = .strategy,
@@ -23,7 +22,7 @@ inSim <- SpaDES.project::setupProject(
   FRU = FRU,
   .SSP = .SSP,
   .GCM = .GCM,
-  .samplingRange = 2100,
+  .samplingRange = .samplingRange,
   defaultDots = list(.strategy = 1L, # used to be 3L; but seems to get caught in local minima
                      .cc = 0.5,
                      .objfunFireReps = 25L,
@@ -175,7 +174,7 @@ inSim <- SpaDES.project::setupProject(
       # ,.useCache = ".inputObjects" # init is slow to cache
     ),
     climateYear = list(
-      samplingRange = c(c(.samplingRange-30):.samplingRange),
+      samplingRange = .samplingRange,
       samplingStartYear = max(.samplingRange) +1
     ),
     # fireSense = list(.plots = c("screen", "png")),
@@ -252,7 +251,6 @@ inSim <- SpaDES.project::setupProject(
 )
 message(paste0(inSim$runName, ", .strategy:", inSim$.strategy,
                " .objfunFireReps:", inSim$.objfunFireReps))
-
 
 inSimCopy <- reproducible::Copy(inSim)
 
