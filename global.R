@@ -22,7 +22,7 @@ inSim <- SpaDES.project::setupProject(
   FRU = FRU,
   .SSP = .SSP,
   .GCM = .GCM,
-  .samplingRange = .samplingRange,
+  .samplingRange = unlist(.samplingRange),
   defaultDots = list(.strategy = 1L, # used to be 3L; but seems to get caught in local minima
                      .cc = 0.5,
                      .objfunFireReps = 25L,
@@ -41,7 +41,7 @@ inSim <- SpaDES.project::setupProject(
                      FRU = 25,
                      .times = list(start = 2020, end = 3020),
                      .modules = c("PredictiveEcology/canClimateData@improveCache1"
-                                  ,"PredictiveEcology/climateYear@main"
+                                  ,"PredictiveEcology/climateYear@development"
                                   , "PredictiveEcology/fireSense_ELFs@main"
                                   , "PredictiveEcology/fireSense_dataPrepFit@development"
                                   , "PredictiveEcology/fireSense_IgnitionFit@development"
