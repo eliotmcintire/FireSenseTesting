@@ -13,6 +13,12 @@ if (Sys.info()["user"] == "ieddy"){
 dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
 
+outputPathBuild <- function(.ELFind, .samplingRange, .GCM, .SSP, .rep) {
+  file.path("outputs", .ELFind, 
+            paste(range(eval(parse(text = .samplingRange))), collapse = "-"), 
+            paste0(.GCM, ifelse(is.na(.SSP), "", paste0("_ssp", .SSP))), 
+            paste0("rep", .rep))
+}
 inSim <- SpaDES.project::setupProject(
   .rep = .rep,
   .ELFind = .ELFind,
@@ -66,10 +72,7 @@ inSim <- SpaDES.project::setupProject(
   .objfunFireReps = .objfunFireReps,
   # useGit = "eliotmcintire",
   Restart = TRUE,
-  paths = list(outputPath = file.path("outputs", .ELFind, 
-                                      paste(range(.samplingRange), collapse = "-"), 
-                                      paste0(.GCM, "_ssp", .SSP), 
-                                      paste0("rep", .rep))),
+  paths = list(outputPath = outputPathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)),
   runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
     gsub(pattern = "outputs_", replacement = ""),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
@@ -121,7 +124,7 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.showSimilar = FALSE #interactive() && !nzchar(Sys.getenv("TMUX"))
     , reproducible.useMemoise = interactive() && !nzchar(Sys.getenv("TMUX"))
     , spades.recoveryMode = 5#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
-    , spades.cacheChaining = TRUE
+    , spades.cacheChaining = FALSE
     , reproducible.cacheChaining = FALSE #interactive()
     
     , reproducible.gdalwarp = FALSE
