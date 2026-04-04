@@ -1,7 +1,7 @@
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 # source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 # getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0")) # only install/update if required
-# remotes::install_github("PredictiveEcology/SpaDES.project", upgrade = FALSE)
+# remotes::install_github("PredictiveEcology/SpaDES.project@development", upgrade = FALSE)
 # remotes::install_github("PredictiveEcology/SpaDES.projec")
 
 
@@ -19,7 +19,8 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 
 .ELFs <- fireSenseUtils::runELFs(outs, whatOut = "maps")
 .ELFinds <- names(.ELFs$rasCentered)
-.ELFinds <- c("6.1.1", "6.1.2", "6.1.1", "6.2.2", "6.3.1", "6.6.1", "6.5", "6.6.2", "9.1.1") #TODO: this is a subset of well-behaved ELFs
+#TODO: this is a subset of well-behaved ELFs
+.ELFinds <- c("6.1.1", "6.1.2", "6.1.1", "6.2.2", "6.3.1", "6.6.1", "6.5", "6.6.2", "9.1.1") 
 # .ELFinds <- paste0("ELF", .ELFinds)
 ####################
 # SET UP EXPERIMENT
@@ -27,6 +28,7 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 
 if (TRUE) { # This is Ian/Jonathan's stuff
   .reps <- 2:5 # how many reps do we want?
+  .reps <- 1:5
   .GCMs <- list(future = c("CNRM-ESM2-1"), past = "NRV")
   .SSPs <- list(future = 370, past = "")
   .samplingRanges <- list(future = list(2071:2100), past = list(1991:2020))
@@ -34,7 +36,10 @@ if (TRUE) { # This is Ian/Jonathan's stuff
     expand.grid(.ELFind = .ELFinds, .rep = .reps, .GCM = .GCM, .SSP = .SSP, 
                 .samplingRange = .samplingRange, stringsAsFactors = FALSE)
   })
+  
+  # Do NRV first, multiple reps of each next, then move to next ELF --> Alex needs reps
   expt <- data.table::rbindlist(expts)
+  data.table::setorder(expt, -.GCM, .ELFind, .rep)
   if (exists(".modules"))
     expt <- cbind(expt, .modules = I(lapply(seq_len(NROW(expt)), function(x) .modules)))
   if (exists(".times"))
@@ -77,40 +82,51 @@ expt <- unique(expt, by = colnames(expt)[!sapply(expt, is, "list")])
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 12,
+  # cores = rep("localhost", 2),
+  cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco"
+            , "core", "dougfir", "fire"
+            , "mpb", "sbw", "mega"
+            , "acer"
+            , "abies"
+            , "pinus"
+  ),
+  # cores = c(rep("biomass", 2), rep("coco", 2)),
   queue_path          = "longRuns.rds",
   delay_before_source = 15,
-  workersToMonitor = "localhost",
   times = outs$times,
+  runNameLabel = quote(outputPathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)), #c("ELFind", "rep", "GCM"),
   on_interrupt = "fail",
-  outputPath = outs$paths$outputPath,
+  forceLocalQueueToGS = TRUE,
+  # outputPath = outs$paths$outputPath,
+  outputPathBuild = outputPathBuild,
   statusCalculate = # statusCalculator(type = "fireSense")
     quote({
-      # browser()
-      dirWithUpdatedElf <- gsub("4.3", strsplit(.ELFind, "-")[[1]][[1]], outputPath)
-      dirWithUpdatedElf <- gsub("rep1", paste0("rep", strsplit(.ELFind, "-")[[1]][[2]]), dirWithUpdatedElf)
+      dirWithUpdatedElf <- outputPathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)
       dd <- dir(dirWithUpdatedElf, recursive = TRUE, full.names = TRUE)
-      ee <- grep(value = TRUE, pattern = "burnMap.*tif$", dd)
-      done <- grepl(paste0("year", times$end), ee)
-      if (all(done %in% FALSE)) { # running
-        runningFile <- dir(activeRunningPathForTmux(queue_path = queue_path), pattern = .ELFind, full.names = TRUE)
-        ff <- grep(value = TRUE, pattern = "Annual Fire Maps", dd)
-        fi2 <- file.info(ff)
-        
-        if (length(runningFile)) {
-          fi <- file.info(runningFile)
-          started_at <- format(fi[, "mtime"])
-          mostRecentFile <- tail(ff[fi2[, "mtime"] > fi[, "mtime"]], 1)
-          heartbeat_at <- if (length(mostRecentFile) > 0) format(file.info(mostRecentFile)[, "mtime"]) else NA
-          heartbeat_iter <- if (is.na(heartbeat_at)) times$start else gsub(".+Maps ([[:digit:]]{4,4}).+", "\\1", mostRecentFile)
+      if (NROW(dd)) {
+        ee <- grep(value = TRUE, pattern = "burnMap.*tif$", dd)
+        done <- grepl(paste0("year", times$end), ee)
+        if (all(done %in% FALSE)) { # running
+          runningFile <- dir(activeRunningPathForTmux(queue_path = queue_path), 
+                             pattern = .ELFind, full.names = TRUE)
+          ff <- grep(value = TRUE, pattern = "Annual Fire Maps", dd)
+          fi2 <- file.info(ff)
+          
+          if (length(runningFile)) {
+            fi <- file.info(runningFile)
+            started_at <- format(fi[, "mtime"])
+            mostRecentFile <- tail(ff[fi2[, "mtime"] > fi[, "mtime"]], 1)
+            heartbeat_at <- if (length(mostRecentFile) > 0) format(file.info(mostRecentFile)[, "mtime"]) else NA
+            heartbeat_iter <- if (is.na(heartbeat_at)) times$start else gsub(".+Maps ([[:digit:]]{4,4}).+", "\\1", mostRecentFile)
+          }
+          
         }
-        
-      }
-      finishedFile <- ee[done]
-      if (length(finishedFile)) {
-        iterationsTotal <- gsub(".+year([[:digit:]]{4,4}).+", "\\1", finishedFile)
-        finished_at <- if (length(finishedFile) > 0) format(file.info(finishedFile)[, "mtime"]) else NA
-        done <- any(done)
+        finishedFile <- ee[done]
+        if (length(finishedFile)) {
+          iterationsTotal <- gsub(".+year([[:digit:]]{4,4}).+", "\\1", finishedFile)
+          finished_at <- if (length(finishedFile) > 0) format(file.info(finishedFile)[, "mtime"]) else NA
+          done <- any(done)
+        }
       }
     })
   ,
