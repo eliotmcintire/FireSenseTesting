@@ -323,7 +323,9 @@ system.time(saveSimList(
 resultsDir <- outputPath(simOut)
 #need a runName
 tarball <- paste0(inSim$runName, ".tar.gz")
-tar(tarball, files = dir(resultsDir, full.names = TRUE), extra_flags = "-v")
+
+tar(tarball, files = outputs(simOut), extra_flags = "-v")
+# tar(tarball, files = dir(resultsDir, full.names = TRUE), extra_flags = "-v")
 # archive::archive_write_dir(archive = tarball, dir = resultsDir, format = "tar")
 gFolder <- googledrive::as_id("https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link")
 googledrive::drive_upload(tarball, path = gFolder,
