@@ -4,13 +4,19 @@ repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 # remotes::install_github("PredictiveEcology/SpaDES.project@development", upgrade = FALSE)
 # remotes::install_github("PredictiveEcology/SpaDES.projec")
 
+devPkgs <- c("PredictiveEcology/Require@usePak", 
+             "PredictiveEcology/reproducible@recovery2",
+             "PredictiveEcology/SpaDES.project@working/combined-prs",
+             "PredictiveEcology/SpaDES.core@fixRCMDcheckWarnings",
+             "PredictiveEcology/climateData@modsDuringFireSense3")
+source("installDevPkgs.R", local = environment())
+
 
 suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there is a failure below; and this is rerun
 
 ####################
 # pre RUN the global.R setupProject
 ####################
-
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 
 ####################
@@ -20,7 +26,8 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 .ELFs <- fireSenseUtils::runELFs(outs, whatOut = "maps")
 .ELFinds <- names(.ELFs$rasCentered)
 #TODO: this is a subset of well-behaved ELFs
-.ELFinds <- c("6.1.1", "6.1.2", "6.1.1", "6.2.2", "6.3.1", "6.6.1", "6.5", "6.6.2", "9.1.1") 
+.ELFinds <- c(# "6.1.1", 
+              "6.1.2", "6.1.1", "6.2.2", "6.3.1", "6.6.1", "6.5", "6.6.2", "9.1.1") 
 # .ELFinds <- paste0("ELF", .ELFinds)
 ####################
 # SET UP EXPERIMENT
@@ -30,7 +37,7 @@ if (TRUE) { # This is Ian/Jonathan's stuff
   .reps <- 2:5 # how many reps do we want?
   .reps <- 1:5
   .GCMs <- list(future = c("CNRM-ESM2-1"), past = "NRV")
-  .SSPs <- list(future = 370, past = "")
+  .SSPs <- list(future = 370, past = 370)
   .samplingRanges <- list(future = list(2071:2100), past = list(1991:2020))
   expts <- Map(.GCM = .GCMs, .SSP = .SSPs, .samplingRange = .samplingRanges, function(.GCM, .SSP, .samplingRange) {
     expand.grid(.ELFind = .ELFinds, .rep = .reps, .GCM = .GCM, .SSP = .SSP, 
@@ -46,7 +53,7 @@ if (TRUE) { # This is Ian/Jonathan's stuff
     expt <- cbind(expt, .times = I(lapply(seq_len(NROW(expt)), function(x) .times)))
   # expt <- expt[order(expt[, 1], expt[, 2]),] # do all reps of each ELF first, then next ELF
   rownames(expt) <- 1:NROW(expt) # re-number each row
-
+  
   
   #we can use .samplingRange to determine if NRV or not (if 2020 is assumed to be NRV), but in that case, rvPeriod should be derived from that. 
   # otherwise, we should flatten outputPath here
@@ -79,29 +86,53 @@ expt <- unique(expt, by = colnames(expt)[!sapply(expt, is, "list")])
 #      If an ELF has stopped running, and the log file is still present, then it must be
 #      manually deleted (automated deletion has failed)
 ####################
+
+pak::pak("PredictiveEcology/Require@usePak", ask = FALSE, upgrade = FALSE)
+# options(warn = 2)
+
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
   # cores = rep("localhost", 2),
-  cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco"
-            , "core", "dougfir", "fire"
-            , "mpb", "sbw", "mega"
-            , "acer"
-            , "abies"
-            , "pinus"
-  ),
+  cores = c(
+    rep("localhost", 9),
+    rep(c(
+      "dougfir"
+      , "mpb"
+      # , "localhost"
+    ), 2),
+    rep(c(
+      "fire"
+      , "coco"
+    ), 2),
+    rep(c(
+      "mpb"
+      , "coco"
+      , "camas"
+      , "carbon"
+      , "caribou"
+      , "core" 
+      , "sbw"
+    ), 1),
+      # "birds", "biomass", 
+    c("acer"
+      , "birds"
+      # "biomass", 
+      , "abies"
+      , "pinus")
+  ) |> sort(), # sort puts them next to each other in tmux
   # cores = c(rep("biomass", 2), rep("coco", 2)),
   queue_path          = "longRuns.rds",
   delay_before_source = 15,
   times = outs$times,
-  runNameLabel = quote(outputPathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)), #c("ELFind", "rep", "GCM"),
+  runNameLabel = quote(pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)), #c("ELFind", "rep", "GCM"),
   on_interrupt = "fail",
-  forceLocalQueueToGS = TRUE,
+  forceLocalQueueToGS = FALSE,
   # outputPath = outs$paths$outputPath,
-  outputPathBuild = outputPathBuild,
+  pathBuild = pathBuild,
   statusCalculate = # statusCalculator(type = "fireSense")
     quote({
-      dirWithUpdatedElf <- outputPathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)
+      dirWithUpdatedElf <- pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)
       dd <- dir(dirWithUpdatedElf, recursive = TRUE, full.names = TRUE)
       if (NROW(dd)) {
         ee <- grep(value = TRUE, pattern = "burnMap.*tif$", dd)

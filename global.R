@@ -1,9 +1,15 @@
 # # install Require and SpaDES.project
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
+# pak::pak("~/GitHub/SpaDES.project", ask = FALSE, upgrade = FALSE)
+# pak::pak("PredictiveEcology/Require@pak-dep-cache", ask = FALSE, upgrade = FALSE)
+tryCatch(library(pak), silent = TRUE, error = function(x) install.packages("pak"))
 # source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 # getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.4.9008")) # only install/update if required
 # getOrUpdatePkg(c("Require"), c("1.0.1.9013")) # only install/update if required
 # remotes::install_github("PredictiveEcology/SpaDES.project", upgrade = FALSE)
+
+#pak::pak(c("PredictiveEcology/Require@usePak", "PredictiveEcology/reproducible@recovery",
+#           "PredictiveEcology/SpaDES.project@working/combined-prs"), ask = FALSE)
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
@@ -13,12 +19,16 @@ if (Sys.info()["user"] == "ieddy"){
 dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
 
-outputPathBuild <- function(.ELFind, .samplingRange, .GCM, .SSP, .rep) {
-  file.path("outputs", .ELFind, 
-            paste(range(eval(parse(text = .samplingRange))), collapse = "-"), 
+pathBuild <- function(.ELFind, .samplingRange, .GCM, .SSP, .rep, pre = "outputs") {
+  # the .samplingRange may come in as a numeric or as a quoted/call
+  sr <- if (is.numeric(.samplingRange)) .samplingRange else eval(parse(text = .samplingRange))
+  file.path(pre, .ELFind, 
+            paste(range(sr), collapse = "-"), 
             paste0(.GCM, ifelse(is.na(.SSP), "", paste0("_ssp", .SSP))), 
             paste0("rep", .rep))
 }
+
+# debug(SpaDES.project:::setupParams)
 inSim <- SpaDES.project::setupProject(
   .rep = .rep,
   .ELFind = .ELFind,
@@ -72,23 +82,29 @@ inSim <- SpaDES.project::setupProject(
   .objfunFireReps = .objfunFireReps,
   # useGit = "eliotmcintire",
   Restart = TRUE,
-  paths = list(outputPath = outputPathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)),
+  overwrite = !SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
+  paths = list(outputPath = pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep),
+               cachePath = "/mnt/shared_cache/cache",
+               # use inputPath on the shared drive, so inputPaths works
+               inputPath = pathBuild(pre = "/mnt/shared_cache/inputs", .ELFind, .samplingRange, .GCM, .SSP, .rep)),
   runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
     gsub(pattern = "outputs_", replacement = ""),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
-    "PredictiveEcology/reproducible@recovery (>= 3.0.0.9004)"
+    "PredictiveEcology/reproducible@recovery (>= 3.0.0.9010)"
     , "PredictiveEcology/SpaDES.core@updatesPostHDDFail (>= 3.0.4.9002)"
     , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
     , "PredictiveEcology/fireSenseUtils@development (>= 0.1.3)"
+    , "PredictiveEcology/pemisc@development (>= 0.0.4.9016)" # needed for LandWebUtils; not sure why
     , "qs2", "filelock"
     , "archive"
     , "googlesheets4"
-    , "PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9000)"
+    , "PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9006)"
     , "terra" # "leaflet", "tidyterra",
     , "plyr"#, "scfmutils",
+    , "geodata"
     , "rvest" # needed for prepIgnitionFitData
     # , "extraPackages.R" # file not used currently; should just skip it
   ),
@@ -107,15 +123,14 @@ inSim <- SpaDES.project::setupProject(
     , SpaDES.project.fast = FALSE
     , reproducible.shapefileRead = "terra::vect"
     , reproducible.overwrite = TRUE
-    , reproducible.inputPaths = "~/data"
+    , reproducible.inputPaths = "/mnt/shared_cache/data"
     , reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9"
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
     , reproducible.savePreDigest = FALSE
     , fireSenseUtils.runTests = FALSE
     , reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
-    , reproducible.nThreads = 4 # 
-    , reproducible.inputPaths = "~/data" # means I can share data from other projects
+    , reproducible.nThreads = 1 #  When in parallel; can't do >1 ... only a warning
     , reproducible.prepInputsUrlTiles = "https://drive.google.com/drive/folders/1IfeQ9rZ3-RIQwtcdo2T5Kn51NJJRWeox?usp=drive_link"
     , spades.useRequire = TRUE
     # , error = recover
@@ -123,27 +138,30 @@ inSim <- SpaDES.project::setupProject(
     # For batch runs, these should be off
     , reproducible.showSimilar = FALSE #interactive() && !nzchar(Sys.getenv("TMUX"))
     , reproducible.useMemoise = interactive() && !nzchar(Sys.getenv("TMUX"))
-    , spades.recoveryMode = 5#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
+    , spades.recoveryMode = (interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
     , spades.cacheChaining = FALSE
     , reproducible.cacheChaining = FALSE #interactive()
     
     , reproducible.gdalwarp = FALSE
     , Require.cloneFrom = Sys.getenv("R_LIBS_USER")
+    , Require.usePak = TRUE
+    , Require.verbose = 1
     , spades.moduleCodeChecks = FALSE
     , spades.allowInitDuringSimInit = TRUE
-    , spades.evalPostEvent = NULL
-    # quote({# print(.robustDigest(sim$spreadFirePolys));
-    #   print(.robustDigest(sim$rasterToMatch_biomassParam));
-    #   print(.robustDigest(sim[["standAgeMap"]]))
-    # })
+    , spades.evalPostEvent = # NULL
+      quote({# print(.robustDigest(sim$spreadFirePolys));
+        # print(.robustDigest(sim$rasterToMatch_biomassParam));
+        print(.robustDigest(sim$sppEquiv))
+      })
     , warnPartialMatchArgs = TRUE #fireSense has objects that will be fooled by partial matching (rstLCC, rstLCCs)
     , warnPartialMatchAttr = TRUE
     , warnPartialMatchDollar = TRUE
     , spades.debugModule = NULL),
   sideEffects = list(
     terra::terraOptions(memfrac = 0)
+    , {gd <- file.path(paths$inputPath, "geodata"); geodata::geodata_path(gd)} # gadm on a non-interactive sessino needs this
     , terra::gdalCache(size = 2048)   # 2 GB
-    , "~/OtherExtras.R" # Eliot has some dev things he does incl pkgload::
+    , "OtherExtras.R" # Eliot has some dev things he does incl pkgload::
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
@@ -259,6 +277,7 @@ inSim <- SpaDES.project::setupProject(
 message(paste0(inSim$runName, ", .strategy:", inSim$.strategy,
                " .objfunFireReps:", inSim$.objfunFireReps))
 
+if (!is(inSim$climateVariables, "list")) browser()
 inSimCopy <- reproducible::Copy(inSim)
 
 
