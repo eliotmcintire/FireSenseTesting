@@ -2,7 +2,8 @@
 lib_path <- .libPaths()[[1]]
 
 # --- Local install ---
-pak::pak(devPkgs, lib = lib_path, ask = FALSE, upgrade = FALSE)
+lapply(devPkgs, pak::pak, lib = lib_path, ask = FALSE, upgrade = FALSE, dependencies = FALSE)
+# pak::pak(devPkgs, lib = lib_path, ask = FALSE, upgrade = FALSE)
 
 # --- Cluster install ---
 library(parallelly)
@@ -18,7 +19,7 @@ results <- tryCatch({
   clusterExport(workers, c("devPkgs", "lib_path"))
   parLapply(workers, seq_along(workers), function(i) {
     tryCatch({
-      pak::pak(devPkgs, lib = lib_path, ask = FALSE, upgrade = FALSE)
+      pak::pak(devPkgs, lib = lib_path, ask = FALSE, upgrade = FALSE, dependencies = FALSE)
       "SUCCESS"
     }, error = function(e) {
       paste("FAILED:", conditionMessage(e))

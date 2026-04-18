@@ -138,7 +138,7 @@ inSim <- SpaDES.project::setupProject(
     # For batch runs, these should be off
     , reproducible.showSimilar = FALSE #interactive() && !nzchar(Sys.getenv("TMUX"))
     , reproducible.useMemoise = interactive() && !nzchar(Sys.getenv("TMUX"))
-    , spades.recoveryMode = (interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
+    , spades.recoveryMode = 1#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
     , spades.cacheChaining = FALSE
     , reproducible.cacheChaining = FALSE #interactive()
     
@@ -148,11 +148,11 @@ inSim <- SpaDES.project::setupProject(
     , Require.verbose = 1
     , spades.moduleCodeChecks = FALSE
     , spades.allowInitDuringSimInit = TRUE
-    , spades.evalPostEvent = # NULL
-      quote({# print(.robustDigest(sim$spreadFirePolys));
-        # print(.robustDigest(sim$rasterToMatch_biomassParam));
-        print(.robustDigest(sim$sppEquiv))
-      })
+    , spades.evalPostEvent = NULL
+      # quote({# print(.robustDigest(sim$spreadFirePolys));
+      #   # print(.robustDigest(sim$rasterToMatch_biomassParam));
+      #   print(.robustDigest(sim$sppEquiv))
+      # })
     , warnPartialMatchArgs = TRUE #fireSense has objects that will be fooled by partial matching (rstLCC, rstLCCs)
     , warnPartialMatchAttr = TRUE
     , warnPartialMatchDollar = TRUE
@@ -280,6 +280,20 @@ message(paste0(inSim$runName, ", .strategy:", inSim$.strategy,
 if (!is(inSim$climateVariables, "list")) browser()
 inSimCopy <- reproducible::Copy(inSim)
 
+debug(SpaDES.core::saveFiles)
+########################################
+# THE MAIN simInitAndSpades2 CALL
+suppressPackageStartupMessages(
+  simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
+)
+########################################
+
+
+# SAVE AFTERWARDS
+SpaDES.project::outSaveTarUpload(
+  runName = inSim$runName, 
+  sim = simOut,
+  gFolder = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link")
 
 if (FALSE) {
   prepInputs(targetFile = "fireSenseParams.rds", url = "https://drive.google.com/file/d/1-iD7Pj4cX3kag4TEHeGxGgW42Rf0ag2l/view?usp=drivesdk",
@@ -303,49 +317,3 @@ if (FALSE) {
   outSims <- restartSpades()
 }
 
-suppressPackageStartupMessages(
-  simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
-)
-
-
-
-#TODO: projected and historical climate rasters- I assume we want to keep them
-
-
-fsim <- SpaDES.core::simFile(
-  name = inSim$runName, #TODO: was .runName, changing to theRunName, which has the SSP, GCM etc
-  path = outputPath(simOut),   ## should be based on <run_name>
-  time = inSim$times$end,
-  ext = "rds"             ## do not use qs!
-)
-if (FALSE) { # if you don't have 
-  inSim$runName = gsub("/", "_", fs::path_rel(inSim$paths$outputPath)) |>
-    gsub(pattern = "outputs_", replacement = "")
-  fsim <- SpaDES.core::simFile(
-    name = inSim$runName, #TODO: was .runName, changing to theRunName, which has the SSP, GCM etc
-    path = outputPath(simOut),   ## should be based on <run_name>
-    time = inSim$times$end,
-    ext = "rds"             ## do not use qs!
-  )
-}
-dir.create(dirname(fsim), showWarnings = FALSE, recursive = TRUE)
-system.time(saveSimList(
-  sim = simOut,
-  filename = fsim,
-  ## avoid costly zip/unzip operations:
-  inputs = FALSE,
-  outputs = FALSE,
-  cache = FALSE,
-  files = FALSE))
-#   
-# #compress outputs, upload 
-resultsDir <- outputPath(simOut)
-#need a runName
-tarball <- paste0(inSim$runName, ".tar.gz")
-
-tar(tarball, files = outputs(simOut), extra_flags = "-v")
-# tar(tarball, files = dir(resultsDir, full.names = TRUE), extra_flags = "-v")
-# archive::archive_write_dir(archive = tarball, dir = resultsDir, format = "tar")
-gFolder <- googledrive::as_id("https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link")
-googledrive::drive_upload(tarball, path = gFolder,
-                          name = tarball, overwrite = TRUE)

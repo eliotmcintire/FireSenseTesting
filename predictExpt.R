@@ -132,8 +132,8 @@ workers <- SpaDES.project::experimentTmux(
   pathBuild = pathBuild,
   statusCalculate = # statusCalculator(type = "fireSense")
     quote({
-      dirWithUpdatedElf <- pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)
-      dd <- dir(dirWithUpdatedElf, recursive = TRUE, full.names = TRUE)
+      outputPath <- pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)
+      dd <- dir(outputPath, recursive = TRUE, full.names = TRUE)
       if (NROW(dd)) {
         ee <- grep(value = TRUE, pattern = "burnMap.*tif$", dd)
         done <- grepl(paste0("year", times$end), ee)
