@@ -93,34 +93,40 @@ pak::pak("PredictiveEcology/Require@usePak", ask = FALSE, upgrade = FALSE)
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
+  # enableGSSync = TRUE,
   # cores = rep("localhost", 2),
   cores = c(
-    rep("localhost", 9),
-    rep(c(
-      "dougfir"
-      , "mpb"
-      # , "localhost"
-    ), 2),
-    rep(c(
-      "fire"
-      , "coco"
-    ), 2),
-    rep(c(
-      "mpb"
-      , "coco"
-      , "camas"
-      , "carbon"
-      , "caribou"
-      , "core" 
-      , "sbw"
-    ), 1),
-      # "birds", "biomass", 
-    c("acer"
-      , "birds"
-      # "biomass", 
-      , "abies"
-      , "pinus")
-  ) |> sort(), # sort puts them next to each other in tmux
+    rep("localhost", 2),
+    "biomass",
+    "caribou",
+    "dougfir"
+    
+    #   rep(c(
+    #     "dougfir"
+    #     , "mpb"
+    #     # , "localhost"
+    #   ), 2),
+    #   rep(c(
+    #     "fire"
+    #     , "coco"
+    #   ), 2),
+    #   rep(c(
+    #     "mpb"
+    #     , "coco"
+    #     , "camas"
+    #     , "carbon"
+    #     , "caribou"
+    #     , "core" 
+    #     , "sbw"
+    #   ), 1),
+    #     # "birds", "biomass", 
+    #   c("acer"
+    #     , "birds"
+    #     # "biomass", 
+    #     , "abies"
+    #     , "pinus")
+  ) |> 
+    sort(), # sort puts them next to each other in tmux
   # cores = c(rep("biomass", 2), rep("coco", 2)),
   queue_path          = "longRuns.rds",
   delay_before_source = 15,
@@ -130,36 +136,37 @@ workers <- SpaDES.project::experimentTmux(
   forceLocalQueueToGS = FALSE,
   # outputPath = outs$paths$outputPath,
   pathBuild = pathBuild,
-  statusCalculate = # statusCalculator(type = "fireSense")
-    quote({
-      outputPath <- pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)
-      dd <- dir(outputPath, recursive = TRUE, full.names = TRUE)
-      if (NROW(dd)) {
-        ee <- grep(value = TRUE, pattern = "burnMap.*tif$", dd)
-        done <- grepl(paste0("year", times$end), ee)
-        if (all(done %in% FALSE)) { # running
-          runningFile <- dir(activeRunningPathForTmux(queue_path = queue_path), 
-                             pattern = .ELFind, full.names = TRUE)
-          ff <- grep(value = TRUE, pattern = "Annual Fire Maps", dd)
-          fi2 <- file.info(ff)
-          
-          if (length(runningFile)) {
-            fi <- file.info(runningFile)
-            started_at <- format(fi[, "mtime"])
-            mostRecentFile <- tail(ff[fi2[, "mtime"] > fi[, "mtime"]], 1)
-            heartbeat_at <- if (length(mostRecentFile) > 0) format(file.info(mostRecentFile)[, "mtime"]) else NA
-            heartbeat_iter <- if (is.na(heartbeat_at)) times$start else gsub(".+Maps ([[:digit:]]{4,4}).+", "\\1", mostRecentFile)
-          }
-          
-        }
-        finishedFile <- ee[done]
-        if (length(finishedFile)) {
-          iterationsTotal <- gsub(".+year([[:digit:]]{4,4}).+", "\\1", finishedFile)
-          finished_at <- if (length(finishedFile) > 0) format(file.info(finishedFile)[, "mtime"]) else NA
-          done <- any(done)
-        }
-      }
-    })
+  
+  statusCalculate = SpaDES.project::statusCalculate_LandR
+    # quote({
+    #   outputPath <- pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep)
+    #   dd <- dir(outputPath, recursive = TRUE, full.names = TRUE)
+    #   if (NROW(dd)) {
+    #     ee <- grep(value = TRUE, pattern = "burnMap.*tif$", dd)
+    #     done <- grepl(paste0("year", times$end), ee)
+    #     if (all(done %in% FALSE)) { # running
+    #       runningFile <- dir(activeRunningPathForTmux(queue_path = queue_path), 
+    #                          pattern = .ELFind, full.names = TRUE)
+    #       ff <- grep(value = TRUE, pattern = "Annual Fire Maps", dd)
+    #       fi2 <- file.info(ff)
+    #       
+    #       if (length(runningFile)) {
+    #         fi <- file.info(runningFile)
+    #         started_at <- format(fi[, "mtime"])
+    #         mostRecentFile <- tail(ff[fi2[, "mtime"] > fi[, "mtime"]], 1)
+    #         heartbeat_at <- if (length(mostRecentFile) > 0) format(file.info(mostRecentFile)[, "mtime"]) else NA
+    #         heartbeat_iter <- if (is.na(heartbeat_at)) times$start else gsub(".+Maps ([[:digit:]]{4,4}).+", "\\1", mostRecentFile)
+    #       }
+    #       
+    #     }
+    #     finishedFile <- ee[done]
+    #     if (length(finishedFile)) {
+    #       iterationsTotal <- gsub(".+year([[:digit:]]{4,4}).+", "\\1", finishedFile)
+    #       finished_at <- if (length(finishedFile) > 0) format(file.info(finishedFile)[, "mtime"]) else NA
+    #       done <- any(done)
+    #     }
+    #   }
+    # })
   ,
   ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
 )

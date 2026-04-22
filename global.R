@@ -30,6 +30,7 @@ pathBuild <- function(.ELFind, .samplingRange, .GCM, .SSP, .rep, pre = "outputs"
 
 # debug(SpaDES.project:::setupParams)
 inSim <- SpaDES.project::setupProject(
+  .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
   .rep = .rep,
   .ELFind = .ELFind,
   .strategy = .strategy,
@@ -137,7 +138,7 @@ inSim <- SpaDES.project::setupProject(
     
     # For batch runs, these should be off
     , reproducible.showSimilar = FALSE #interactive() && !nzchar(Sys.getenv("TMUX"))
-    , reproducible.useMemoise = interactive() && !nzchar(Sys.getenv("TMUX"))
+    , reproducible.useMemoise = FALSE # interactive() && !nzchar(Sys.getenv("TMUX"))
     , spades.recoveryMode = 1#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
     , spades.cacheChaining = FALSE
     , reproducible.cacheChaining = FALSE #interactive()
@@ -148,11 +149,11 @@ inSim <- SpaDES.project::setupProject(
     , Require.verbose = 1
     , spades.moduleCodeChecks = FALSE
     , spades.allowInitDuringSimInit = TRUE
-    , spades.evalPostEvent = NULL
-      # quote({# print(.robustDigest(sim$spreadFirePolys));
+    , spades.evalPostEvent = #NULL
+      quote({# print(.robustDigest(sim$spreadFirePolys));
       #   # print(.robustDigest(sim$rasterToMatch_biomassParam));
-      #   print(.robustDigest(sim$sppEquiv))
-      # })
+        tryCatch(print(inSim$runName), error = function(x) NULL)
+      })
     , warnPartialMatchArgs = TRUE #fireSense has objects that will be fooled by partial matching (rstLCC, rstLCCs)
     , warnPartialMatchAttr = TRUE
     , warnPartialMatchDollar = TRUE
@@ -280,7 +281,7 @@ message(paste0(inSim$runName, ", .strategy:", inSim$.strategy,
 if (!is(inSim$climateVariables, "list")) browser()
 inSimCopy <- reproducible::Copy(inSim)
 
-debug(SpaDES.core::saveFiles)
+# undebug(SpaDES.core::saveFiles)
 ########################################
 # THE MAIN simInitAndSpades2 CALL
 suppressPackageStartupMessages(
@@ -293,7 +294,7 @@ suppressPackageStartupMessages(
 SpaDES.project::outSaveTarUpload(
   runName = inSim$runName, 
   sim = simOut,
-  gFolder = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link")
+  gFolder = inSim$.uploadGSdir)
 
 if (FALSE) {
   prepInputs(targetFile = "fireSenseParams.rds", url = "https://drive.google.com/file/d/1-iD7Pj4cX3kag4TEHeGxGgW42Rf0ag2l/view?usp=drivesdk",
