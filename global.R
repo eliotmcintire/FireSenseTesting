@@ -1,25 +1,20 @@
 # # install Require and SpaDES.project
 repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
-# pak::pak("~/GitHub/SpaDES.project", ask = FALSE, upgrade = FALSE)
-# pak::pak("PredictiveEcology/Require@pak-dep-cache", ask = FALSE, upgrade = FALSE)
 tryCatch(library(pak), silent = TRUE, error = function(x) install.packages("pak"))
-# source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-# getOrUpdatePkg(c("Require", "SpaDES.project"), c("1.0.1.9013", "0.1.4.9008")) # only install/update if required
-# getOrUpdatePkg(c("Require"), c("1.0.1.9013")) # only install/update if required
-# remotes::install_github("PredictiveEcology/SpaDES.project", upgrade = FALSE)
 
-#pak::pak(c("PredictiveEcology/Require@usePak", "PredictiveEcology/reproducible@recovery",
-#           "PredictiveEcology/SpaDES.project@working/combined-prs"), ask = FALSE)
+pak::pak(c("PredictiveEcology/Require@usePak", 
+           # "PredictiveEcology/reproducible@COG",
+           "PredictiveEcology/SpaDES.project@working/combined-prs"
+           ), ask = FALSE)
 
 # generic absolute path for anybody; but individual can change
-projectDir <- "~/GitHub/FireSenseTesting/"
+projectDir <- "~/GitHub/FireSenseTesting2/"
 if (Sys.info()["user"] == "ieddy"){
   projectDir <- "~/git/FireSenseTesting"
 }
 dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
 
-# debug(SpaDES.project:::setupParams)
 inSim <- SpaDES.project::setupProject(
   .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
   .rep = .rep,
@@ -66,13 +61,13 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/Biomass_regeneration@development"
                                   , "PredictiveEcology/Biomass_core@development"
                                   # summary modules 
-                                  , "FOR-CAST/NRV_summary@development"
-                                  , "PredictiveEcology/burnSummaries@development"
+                                  , "FOR-CAST/NRV_summary@modsForFireSense"
+                                  , "PredictiveEcology/burnSummaries@modsForFireSense"
                                   , "PredictiveEcology/fireSense_summary@development"
                                   , "PredictiveEcology/Biomass_summary@main"
                      )),
   .objfunFireReps = .objfunFireReps,
-  # useGit = "eliotmcintire",
+  useGit = "eliotmcintire",
   Restart = TRUE,
   overwrite = !SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
   paths = list(outputPath = SpaDES.project::pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep),
@@ -96,7 +91,7 @@ inSim <- SpaDES.project::setupProject(
     , "PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9006)"
     , "terra" # "leaflet", "tidyterra",
     , "plyr"#, "scfmutils",
-    , "geodata"
+    , "geodata", "usethis"
     , "rvest" # needed for prepIgnitionFitData
     # , "extraPackages.R" # file not used currently; should just skip it
   ),
@@ -272,7 +267,7 @@ message(paste0(inSim$runName, ", .strategy:", inSim$.strategy,
 if (!is(inSim$climateVariables, "list")) browser()
 inSimCopy <- reproducible::Copy(inSim)
 
-# undebug(SpaDES.core::saveFiles)
+if (FALSE) {
 ########################################
 # THE MAIN simInitAndSpades2 CALL
 suppressPackageStartupMessages(
@@ -309,3 +304,4 @@ if (FALSE) {
   outSims <- restartSpades()
 }
 
+}
