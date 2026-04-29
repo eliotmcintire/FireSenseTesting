@@ -19,15 +19,6 @@ if (Sys.info()["user"] == "ieddy"){
 dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
 
-pathBuild <- function(.ELFind, .samplingRange, .GCM, .SSP, .rep, pre = "outputs") {
-  # the .samplingRange may come in as a numeric or as a quoted/call
-  sr <- if (is.numeric(.samplingRange)) .samplingRange else eval(parse(text = .samplingRange))
-  file.path(pre, .ELFind, 
-            paste(range(sr), collapse = "-"), 
-            paste0(.GCM, ifelse(is.na(.SSP), "", paste0("_ssp", .SSP))), 
-            paste0("rep", .rep))
-}
-
 # debug(SpaDES.project:::setupParams)
 inSim <- SpaDES.project::setupProject(
   .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
@@ -84,10 +75,10 @@ inSim <- SpaDES.project::setupProject(
   # useGit = "eliotmcintire",
   Restart = TRUE,
   overwrite = !SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
-  paths = list(outputPath = pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep),
+  paths = list(outputPath = SpaDES.project::pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep),
                cachePath = "/mnt/shared_cache/cache",
                # use inputPath on the shared drive, so inputPaths works
-               inputPath = pathBuild(pre = "/mnt/shared_cache/inputs", .ELFind, .samplingRange, .GCM, .SSP, .rep)),
+               inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .ELFind, .samplingRange, .GCM, .SSP, .rep)),
   runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
     gsub(pattern = "outputs_", replacement = ""),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
@@ -162,7 +153,7 @@ inSim <- SpaDES.project::setupProject(
     terra::terraOptions(memfrac = 0)
     , {gd <- file.path(paths$inputPath, "geodata"); geodata::geodata_path(gd)} # gadm on a non-interactive sessino needs this
     , terra::gdalCache(size = 2048)   # 2 GB
-    , "OtherExtras.R" # Eliot has some dev things he does incl pkgload::
+    # , "OtherExtras.R" # Eliot has some dev things he does incl pkgload::
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
@@ -175,7 +166,7 @@ inSim <- SpaDES.project::setupProject(
   saveAndPlotInterval = 100,
   params = list(
     .globals = list(
-      spreadFitFilename = "fireSenseParams_2026_02.rds"
+      spreadFitFilename = "fireSenseParams_2026_02.rds" # the object on the cloud with the fits
       # dataYear = 2011,
       , .studyAreaName = paste0("ELF", .ELFind)
       , .runName = runName

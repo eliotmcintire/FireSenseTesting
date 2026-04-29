@@ -11,7 +11,8 @@ library(parallel)
 
 machines <- c("birds", "biomass", "camas", "carbon", "caribou", "coco",
               "core", "dougfir", "fire", "mpb", "sbw",
-              "acer", "abies", "pinus")
+              # "acer", 
+              "abies", "pinus")
 
 workers <- makeClusterPSOCK(machines, user = "emcintir", homogeneous = TRUE)
 
