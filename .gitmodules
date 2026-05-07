@@ -28,3 +28,6 @@
 [submodule "modules/NRV_summary"]
 	path = modules/NRV_summary
 	url = https://github.com/PredictiveEcology/NRV_summary
+[submodule "modules/burnSummaries"]
+	path = modules/burnSummaries
+	url = https://github.com/PredictiveEcology/burnSummaries
