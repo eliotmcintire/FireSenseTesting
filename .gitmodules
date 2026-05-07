@@ -1,6 +1,3 @@
-[submodule "modules/fireSense_dataPrepFit"]
-	path = modules/fireSense_dataPrepFit
-	url = https://github.com/PredictiveEcology/fireSense_dataPrepFit
 [submodule "modules/Biomass_borealDataPrep"]
 	path = modules/Biomass_borealDataPrep
 	url = https://github.com/PredictiveEcology/Biomass_borealDataPrep
@@ -52,3 +49,6 @@
 [submodule "modules/climateYear"]
 	path = modules/climateYear
 	url = https://github.com/PredictiveEcology/climateYear
+[submodule "modules/fireSense_ELFs"]
+	path = modules/fireSense_ELFs
+	url = https://github.com/PredictiveEcology/fireSense_ELFs
