@@ -4,9 +4,6 @@
 [submodule "modules/Biomass_speciesData"]
 	path = modules/Biomass_speciesData
 	url = https://github.com/PredictiveEcology/Biomass_speciesData
-[submodule "modules/fireSense_SpreadPredict"]
-	path = modules/fireSense_SpreadPredict
-	url = https://github.com/PredictiveEcology/fireSense_SpreadPredict
 [submodule "modules/fireSense"]
 	path = modules/fireSense
 	url = https://github.com/PredictiveEcology/fireSense
@@ -52,3 +49,6 @@
 [submodule "modules/fireSense_dataPrepPredict"]
 	path = modules/fireSense_dataPrepPredict
 	url = https://github.com/PredictiveEcology/fireSense_dataPrepPredict
+[submodule "modules/fireSense_IgnitionPredict"]
+	path = modules/fireSense_IgnitionPredict
+	url = https://github.com/PredictiveEcology/fireSense_IgnitionPredict
