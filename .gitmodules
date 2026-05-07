@@ -34,9 +34,6 @@
 [submodule "modules/fireSense_dataPrepPredict"]
 	path = modules/fireSense_dataPrepPredict
 	url = https://github.com/PredictiveEcology/fireSense_dataPrepPredict
-[submodule "modules/fireSense_ELFs"]
-	path = modules/fireSense_ELFs
-	url = https://github.com/PredictiveEcology/fireSense_ELFs
 [submodule "modules/burnSummaries"]
 	path = modules/burnSummaries
 	url = git@github.com:PredictiveEcology/burnSummaries
@@ -52,3 +49,6 @@
 [submodule "modules/canClimateData"]
 	path = modules/canClimateData
 	url = https://github.com/PredictiveEcology/canClimateData
+[submodule "modules/climateYear"]
+	path = modules/climateYear
+	url = https://github.com/PredictiveEcology/climateYear
