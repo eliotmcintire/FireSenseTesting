@@ -1,14 +1,9 @@
-# # install Require and SpaDES.project
-repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
-tryCatch(library(pak), silent = TRUE, error = function(x) install.packages("pak"))
-
-pak::pak(c("PredictiveEcology/Require@usePak", 
-           # "PredictiveEcology/reproducible@COG",
-           "PredictiveEcology/SpaDES.project@working/combined-prs"
-           ), ask = FALSE)
+if (!require("pak")) install.packages("pak")
+pak::pak(c("PredictiveEcology/Require@usePak",
+           "PredictiveEcology/SpaDES.project@working/combined-prs"), ask = FALSE)
 
 # generic absolute path for anybody; but individual can change
-projectDir <- "~/GitHub/FireSenseTesting2/"
+projectDir <- "~/GitHub/FireSenseTesting/"
 if (Sys.info()["user"] == "ieddy"){
   projectDir <- "~/git/FireSenseTesting"
 }
@@ -43,7 +38,7 @@ inSim <- SpaDES.project::setupProject(
                      ),
                      FRU = 25,
                      .times = list(start = 2020, end = 3020),
-                     .modules = c("PredictiveEcology/canClimateData@improveCache1"
+                     .modules = c("PredictiveEcology/canClimateData@development"
                                   ,"PredictiveEcology/climateYear@development"
                                   , "PredictiveEcology/fireSense_ELFs@main"
                                   , "PredictiveEcology/fireSense_dataPrepFit@development"
@@ -61,7 +56,8 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/Biomass_regeneration@development"
                                   , "PredictiveEcology/Biomass_core@development"
                                   # summary modules 
-                                  , "FOR-CAST/NRV_summary@modsForFireSense"
+                                  # , "FOR-CAST/NRV_summary@development"
+                                  , "PredictiveEcology/NRV_summary@modsForFireSense"
                                   , "PredictiveEcology/burnSummaries@modsForFireSense"
                                   , "PredictiveEcology/fireSense_summary@development"
                                   , "PredictiveEcology/Biomass_summary@main"
@@ -72,16 +68,17 @@ inSim <- SpaDES.project::setupProject(
   overwrite = !SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
   paths = list(outputPath = SpaDES.project::pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep),
                cachePath = "/mnt/shared_cache/cache",
-               # use inputPath on the shared drive, so inputPaths works
+               # use inputPath on the shared drive, so destinationPathShared works
                inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .ELFind, .samplingRange, .GCM, .SSP, .rep)),
   runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
     gsub(pattern = "outputs_", replacement = ""),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
-    "PredictiveEcology/reproducible@recovery (>= 3.0.0.9010)"
-    , "PredictiveEcology/SpaDES.core@updatesPostHDDFail (>= 3.0.4.9002)"
+    "PredictiveEcology/reproducible@sharedInputs (HEAD)"
+    , "PredictiveEcology/SpaDES.core@fixRCMDcheckWarnings (HEAD)"
     , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
+    , "PredictiveEcology/LandR@LANDISDisp (HEAD)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
     , "PredictiveEcology/fireSenseUtils@development (>= 0.1.3)"
     , "PredictiveEcology/pemisc@development (>= 0.0.4.9016)" # needed for LandWebUtils; not sure why
@@ -101,16 +98,17 @@ inSim <- SpaDES.project::setupProject(
     # gargle_oauth_cache = ".secret",
     # gargle_oauth_client_type = "web", # for command line
     "~/googledriveAuthentication.R" # has the above lines in a list; each user can create their own file
-    , repos = unique(c(repos[[1]]
-                       # , 'https://dmlc.r-universe.dev'
-                       , getOption("repos")))
+    , "LandR.assertions" = FALSE # for production runs; very time consuming
+    # , repos = unique(c(repos[[1]]
+    #                    # , 'https://dmlc.r-universe.dev'
+    #                    , getOption("repos")))
     , reproducible.cacheSaveFormat = "qs2"
     , reproducible.qsFormat = "qs2"
     , reproducible.useTry = FALSE
     , SpaDES.project.fast = FALSE
     , reproducible.shapefileRead = "terra::vect"
     , reproducible.overwrite = TRUE
-    , reproducible.inputPaths = "/mnt/shared_cache/data"
+    , reproducible.destinationPathShared = "/mnt/shared_cache/data"
     , reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9"
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
@@ -132,12 +130,12 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.gdalwarp = FALSE
     , Require.cloneFrom = Sys.getenv("R_LIBS_USER")
     , Require.usePak = TRUE
-    , Require.verbose = 1
+    , Require.verbose = 2
     , spades.moduleCodeChecks = FALSE
     , spades.allowInitDuringSimInit = TRUE
     , spades.evalPostEvent = #NULL
       quote({# print(.robustDigest(sim$spreadFirePolys));
-      #   # print(.robustDigest(sim$rasterToMatch_biomassParam));
+        #   # print(.robustDigest(sim$rasterToMatch_biomassParam));
         tryCatch(print(inSim$runName), error = function(x) NULL)
       })
     , warnPartialMatchArgs = TRUE #fireSense has objects that will be fooled by partial matching (rstLCC, rstLCCs)
@@ -148,12 +146,12 @@ inSim <- SpaDES.project::setupProject(
     terra::terraOptions(memfrac = 0)
     , {gd <- file.path(paths$inputPath, "geodata"); geodata::geodata_path(gd)} # gadm on a non-interactive sessino needs this
     , terra::gdalCache(size = 2048)   # 2 GB
-    # , "OtherExtras.R" # Eliot has some dev things he does incl pkgload::
+    , "OtherExtras.R" # Eliot has some dev things he does incl pkgload::
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
     climateData::climateLayers(.climVars, fun = quote(calcAsIs), 
-                              projected = ifelse(identical(.GCM, "NRV"), FALSE, TRUE))
+                               projected = ifelse(identical(.GCM, "NRV"), FALSE, TRUE))
   },
   climateVariablesForFire = list(ignition = gsub("_", "", .climVars), # This must match a layer in climateVariables (without 'historical_')
                                  # only sm for spread
@@ -232,7 +230,7 @@ inSim <- SpaDES.project::setupProject(
                            studyAreaName  = paste0("ELF", .ELFind),
                            mode = "single"
                            #reps = .rep #only needed for multi, and would be the total reps
-                           )
+    )
   ), 
   # objectSynonyms = list(c("flammableRTM", "flammableMap")),
   outputs =  {
@@ -268,25 +266,25 @@ if (!is(inSim$climateVariables, "list")) browser()
 inSimCopy <- reproducible::Copy(inSim)
 
 if (FALSE) {
-########################################
-# THE MAIN simInitAndSpades2 CALL
-suppressPackageStartupMessages(
-  simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
-)
-########################################
-
-
-# SAVE AFTERWARDS
-SpaDES.project::outSaveTarUpload(
-  runName = inSim$runName, 
-  sim = simOut,
-  gFolder = inSim$.uploadGSdir)
-
-if (FALSE) {
-  prepInputs(targetFile = "fireSenseParams.rds", url = "https://drive.google.com/file/d/1-iD7Pj4cX3kag4TEHeGxGgW42Rf0ag2l/view?usp=drivesdk",
-             destinationPath = "/home/emcintir/GitHub/FireSenseTesting/inputs",
-             useCache = TRUE, purge = 7, overwrite = TRUE)
-  SpaDES.core::Plots(inSim[grep("studyArea|rasterToMatch", names(inSim))],
+  ########################################
+  # THE MAIN simInitAndSpades2 CALL
+  suppressPackageStartupMessages(
+    simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
+  )
+  ########################################
+  
+  
+  # SAVE AFTERWARDS
+  SpaDES.project::outSaveTarUpload(
+    runName = inSim$runName, 
+    sim = simOut,
+    gFolder = inSim$.uploadGSdir)
+  
+  if (FALSE) {
+    prepInputs(targetFile = "fireSenseParams.rds", url = "https://drive.google.com/file/d/1-iD7Pj4cX3kag4TEHeGxGgW42Rf0ag2l/view?usp=drivesdk",
+               destinationPath = "/home/emcintir/GitHub/FireSenseTesting/inputs",
+               useCache = TRUE, purge = 7, overwrite = TRUE)
+    SpaDES.core::Plots(inSim[grep("studyArea|rasterToMatch", names(inSim))],
                        title = paste0("StudyArea ", inSim$.runName),
                        fn = plotSAs,
                        filename = paste0("studyAreas", inSim$.runName),
@@ -294,14 +292,14 @@ if (FALSE) {
                        types = c("screen", "png")) |>
       reproducible::Cache(.functionName = "Plots_studyAreas",
                           useCache = !identical(names(dev.cur()), "null device"))
-
-  SpaDES.project::plotSAsLeaflet(inSim[grep("studyArea|rasterToMatch", names(inSim))])
-
-  fn <- "sim_FireSenseSpreadFit.qs2"
-  saveState(filename = fn, files = FALSE)
-  inSim2 <- SpaDES.core::loadSimList(fn)
-  outSims <- restartSpades(inSim2)
-  outSims <- restartSpades()
-}
-
+    
+    SpaDES.project::plotSAsLeaflet(inSim[grep("studyArea|rasterToMatch", names(inSim))])
+    
+    fn <- "sim_FireSenseSpreadFit.qs2"
+    saveState(filename = fn, files = FALSE)
+    inSim2 <- SpaDES.core::loadSimList(fn)
+    outSims <- restartSpades(inSim2)
+    outSims <- restartSpades()
+  }
+  
 }

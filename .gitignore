@@ -42,3 +42,5 @@ tmux*
 .vscode/settings.json
 *.tar.gz
 outputs/4.3/2020-2020/CNRM-ESM2-1_ssp370/rep1
+outputs/4.3/1990-2020/CNRM-ESM2-1/370/1
+.positai
