@@ -132,7 +132,7 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.gdalwarp = FALSE
     , Require.cloneFrom = Sys.getenv("R_LIBS_USER")
     , Require.usePak = TRUE
-    , Require.verbose = 1
+    , Require.verbose = 2
     , spades.moduleCodeChecks = FALSE
     , spades.allowInitDuringSimInit = TRUE
     , spades.evalPostEvent = #NULL
@@ -304,6 +304,5 @@ if (FALSE) {
     outSims <- restartSpades(inSim2)
     outSims <- restartSpades()
   }
-  
   
 }

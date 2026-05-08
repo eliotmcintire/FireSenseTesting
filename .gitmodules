@@ -1,30 +1,9 @@
-[submodule "modules/fireSense_dataPrepFit"]
-	path = modules/fireSense_dataPrepFit
-	url = https://github.com/PredictiveEcology/fireSense_dataPrepFit
 [submodule "modules/Biomass_borealDataPrep"]
 	path = modules/Biomass_borealDataPrep
 	url = https://github.com/PredictiveEcology/Biomass_borealDataPrep
 [submodule "modules/Biomass_speciesData"]
 	path = modules/Biomass_speciesData
 	url = https://github.com/PredictiveEcology/Biomass_speciesData
-[submodule "modules/fireSense_SpreadFit"]
-	path = modules/fireSense_SpreadFit
-	url = https://github.com/PredictiveEcology/fireSense_SpreadFit
-[submodule "modules/fireSense_IgnitionFit"]
-	path = modules/fireSense_IgnitionFit
-	url = https://github.com/PredictiveEcology/fireSense_IgnitionFit
-[submodule "modules/canClimateData"]
-	path = modules/canClimateData
-	url = https://github.com/PredictiveEcology/canClimateData
-[submodule "modules/fireSense_SpreadPredict"]
-	path = modules/fireSense_SpreadPredict
-	url = https://github.com/PredictiveEcology/fireSense_SpreadPredict
-[submodule "modules/fireSense_IgnitionPredict"]
-	path = modules/fireSense_IgnitionPredict
-	url = https://github.com/PredictiveEcology/fireSense_IgnitionPredict
-[submodule "modules/fireSense"]
-	path = modules/fireSense
-	url = https://github.com/PredictiveEcology/fireSense
 [submodule "modules/Biomass_regeneration"]
 	path = modules/Biomass_regeneration
 	url = https://github.com/PredictiveEcology/Biomass_regeneration
@@ -34,24 +13,21 @@
 [submodule "modules/Biomass_speciesParameters"]
 	path = modules/Biomass_speciesParameters
 	url = https://github.com/PredictiveEcology/Biomass_speciesParameters
-[submodule "modules/fireSense_dataPrepPredict"]
-	path = modules/fireSense_dataPrepPredict
-	url = https://github.com/PredictiveEcology/fireSense_dataPrepPredict
-[submodule "modules/fireSense_ELFs"]
-	path = modules/fireSense_ELFs
-	url = https://github.com/PredictiveEcology/fireSense_ELFs
-[submodule "modules/climateYear"]
-	path = modules/climateYear
-	url = git@github.com:PredictiveEcology/climateYear
-[submodule "modules/burnSummaries"]
-	path = modules/burnSummaries
-	url = git@github.com:PredictiveEcology/burnSummaries
-[submodule "modules/NRV_summary"]
-	path = modules/NRV_summary
-	url = git@github.com:PredictiveEcology/NRV_summary
-[submodule "modules/fireSense_summary"]
-	path = modules/fireSense_summary
-	url = https://github.com/PredictiveEcology/fireSense_summary
 [submodule "modules/Biomass_summary"]
 	path = modules/Biomass_summary
 	url = https://github.com/PredictiveEcology/Biomass_summary
+[submodule "modules/canClimateData"]
+	path = modules/canClimateData
+	url = https://github.com/PredictiveEcology/canClimateData
+[submodule "modules/climateYear"]
+	path = modules/climateYear
+	url = https://github.com/PredictiveEcology/climateYear
+[submodule "modules/fireSense"]
+	path = modules/fireSense
+	url = https://github.com/PredictiveEcology/fireSense
+[submodule "modules/NRV_summary"]
+	path = modules/NRV_summary
+	url = https://github.com/PredictiveEcology/NRV_summary
+[submodule "modules/burnSummaries"]
+	path = modules/burnSummaries
+	url = https://github.com/PredictiveEcology/burnSummaries
