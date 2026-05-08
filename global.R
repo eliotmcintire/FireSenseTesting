@@ -77,7 +77,7 @@ inSim <- SpaDES.project::setupProject(
   packages = c(
     # "PredictiveEcology/reproducible@sharedInputs (HEAD)"
     # , "PredictiveEcology/SpaDES.core@fixRCMDcheckWarnings (HEAD)"
-    , "PredictiveEcology/reproducible@useCloudPullPushTest (HEAD)",
+    "PredictiveEcology/reproducible@useCloudPullPushTest (HEAD)"
     , "PredictiveEcology/SpaDES.core@spadesCloudCacheTest (HEAD)"
     , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
     , "PredictiveEcology/LandR@LANDISDisp (HEAD)"
