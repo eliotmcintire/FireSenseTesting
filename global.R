@@ -75,8 +75,10 @@ inSim <- SpaDES.project::setupProject(
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
-    "PredictiveEcology/reproducible@sharedInputs (HEAD)"
-    , "PredictiveEcology/SpaDES.core@fixRCMDcheckWarnings (HEAD)"
+    # "PredictiveEcology/reproducible@sharedInputs (HEAD)"
+    # , "PredictiveEcology/SpaDES.core@fixRCMDcheckWarnings (HEAD)"
+    , "PredictiveEcology/reproducible@useCloudPullPushTest (HEAD)",
+    , "PredictiveEcology/SpaDES.core@spadesCloudCacheTest (HEAD)"
     , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
     , "PredictiveEcology/LandR@LANDISDisp (HEAD)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
@@ -264,14 +266,15 @@ message(paste0(inSim$runName, ", .strategy:", inSim$.strategy,
 
 if (!is(inSim$climateVariables, "list")) browser()
 inSimCopy <- reproducible::Copy(inSim)
+inSimCopy$modules <- grep("ELFs", inSimCopy$modules, value = TRUE)
 
+########################################
+# THE MAIN simInitAndSpades2 CALL
+suppressPackageStartupMessages(
+  simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
+)
+########################################
 if (FALSE) {
-  ########################################
-  # THE MAIN simInitAndSpades2 CALL
-  suppressPackageStartupMessages(
-    simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
-  )
-  ########################################
   
   
   # SAVE AFTERWARDS
