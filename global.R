@@ -34,7 +34,7 @@ inSim <- SpaDES.project::setupProject(
                                 , "mpb", "sbw", "mega"
                                 , "acer"
                                 , "abies"
-                                , "pinus"
+                                , "pinus", "landr"
                      ),
                      FRU = 25,
                      .times = list(start = 2020, end = 3020),
@@ -63,9 +63,9 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/Biomass_summary@main"
                      )),
   .objfunFireReps = .objfunFireReps,
-  useGit = "eliotmcintire",
+  # useGit = "eliotmcintire",
   Restart = TRUE,
-  overwrite = !SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
+  overwrite = FALSE, #!SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
   paths = list(outputPath = SpaDES.project::pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep),
                cachePath = "/mnt/shared_cache/cache",
                # use inputPath on the shared drive, so destinationPathShared works
@@ -124,7 +124,7 @@ inSim <- SpaDES.project::setupProject(
     
     # For batch runs, these should be off
     , reproducible.showSimilar = FALSE #interactive() && !nzchar(Sys.getenv("TMUX"))
-    , reproducible.useMemoise = FALSE # interactive() && !nzchar(Sys.getenv("TMUX"))
+    , reproducible.useMemoise = TRUE # interactive() && !nzchar(Sys.getenv("TMUX"))
     , spades.recoveryMode = 1#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
     , spades.cacheChaining = FALSE
     , reproducible.cacheChaining = FALSE #interactive()
@@ -132,7 +132,7 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.gdalwarp = FALSE
     , Require.cloneFrom = Sys.getenv("R_LIBS_USER")
     , Require.usePak = TRUE
-    , Require.verbose = 2
+    , Require.verbose = 1
     , spades.moduleCodeChecks = FALSE
     , spades.allowInitDuringSimInit = TRUE
     , spades.evalPostEvent = #NULL
@@ -259,7 +259,11 @@ inSim <- SpaDES.project::setupProject(
     outputs <- as.data.frame(outputs)
     outputs$arguments <- list(overwrite = TRUE)
     return(outputs)
-  }
+  },
+  studyAreaLarge = reproducible::prepInputs(url = 'https://drive.google.com/file/d/1gW6DBurw2uBx5cAZLcmWd6qBD7eMEd-4/view?usp=share_link',
+                                            fun = 'terra::vect',
+                                            destinationPath = 'inputs')
+  
 )
 message(paste0(inSim$runName, ", .strategy:", inSim$.strategy,
                " .objfunFireReps:", inSim$.objfunFireReps))

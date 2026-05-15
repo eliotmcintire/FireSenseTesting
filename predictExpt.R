@@ -1,14 +1,16 @@
-repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
+# repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
 # source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
 # getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0")) # only install/update if required
 # remotes::install_github("PredictiveEcology/SpaDES.project@development", upgrade = FALSE)
 # remotes::install_github("PredictiveEcology/SpaDES.projec")
 
 devPkgs <- c("PredictiveEcology/Require@usePak", 
-             "PredictiveEcology/reproducible@COG",
-             "PredictiveEcology/SpaDES.project@working/combined-prs",
-             "PredictiveEcology/SpaDES.core@fixRCMDcheckWarnings",
-             "PredictiveEcology/climateData@modsDuringFireSense3")
+             #"PredictiveEcology/reproducible@sharedInputs",
+             "PredictiveEcology/SpaDES.project@working/combined-prs"#,
+             #"PredictiveEcology/LandR@LANDISDisp",
+             #"PredictiveEcology/SpaDES.core@fixRCMDcheckWarnings",
+             #"PredictiveEcology/climateData@development"
+             )
 source("installDevPkgs.R", local = environment())
 
 
