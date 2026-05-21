@@ -1,7 +1,7 @@
-pak::pak(c("PredictiveEcology/Require@usePak", 
-           "PredictiveEcology/SpaDES.project@working/combined-prs",
-           "PredictiveEcology/reproducible@sharedInputs",
-           "PredictiveEcology/SpaDES.core@fixRCMDcheckWarnings"), ask = FALSE)
+pak::pak(c("Require", 
+           "PredictiveEcology/SpaDES.project@development",
+           "PredictiveEcology/reproducible@development",
+           "PredictiveEcology/SpaDES.core@development"), ask = FALSE)
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 
 #####################
@@ -9,8 +9,7 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 #####################
 
 # List + filter on the Drive side. outList() already does name-pattern filtering.
-# allOnGS <- SpaDES.project::outList(outs$.uploadGSdir, pattern = "6\\.2\\.2.+NRV")
-allOnGS <- SpaDES.project::outList(outs$.uploadGSdir, pattern = "6\\.1\\.2.+NRV")[2,]
+allOnGS <- SpaDES.project::outList(outs$.uploadGSdir, pattern = "6\\.2\\.2.+NRV")
 
 # get tar from GDrive, untar all objs, change the filenames from 
 #   the old /home/emcintir/GitHub to ~/... 
@@ -20,8 +19,8 @@ sims <- SpaDES.project::reGetUntarLoad(
   , pathRemap = c(old = "/home/emcintir/GitHub", new = "~/jvanelsl/GitHub")
 )
 
-SpaDES.project::outSave(lazy = TRUE, sim = sims[[1]], sims[[1]]@params$.globals$.runName,
-                        simFilename = "test.rds")
+# SpaDES.project::outSave(lazy = TRUE, sim = sims[[1]], runName = sims[[1]]@params$.globals$.runName,
+#                         simFilename = "test.rds")
 # Now we have many simList objects in `sims`. Some of the parts of these are needed
 #   but not all. What is needed is based on what the Summary modules need
 outs$firePolys <- .unwrap(sims[[1]]$firePolys)

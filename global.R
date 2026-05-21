@@ -1,6 +1,6 @@
 if (!require("pak")) install.packages("pak")
-pak::pak(c("PredictiveEcology/Require@usePak",
-           "PredictiveEcology/SpaDES.project@working/combined-prs"), ask = FALSE)
+#pak::pak(c("Require",
+#           "PredictiveEcology/SpaDES.project@development"), ask = FALSE)
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
@@ -9,7 +9,7 @@ if (Sys.info()["user"] == "ieddy"){
 }
 dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
-
+.studyAreaName <- "MountainCaribouStudyArea"
 inSim <- SpaDES.project::setupProject(
   .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
   .rep = .rep,
@@ -36,6 +36,7 @@ inSim <- SpaDES.project::setupProject(
                                 , "abies"
                                 , "pinus", "landr"
                      ),
+                     # .studyAreaName = "ELF", #{browser(); paste0("ELF", .ELFind)},
                      FRU = 25,
                      .times = list(start = 2020, end = 3020),
                      .modules = c("PredictiveEcology/canClimateData@development"
@@ -62,27 +63,26 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/fireSense_summary@development"
                                   , "PredictiveEcology/Biomass_summary@main"
                      )),
+  .studyAreaName = ifelse(exists(".studyAreaName"), .studyAreaName, paste0("ELF", .ELFind)),
   .objfunFireReps = .objfunFireReps,
   # useGit = "eliotmcintire",
   Restart = TRUE,
   overwrite = FALSE, #!SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
-  paths = list(outputPath = SpaDES.project::pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep),
+  paths = list(outputPath = SpaDES.project::pathBuild(.studyAreaName, .samplingRange, .GCM, .SSP, .rep),
                cachePath = "/mnt/shared_cache/cache",
                # use inputPath on the shared drive, so destinationPathShared works
-               inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .ELFind, .samplingRange, .GCM, .SSP, .rep)),
+               inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .studyAreaName, .samplingRange, .GCM, .SSP, .rep)),
   runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
     gsub(pattern = "outputs_", replacement = ""),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
-    # "PredictiveEcology/reproducible@sharedInputs (HEAD)"
-    # , "PredictiveEcology/SpaDES.core@fixRCMDcheckWarnings (HEAD)"
-    "PredictiveEcology/reproducible@useCloudPullPushTest (HEAD)"
-    , "PredictiveEcology/SpaDES.core@spadesCloudCacheTest (HEAD)"
+    "PrectiveEcology/reproducible@development (HEAD)"
+    , "SpaDES.core (HEAD)"
     , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
-    , "PredictiveEcology/LandR@LANDISDisp (HEAD)"
+    , "PredictiveEcology/LandR@development (>= 1.1.5.9101)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
-    , "PredictiveEcology/fireSenseUtils@development (>= 0.1.3)"
+    , "PredictiveEcology/fireSenseUtils@development (>= 0.2.0)"
     , "PredictiveEcology/pemisc@development (>= 0.0.4.9016)" # needed for LandWebUtils; not sure why
     , "qs2", "filelock"
     , "archive"
@@ -136,16 +136,15 @@ inSim <- SpaDES.project::setupProject(
     , spades.moduleCodeChecks = FALSE
     , spades.allowInitDuringSimInit = TRUE
     , spades.evalPostEvent = #NULL
-      quote({# print(.robustDigest(sim$spreadFirePolys));
-        #   # print(.robustDigest(sim$rasterToMatch_biomassParam));
-        tryCatch(print(inSim$runName), error = function(x) NULL)
+      quote({ print(.robustDigest(sim$studyArea));
+              print(.robustDigest(sim$studyAreaELF))
       })
     , warnPartialMatchArgs = TRUE #fireSense has objects that will be fooled by partial matching (rstLCC, rstLCCs)
     , warnPartialMatchAttr = TRUE
     , warnPartialMatchDollar = TRUE
     , spades.debugModule = NULL),
   sideEffects = list(
-    terra::terraOptions(memfrac = 0)
+    terra::terraOptions(memfrac = 0, todisk = TRUE)
     , {gd <- file.path(paths$inputPath, "geodata"); geodata::geodata_path(gd)} # gadm on a non-interactive sessino needs this
     , terra::gdalCache(size = 2048)   # 2 GB
     , "OtherExtras.R" # Eliot has some dev things he does incl pkgload::
@@ -163,7 +162,7 @@ inSim <- SpaDES.project::setupProject(
     .globals = list(
       spreadFitFilename = "fireSenseParams_2026_02.rds" # the object on the cloud with the fits
       # dataYear = 2011,
-      , .studyAreaName = paste0("ELF", .ELFind)
+      , .studyAreaName = .studyAreaName
       , .runName = runName
       , .plotInterval = saveAndPlotInterval
       , .plots = c("png")
@@ -225,11 +224,11 @@ inSim <- SpaDES.project::setupProject(
     burnSummaries = list(mode = "single", reps = .rep), #TODO confirm all params
     NRV_summary = list(mode = "single", reps = .rep), #TODO: confirm if all prams okay 
     fireSense_summary = list(mode = "single",
-                             studyAreaName  = paste0("ELF", .ELFind), 
+                             studyAreaName  = .studyAreaName, 
                              #reps = .rep,  
                              years = c(times$start, times$end)), 
     Biomass_summary = list(years = c(times$start, times$end), 
-                           studyAreaName  = paste0("ELF", .ELFind),
+                           studyAreaName  = .studyAreaName,
                            mode = "single"
                            #reps = .rep #only needed for multi, and would be the total reps
     )
@@ -270,17 +269,19 @@ message(paste0(inSim$runName, ", .strategy:", inSim$.strategy,
 
 if (!is(inSim$climateVariables, "list")) browser()
 inSimCopy <- reproducible::Copy(inSim)
-inSimCopy$modules <- grep("ELFs", inSimCopy$modules, value = TRUE)
+# inSimCopy$modules <- grep("ELFs", inSimCopy$modules, value = TRUE)
 
 ########################################
 # THE MAIN simInitAndSpades2 CALL
+# pkgload::load_all("~/GitHub/fireSenseUtils/")
+
 suppressPackageStartupMessages(
   simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
 )
 ########################################
+
+
 if (FALSE) {
-  
-  
   # SAVE AFTERWARDS
   SpaDES.project::outSaveTarUpload(
     runName = inSim$runName, 
