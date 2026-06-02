@@ -1,6 +1,6 @@
 if (!require("pak")) install.packages("pak")
-#pak::pak(c("Require",
-#           "PredictiveEcology/SpaDES.project@development"), ask = FALSE)
+pak::pak(c("PredictiveEcology/Require@development",
+           "PredictiveEcology/SpaDES.project@development"), ask = FALSE)
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
@@ -69,25 +69,28 @@ inSim <- SpaDES.project::setupProject(
   Restart = TRUE,
   overwrite = FALSE, #!SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
   paths = list(outputPath = SpaDES.project::pathBuild(.studyAreaName, .samplingRange, .GCM, .SSP, .rep),
-               cachePath = "/mnt/shared_cache/cache",
+               # cachePath = "/mnt/shared_cache/cache",
+               cachePath = "/mnt/fast/cache",
+               scratchPath = "/mnt/fast/scratch",
                # use inputPath on the shared drive, so destinationPathShared works
-               inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .studyAreaName, .samplingRange, .GCM, .SSP, .rep)),
+               # inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .studyAreaName, .samplingRange, .GCM, .SSP, .rep)),
+               inputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/inputs", .studyAreaName, .samplingRange, .GCM, .SSP, .rep)),
   runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
     gsub(pattern = "outputs_", replacement = ""),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
-    "PrectiveEcology/reproducible@development (HEAD)"
-    , "SpaDES.core (HEAD)"
+    "PrectiveEcology/reproducible@development (>=3.1.1.9020)"
+    , "SpaDES.core (>=3.1.2.9003)"
     , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
-    , "PredictiveEcology/LandR@development (>= 1.1.5.9101)"
+    , "PredictiveEcology/LandR@development (>= 1.2.0)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
     , "PredictiveEcology/fireSenseUtils@development (>= 0.2.0)"
     , "PredictiveEcology/pemisc@development (>= 0.0.4.9016)" # needed for LandWebUtils; not sure why
     , "qs2", "filelock"
     , "archive"
     , "googlesheets4"
-    , "PredictiveEcology/climateData@modsDuringFireSense3 (>= 2.2.2.9006)"
+    , "PredictiveEcology/climateData@development (>= 2.2.2.9006)"
     , "terra" # "leaflet", "tidyterra",
     , "plyr"#, "scfmutils",
     , "geodata", "usethis"
@@ -110,7 +113,7 @@ inSim <- SpaDES.project::setupProject(
     , SpaDES.project.fast = FALSE
     , reproducible.shapefileRead = "terra::vect"
     , reproducible.overwrite = TRUE
-    , reproducible.destinationPathShared = "/mnt/shared_cache/data"
+    , reproducible.destinationPathShared = "/mnt/fast/data"
     , reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9"
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
@@ -118,9 +121,15 @@ inSim <- SpaDES.project::setupProject(
     , fireSenseUtils.runTests = FALSE
     , reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
     , reproducible.nThreads = 1 #  When in parallel; can't do >1 ... only a warning
-    , reproducible.prepInputsUrlTiles = "https://drive.google.com/drive/folders/1IfeQ9rZ3-RIQwtcdo2T5Kn51NJJRWeox?usp=drive_link"
+    # , reproducible.prepInputsUrlTiles = "https://drive.google.com/drive/folders/1IfeQ9rZ3-RIQwtcdo2T5Kn51NJJRWeox?usp=drive_link"
     , spades.useRequire = TRUE
     # , error = recover
+    
+    , reproducible.urlRemap = {makeUrlRemap(
+      read.csv("~/GitHub/PredictiveEcology.org/scripts/arbutus_manifest_SCANFI_v2_clean.csv")
+    )}
+    , reproducible.useCOG = FALSE
+    
     
     # For batch runs, these should be off
     , reproducible.showSimilar = FALSE #interactive() && !nzchar(Sys.getenv("TMUX"))
@@ -135,17 +144,16 @@ inSim <- SpaDES.project::setupProject(
     , Require.verbose = 1
     , spades.moduleCodeChecks = FALSE
     , spades.allowInitDuringSimInit = TRUE
-    , spades.evalPostEvent = #NULL
-      quote({ print(.robustDigest(sim$studyArea));
-              print(.robustDigest(sim$studyAreaELF))
-      })
+    , spades.evalPostEvent = NULL
+      # quote({ print(.robustDigest(sim$studyArea));
+      #         print(.robustDigest(sim$studyAreaELF))
+      # })
     , warnPartialMatchArgs = TRUE #fireSense has objects that will be fooled by partial matching (rstLCC, rstLCCs)
     , warnPartialMatchAttr = TRUE
     , warnPartialMatchDollar = TRUE
     , spades.debugModule = NULL),
   sideEffects = list(
-    terra::terraOptions(memfrac = 0, todisk = TRUE)
-    , {gd <- file.path(paths$inputPath, "geodata"); geodata::geodata_path(gd)} # gadm on a non-interactive sessino needs this
+    {gd <- file.path(paths$inputPath, "geodata"); geodata::geodata_path(gd)} # gadm on a non-interactive sessino needs this
     , terra::gdalCache(size = 2048)   # 2 GB
     , "OtherExtras.R" # Eliot has some dev things he does incl pkgload::
   ),
@@ -259,9 +267,11 @@ inSim <- SpaDES.project::setupProject(
     outputs$arguments <- list(overwrite = TRUE)
     return(outputs)
   },
-  studyAreaLarge = reproducible::prepInputs(url = 'https://drive.google.com/file/d/1gW6DBurw2uBx5cAZLcmWd6qBD7eMEd-4/view?usp=share_link',
+  studyAreaLarge = {
+    reproducible::prepInputs(url = 'https://drive.google.com/file/d/1gW6DBurw2uBx5cAZLcmWd6qBD7eMEd-4/view?usp=share_link',
                                             fun = 'terra::vect',
                                             destinationPath = 'inputs')
+  }
   
 )
 message(paste0(inSim$runName, ", .strategy:", inSim$.strategy,
@@ -274,15 +284,15 @@ inSimCopy <- reproducible::Copy(inSim)
 ########################################
 # THE MAIN simInitAndSpades2 CALL
 # pkgload::load_all("~/GitHub/fireSenseUtils/")
-
+terra::terraOptions(memmax = 4, todisk = TRUE, memfrac = 0.01)
 suppressPackageStartupMessages(
   simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
 )
 ########################################
 
 
+# SAVE AFTERWARDS
 if (FALSE) {
-  # SAVE AFTERWARDS
   SpaDES.project::outSaveTarUpload(
     runName = inSim$runName, 
     sim = simOut,
