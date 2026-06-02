@@ -1,4 +1,4 @@
-pak::pak(c("Require", 
+pak::pak(c("PredictiveEcology/Require@development",
            "PredictiveEcology/SpaDES.project@development",
            "PredictiveEcology/reproducible@development",
            "PredictiveEcology/SpaDES.core@development"), ask = FALSE)
