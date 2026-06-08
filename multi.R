@@ -24,7 +24,7 @@ sims <- SpaDES.project::reGetUntarLoad(
 # Now we have many simList objects in `sims`. Some of the parts of these are needed
 #   but not all. What is needed is based on what the Summary modules need
 outs$firePolys <- .unwrap(sims[[1]]$firePolys)
-outs$outputsDF <- lapply(sims, outputs) |> data.table::rbindlist()
+outs$outputsDF <- lapply(sims, SpaDES.core::outputs) |> data.table::rbindlist()
 outs$reportingPolygons <- .unwrap(sims[[1]]$studyAreaReporting)
 summaryMods <- grep("summar", outs$modules, ignore.case = TRUE, value = TRUE)
 summaryMods <- setdiff(summaryMods, "Biomass_summary")
@@ -46,9 +46,9 @@ if (FALSE)
 
 outs$params$.globals$reps <- unname(unlist(reps))
 outs$paths$outputPath <- 
-  do.call(SpaDES.project::pathBuild, modifyList2(nams[[1]], list(.rep = "_all")))
+  do.call(SpaDES.project::pathBuild, Require::modifyList2(nams[[1]], list(.rep = "_all")))
 outs$params$.globals$.studyAreaName <- sims[[1]]@params$.globals$.studyAreaName
 # outs$params$burnSummaries$reps <- unname(unlist(reps))
 # It gets the original reps from the sim$modules params
-simOut <- simInitAndSpades2(outs)
+simOut <- SpaDES.core::simInitAndSpades2(outs)
 
