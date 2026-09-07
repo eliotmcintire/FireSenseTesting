@@ -101,7 +101,7 @@ workers <- SpaDES.project::experimentTmux(
         ee <- grep(value = TRUE, pattern = "burnMap.*tif$", dd)
         done <- grepl(paste0("year", times$end), ee)
         if (all(done %in% FALSE)) { # running
-          runningFile <- dir(activeRunningPathForTmux(queue_path = queue_path), 
+          runningFile <- dir(SpaDES.project::tmuxActiveRunningPath(queue_path = queue_path), 
                              pattern = .ELFind, full.names = TRUE)
           ff <- grep(value = TRUE, pattern = "Annual Fire Maps", dd)
           fi2 <- file.info(ff)

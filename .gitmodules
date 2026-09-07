@@ -52,3 +52,7 @@
 [submodule "modules/fireSense_ELFs"]
 	path = modules/fireSense_ELFs
 	url = https://github.com/PredictiveEcology/fireSense_ELFs.git
+[submodule "modules/fireSense_summary"]
+	path = modules/fireSense_summary
+	url = https://github.com/PredictiveEcology/fireSense_summary
+	branch = development

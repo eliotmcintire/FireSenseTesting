@@ -16,10 +16,19 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 # RUN fireSense_ELFs to get the ELF map
 ####################
 
-# Get all ELFs
-queue_path <- "experiment_queue_predict5.rds"
+# Get all ELFs.
+# NB: a NEW queue file. experimentTmux only materializes the queue from `expt`
+# when queue_path does not yet exist (tmux.R ~L855); pointing at the old
+# experiment_queue_predict5.rds would silently reuse its March 2026 rows --
+# including 6 rows still marked RUNNING -- and ignore `expt` entirely.
+queue_path <- "experiment_queue_fits_2026-09.rds"
 outs$params$fireSense_ELFs$queue_path <- queue_path
-.ELFinds <- fireSenseUtils::runELFs(outs, onlyFittedELFs = FALSE)
+.ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
+# Already-fitted ELFs, straight from the shared cloud ledger that fireSense_SpreadFit
+# writes to (`fireSenseParams_*.rds`). This is the same list fireSense_dataPrepFit uses
+# to decide whether to skip a fit, so deriving the queue from it means re-running this
+# script can never re-fit something that is already done.
+.ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
 
 ####################
 # SET UP EXPERIMENT
@@ -32,22 +41,21 @@ if (exists(".modules"))
 if (exists(".times"))
   expt <- cbind(expt, .times = I(lapply(seq_len(NROW(expt)), function(x) .times)))
 
-# Some ELFs didn't work in earlier attempts; removing them here; they may be re-introduced later
-failed <- c("5.1.1", "5.1.2", "5.1.3" # something in climate, missing in future tile 39; only has 2011,12
-            # , "6.1.3"
-            # , "5.4"# can't get past 1000000 in DEoptim
+# Only fit what the ledger says is missing
+expt <- expt[!expt$.ELFind %in% .ELFsFitted, ]
+
+# These errored in earlier attempts. They are no longer excluded -- the causes may have
+# been fixed since -- but they are sorted to the back so the well-behaved ELFs get the
+# cluster first and any that still fail do so after the bulk of the work is banked.
+problematic <- c("5.1.1", "5.1.2", "5.1.3" # something in climate, missing in future tile 39; only has 2011,12
             , "3.1.1" # 
-            
             , "5.2.2", "5.4", "11.2", "11.1"  # Error in purrr::pmap(.l = list(igOrEsc = whichProcessesToFit), sim = sim,  :
             #ℹ In index: 2.
             #ℹ With name: fireSense_EscapeFitted.
             #Caused by error in `roc.default()`:
             #  ! 'response' must have two levels
+            , "12.1" # had no fires
 ) 
-expt <- expt[!expt$.ELFind %in% failed, ]
-
-noFires <- "12.1" # had no fires
-expt <- expt[!expt$.ELFind %in% noFires, ]
 
 # Put them in an interesting order i.e., prioritize
 top <- c("4", "6", "5", "9", "14", "12", "11", "15")
@@ -59,8 +67,7 @@ ord2 <- match(vals, top)
 ord3 <- as.numeric(!ord) * (max(ord2) + 1)
 # ord3[ord3 == 0] <- 
 expt <- expt[order(ord3), ]
-first <- c("4.3", "6.1.1", "6.2.3","6.3.1")
-expt <- rbind(expt[expt$.ELFind %in% first,], expt[!expt$.ELFind %in% first,])
+expt <- rbind(expt[!expt$.ELFind %in% problematic,], expt[expt$.ELFind %in% problematic,])
 
 rownames(expt) <- 1:NROW(expt) # re-number each row
 ####################
@@ -69,7 +76,7 @@ rownames(expt) <- 1:NROW(expt) # re-number each row
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 7,
+  n_workers           = 6,
   queue_path          = queue_path,
   delay_before_source = 120,
   statusCalculate = quote({dd <- dir(file.path("outputs", runName), recursive = TRUE, full.names = TRUE)

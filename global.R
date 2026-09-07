@@ -1,6 +1,8 @@
 if (!require("pak")) install.packages("pak")
-pak::pak(c("PredictiveEcology/Require@development",
-           "PredictiveEcology/SpaDES.project@development"), ask = FALSE)
+ pak::pak(c("PredictiveEcology/Require@development",
+            "PredictiveEcology/SpaDES.project@development",
+            "PredictiveEcology/reproducible@development",
+            "PredictiveEcology/SpaDES.core@development"), ask = FALSE)
 
 # generic absolute path for anybody; but individual can change
 projectDir <- "~/GitHub/FireSenseTesting/"
@@ -9,7 +11,6 @@ if (Sys.info()["user"] == "ieddy"){
 }
 dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
-.studyAreaName <- "MountainCaribouStudyArea"
 inSim <- SpaDES.project::setupProject(
   .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
   .rep = .rep,
@@ -27,7 +28,7 @@ inSim <- SpaDES.project::setupProject(
                      .rep = 1,
                      .ELFind = "4.3",
                      .SSP = 370,
-                     .GCM = "CNRM-ESM2-1",
+                     .GCM = "CNRM-ESM2-1", # "NRV"
                      .samplingRange = 1990:2020, # vector
                      .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
@@ -35,6 +36,10 @@ inSim <- SpaDES.project::setupProject(
                                 , "acer"
                                 , "abies"
                                 , "pinus", "landr"
+                                # kodama needs libtbb.so.12, which it has no root to install.
+                                # clusters (>= 0.0.24) ships it to ~/.local/lib/clusters and puts
+                                # that on the workers' LD_LIBRARY_PATH, so no sudo is required.
+                                , "kodama"
                      ),
                      # .studyAreaName = "ELF", #{browser(); paste0("ELF", .ELFind)},
                      FRU = 25,
@@ -63,25 +68,36 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/fireSense_summary@development"
                                   , "PredictiveEcology/Biomass_summary@main"
                      )),
-  .studyAreaName = ifelse(exists(".studyAreaName"), .studyAreaName, paste0("ELF", .ELFind)),
+  # NB there is deliberately no `.studyAreaName` dot. A `...` argument that
+  # references ANOTHER `...` argument does not resolve in setupProject(): both
+  # `.studyAreaName = .ELFind` and
+  # `.studyAreaName = if (exists(".studyAreaName")) .studyAreaName else .ELFind`
+  # reach `paths` as their unevaluated expression, which pathBuild() then deparses
+  # into a directory name -- that is where
+  # `outputs/if_exists(".studyAreaName")_.studyAreaName_.ELFind/...` came from.
+  # Referring to `.ELFind` directly at each use site is the form that works.
+  # The study area here IS the ELF being fit, and the name must stay the bare ELF
+  # id: fireSense_SpreadFit keys the shared cloud fit ledger on it, and
+  # fireSense_dataPrepFit matches those keys against the ids on rasterToMatchELF.
   .objfunFireReps = .objfunFireReps,
   # useGit = "eliotmcintire",
-  Restart = TRUE,
+  # Restart = TRUE,
   overwrite = FALSE, #!SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
-  paths = list(outputPath = SpaDES.project::pathBuild(.studyAreaName, .samplingRange, .GCM, .SSP, .rep),
+  paths = list(outputPath = SpaDES.project::pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep),
                # cachePath = "/mnt/shared_cache/cache",
                cachePath = "/mnt/fast/cache",
                scratchPath = "/mnt/fast/scratch",
                # use inputPath on the shared drive, so destinationPathShared works
                # inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .studyAreaName, .samplingRange, .GCM, .SSP, .rep)),
-               inputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/inputs", .studyAreaName, .samplingRange, .GCM, .SSP, .rep)),
+               inputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/inputs", .ELFind, .samplingRange, .GCM, .SSP, .rep)),
   runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
     gsub(pattern = "outputs_", replacement = ""),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
-    "PrectiveEcology/reproducible@development (>=3.1.1.9020)"
-    , "SpaDES.core (>=3.1.2.9003)"
+    # "PrectiveEcology/reproducible@development (>=3.1.1.9020)"
+    "SpaDES.core (==3.1.2.9003)"
+    , "reproducible (==3.1.1)"
     , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
     , "PredictiveEcology/LandR@development (>= 1.2.0)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
@@ -97,7 +113,7 @@ inSim <- SpaDES.project::setupProject(
     , "rvest" # needed for prepIgnitionFitData
     # , "extraPackages.R" # file not used currently; should just skip it
   ),
-  require = "reproducible",
+  require = c("reproducible", "data.table"), # data.table(): used unqualified in the outputs block; dots see only attached packages (SpaDES.project >= 1.1.0.9009)
   options = list(
     # gargle_oauth_email = "predictiveecology@gmail.com",
     # gargle_oauth_cache = ".secret",
@@ -125,9 +141,9 @@ inSim <- SpaDES.project::setupProject(
     , spades.useRequire = TRUE
     # , error = recover
     
-    , reproducible.urlRemap = {makeUrlRemap(
-      read.csv("~/GitHub/PredictiveEcology.org/scripts/arbutus_manifest_SCANFI_v2_clean.csv")
-    )}
+    # , reproducible.urlRemap = {reproducible::makeUrlRemap(
+    #   read.csv("~/GitHub/PredictiveEcology.org/scripts/arbutus_manifest_SCANFI_v2_clean.csv")
+    # )}
     , reproducible.useCOG = FALSE
     
     
@@ -155,7 +171,7 @@ inSim <- SpaDES.project::setupProject(
   sideEffects = list(
     {gd <- file.path(paths$inputPath, "geodata"); geodata::geodata_path(gd)} # gadm on a non-interactive sessino needs this
     , terra::gdalCache(size = 2048)   # 2 GB
-    , "OtherExtras.R" # Eliot has some dev things he does incl pkgload::
+    # , "OtherExtras.R" # Eliot has some dev things he does incl pkgload::
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
@@ -170,7 +186,7 @@ inSim <- SpaDES.project::setupProject(
     .globals = list(
       spreadFitFilename = "fireSenseParams_2026_02.rds" # the object on the cloud with the fits
       # dataYear = 2011,
-      , .studyAreaName = .studyAreaName
+      , .studyAreaName = .ELFind
       , .runName = runName
       , .plotInterval = saveAndPlotInterval
       , .plots = c("png")
@@ -232,11 +248,11 @@ inSim <- SpaDES.project::setupProject(
     burnSummaries = list(mode = "single", reps = .rep), #TODO confirm all params
     NRV_summary = list(mode = "single", reps = .rep), #TODO: confirm if all prams okay 
     fireSense_summary = list(mode = "single",
-                             studyAreaName  = .studyAreaName, 
+                             studyAreaName  = .ELFind, 
                              #reps = .rep,  
                              years = c(times$start, times$end)), 
     Biomass_summary = list(years = c(times$start, times$end), 
-                           studyAreaName  = .studyAreaName,
+                           studyAreaName  = .ELFind,
                            mode = "single"
                            #reps = .rep #only needed for multi, and would be the total reps
     )
