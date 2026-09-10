@@ -7,3 +7,13 @@ if (TRUE) {
   pkgload::load_all("~/GitHub/LandR")
   pkgload::load_all("~/GitHub/fireSenseUtils")
 }
+
+if (FALSE) {
+  pkgload::load_all("~/GitHub/Require")
+  pkgload::load_all("~/GitHub/reproducible")
+  pkgload::load_all("~/GitHub/SpaDES.project")
+  pkgload::load_all("~/GitHub/climateData")
+  pkgload::load_all("~/GitHub/SpaDES.core")
+  devtools::install("~/GitHub/LandR")
+  devtools::install("~/GitHub/fireSenseUtils")
+}

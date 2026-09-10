@@ -26,9 +26,13 @@ sims <- SpaDES.project::reGetUntarLoad(
 outs$firePolys <- .unwrap(sims[[1]]$firePolys)
 outs$outputsDF <- lapply(sims, SpaDES.core::outputs) |> data.table::rbindlist()
 outs$reportingPolygons <- .unwrap(sims[[1]]$studyAreaReporting)
+
+
 summaryMods <- grep("summar", outs$modules, ignore.case = TRUE, value = TRUE)
 summaryMods <- setdiff(summaryMods, "Biomass_summary")
 outs$modules <- summaryMods
+
+
 nams <- Map(nam = basename(names(sims)), function(nam) SpaDES.project::pathParse(nam))
 reps <- Map(nam = nams, function(nam) nam[[".rep"]])
 for (mod in summaryMods) {

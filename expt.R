@@ -7,10 +7,51 @@ getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0")) # only install
 suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there is a failure below; and this is rerun
 
 ####################
+# Install packages -- ONCE, here, before any worker exists
+####################
+# This used to live at the top of global.R, which every worker sources at the start of
+# every job: 13 processes writing one shared library. On 2026-09-09 a worker rewrote
+# SpaDES.tools at 10:21:51 and four siblings died with "lazy-load database ... is corrupt".
+if (!require("pak")) install.packages("pak")
+ pak::pak(c("PredictiveEcology/Require@development",
+            "PredictiveEcology/SpaDES.project@development",
+            "PredictiveEcology/reproducible@development",
+            "PredictiveEcology/SpaDES.core@development",
+            # fireSenseUtils carries the objective function; the `packages` list below
+            # pins it with a floor (>= 0.2.0), so once any 0.2.x was installed it never
+            # moved again. That is why the fits ran without the objFunSpread adTest fix
+            # from 2026-09-07. Track development here instead.
+            "PredictiveEcology/fireSenseUtils@development",
+            # SpaDES.tools carries the spread() hot path. It is otherwise pulled in
+            # through setupProject's `packages` list with a version FLOOR, which never
+            # moves once any satisfying version is installed -- the same reason
+            # fireSenseUtils sat on a stale build. Track development here instead.
+            "PredictiveEcology/SpaDES.tools@development",
+            # Same floor-only gap as the two above: LandR, clusters, climateData and
+            # quickPlot all arrive through setupProject's `packages` list with a `>=`
+            # floor, so a satisfying build already on the machine is never replaced and
+            # merged fixes never reach a worker. LandR in particular carries the
+            # terraOptions restore (#213) and the SCANFI drive fallback; clusters carries
+            # the PSOCK host handling this run depends on. clusters has no development
+            # branch, so track main.
+            "PredictiveEcology/LandR@development",
+            "PredictiveEcology/clusters@main",
+            "PredictiveEcology/climateData@development",
+            "PredictiveEcology/quickPlot@development"), ask = FALSE)
+
+####################
 # pre RUN the global.R setupProject
 ####################
+# preRunSetupProject() evaluates everything in global.R above its setupProject() call and
+# then setupProject() itself up to `params`, so this is also where the modules' and the
+# `packages` list's dependencies get resolved -- once, in this process.
 
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
+
+# From here on nothing may install. Workers source global.R in their own sessions, so this
+# has to be off in global.R's own options() block to reach them -- it is; this line covers
+# the rest of THIS session.
+options(spades.useRequire = FALSE)
 
 ####################
 # RUN fireSense_ELFs to get the ELF map
@@ -21,7 +62,7 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 # when queue_path does not yet exist (tmux.R ~L855); pointing at the old
 # experiment_queue_predict5.rds would silently reuse its March 2026 rows --
 # including 6 rows still marked RUNNING -- and ignore `expt` entirely.
-queue_path <- "experiment_queue_fits_2026-09.rds"
+queue_path <- "experiment_queue_fits_2026-09-10.rds" # new queue after clearCache: terra now attached before terraOptions() (global.R require)
 outs$params$fireSense_ELFs$queue_path <- queue_path
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 # Already-fitted ELFs, straight from the shared cloud ledger that fireSense_SpreadFit
@@ -69,6 +110,17 @@ ord3 <- as.numeric(!ord) * (max(ord2) + 1)
 expt <- expt[order(ord3), ]
 expt <- rbind(expt[!expt$.ELFind %in% problematic,], expt[expt$.ELFind %in% problematic,])
 
+# Data problems, not code -- each fails only after a full cold run, so leave them out until
+# the data are fixed: tile 39's CNRM-ESM2-1 ssp370 2010s archive lacks 2013-2016 (15.1, 3.2.3,
+# 5.1.3); no SCANFI species at all (3.2.1, 3.2.4).
+dataBlocked <- c("15.1", "3.2.3", "5.1.3", "3.2.1", "3.2.4")
+expt <- expt[!expt$.ELFind %in% dataBlocked, ]
+
+# First runs: ELFs that fail in the vecseq fuel-class join, so fireSenseUtils #50's message
+# naming the duplicated species arrives early.
+firstRuns <- c("14.3", "13.1")
+expt <- rbind(expt[expt$.ELFind %in% firstRuns, ], expt[!expt$.ELFind %in% firstRuns, ])
+
 rownames(expt) <- 1:NROW(expt) # re-number each row
 ####################
 # Run the experiment -- this must be run at a command prompt, inside tmux
@@ -76,7 +128,7 @@ rownames(expt) <- 1:NROW(expt) # re-number each row
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 6,
+  n_workers           = 15,   # memfrac = 0 keeps per-worker memory down; measured 90th-pct peak 37.7 GB
   queue_path          = queue_path,
   delay_before_source = 120,
   statusCalculate = quote({dd <- dir(file.path("outputs", runName), recursive = TRUE, full.names = TRUE)
