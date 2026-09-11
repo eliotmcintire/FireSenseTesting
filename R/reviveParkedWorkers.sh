@@ -29,8 +29,12 @@ declare -A COUNT
 while true; do
   for p in $(tmux list-panes -t "$TARGET" -F '#{pane_index}' 2>/dev/null | sort -n); do
     [ "$p" -lt 2 ] && continue
-    tail=$(tmux capture-pane -p -t "$TARGET.$p" -S -10 2>/dev/null)
-    echo "$tail" | grep -q "Worker idle" || continue
+    ## Parked = the pane sits at an R prompt AND "Worker idle" was printed after the last
+    ## "Claimed job". Warnings printed after "Worker idle" can push it well above the last
+    ## 10 lines (13:03 pane 15: six warnings), so look further back but anchor on the prompt.
+    tail=$(tmux capture-pane -p -J -t "$TARGET.$p" -S -80 2>/dev/null | grep -v '^[[:space:]]*$')
+    [ "$(echo "$tail" | tail -1 | sed 's/[[:space:]]*$//')" = ">" ] || continue
+    echo "$tail" | awk '/Claimed job/{idle=0} /Worker idle/{idle=1} END{exit !idle}' || continue
 
     n=${COUNT[$p]:-0}
     if [ "$n" -ge "$MAXRESPAWN" ]; then
@@ -38,11 +42,18 @@ while true; do
       continue
     fi
 
-    bash_pid=$(tmux list-panes -t "$TARGET" -F '#{pane_index} #{pane_pid}' | awk -v i="$p" '$1==i{print $2}')
-    ## Skip defunct children: a zombie R still appears under the pane's bash, and
-    ## /proc/<zombie>/environ is empty, so picking it loses the startup script.
-    rpid=$(ps -o pid=,stat= --ppid "$bash_pid" 2>/dev/null | awk '$2 !~ /Z/ {print $1; exit}')
-    [ -z "$rpid" ] && { echo "$(date '+%F %T') pane $p parked but no R child found; left alone" >> "$LOG"; continue; }
+    pane_pid=$(tmux list-panes -t "$TARGET" -F '#{pane_index} #{pane_pid}' | awk -v i="$p" '$1==i{print $2}')
+    ## The worker loop's killAndNewPane mode starts new panes with R as the pane's own process;
+    ## the launch panes run R under bash. Under R, a child is a pre-warm fork or a callr process,
+    ## not the worker: picking one (20:54 and 20:59, pane 12) killed the wrong process.
+    if [ "$(ps -o comm= -p "$pane_pid" 2>/dev/null)" = "R" ]; then
+      rpid=$pane_pid
+    else
+      ## Skip defunct children: a zombie R still appears under the pane's bash, and
+      ## /proc/<zombie>/environ is empty, so picking it loses the startup script.
+      rpid=$(ps -o pid=,stat= --ppid "$pane_pid" 2>/dev/null | awk '$2 !~ /Z/ {print $1; exit}')
+    fi
+    [ -z "$rpid" ] && { echo "$(date '+%F %T') pane $p parked but no R process found; left alone" >> "$LOG"; continue; }
     prof=$(tr '\0' '\n' < /proc/$rpid/environ 2>/dev/null | sed -n 's/^R_PROFILE_USER=//p')
     [ -z "$prof" ] && { echo "$(date '+%F %T') pane $p has no R_PROFILE_USER; left alone" >> "$LOG"; continue; }
 
@@ -50,12 +61,11 @@ while true; do
     err=$(tmux capture-pane -p -t "$TARGET.$p" -S -80 2>/dev/null | tr -d '\n' | grep -oE "Error[^|]{0,110}" | head -1)
     echo "$(date '+%F %T') pane $p parked on ${elf:-?} -- respawning (#$((n+1))) | ${err:0:110}" >> "$LOG"
 
-    kill -TERM "$rpid" 2>/dev/null
-    for _ in 1 2 3 4 5 6 7 8 9 10; do ps -p "$rpid" >/dev/null 2>&1 || break; sleep 1; done
-    ps -p "$rpid" >/dev/null 2>&1 && kill -KILL "$rpid" 2>/dev/null
-    sleep 2
-    tmux send-keys -t "$TARGET.$p" \
-      "env SPADES_USE_REQUIRE=false FS_PHASE=${FS_PHASE:-1} R_TESTS= R_BROWSER= R_PDFVIEWER= R_DEFAULT_PACKAGES=datasets,utils,grDevices,graphics,stats,methods R_PROFILE_USER='$prof' R --quiet --no-save --no-restore --interactive" Enter
+    ## respawn-pane replaces whatever runs in the pane -- R directly, or bash with R under it --
+    ## with a fresh worker. Typing the command instead only works at a shell prompt: typed into
+    ## an R-as-pane process it is just an R syntax error.
+    tmux respawn-pane -k -c "$HOME/GitHub/FireSenseTesting" -t "$TARGET.$p" \
+      "env SPADES_USE_REQUIRE=false FS_PHASE=${FS_PHASE:-1} R_TESTS= R_BROWSER= R_PDFVIEWER= R_DEFAULT_PACKAGES=datasets,utils,grDevices,graphics,stats,methods R_PROFILE_USER='$prof' R --quiet --no-save --no-restore --interactive"
     COUNT[$p]=$((n+1))
   done
   sleep "$INTERVAL"
