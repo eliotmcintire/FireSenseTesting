@@ -36,7 +36,9 @@ while true; do
     ## 10 lines (13:03 pane 15: six warnings), so look further back but anchor on the prompt.
     tail=$(tmux capture-pane -p -J -t "$TARGET.$p" -S -80 2>/dev/null | grep -v '^[[:space:]]*$')
     [ "$(echo "$tail" | tail -1 | sed 's/[[:space:]]*$//')" = ">" ] || continue
-    echo "$tail" | awk '/Claimed job/{idle=0} /Worker idle/{idle=1} END{exit !idle}' || continue
+    ## Only a job that ended in an error. "Worker idle: res=empty" means the queue had nothing to
+    ## claim; respawning that worker only makes it poll the empty queue again (2026-09-11 03:12).
+    echo "$tail" | awk '/Claimed job/{idle=0} /Worker idle: res=error/{idle=1} /Worker idle: res=empty/{idle=0} END{exit !idle}' || continue
 
     n=${COUNT[$p]:-0}
     if [ "$n" -ge "$MAXRESPAWN" ]; then
