@@ -28,7 +28,9 @@ declare -A COUNT
 
 while true; do
   for p in $(tmux list-panes -t "$TARGET" -F '#{pane_index}' 2>/dev/null | sort -n); do
-    [ "$p" -lt 2 ] && continue
+    ## No index-based skip: killAndNewPane can put a worker in any pane (2026-09-11: pane 1).
+    ## Panes that are not workers (the controller, a monitor) are skipped below because their R
+    ## session has no worker startup profile.
     ## Parked = the pane sits at an R prompt AND "Worker idle" was printed after the last
     ## "Claimed job". Warnings printed after "Worker idle" can push it well above the last
     ## 10 lines (13:03 pane 15: six warnings), so look further back but anchor on the prompt.
@@ -55,7 +57,10 @@ while true; do
     fi
     [ -z "$rpid" ] && { echo "$(date '+%F %T') pane $p parked but no R process found; left alone" >> "$LOG"; continue; }
     prof=$(tr '\0' '\n' < /proc/$rpid/environ 2>/dev/null | sed -n 's/^R_PROFILE_USER=//p')
-    [ -z "$prof" ] && { echo "$(date '+%F %T') pane $p has no R_PROFILE_USER; left alone" >> "$LOG"; continue; }
+    case "$(basename "$prof")" in
+      worker_startup_local_*|worker_respawn.R) ;;
+      *) echo "$(date '+%F %T') pane $p is not a queue worker (R_PROFILE_USER='$prof'); left alone" >> "$LOG"; continue;;
+    esac
 
     elf=$(tmux capture-pane -p -t "$TARGET.$p" -S -2500 2>/dev/null | grep -oE "outputs/[0-9]+\.[0-9.]*[0-9]" | tail -1)
     err=$(tmux capture-pane -p -t "$TARGET.$p" -S -80 2>/dev/null | tr -d '\n' | grep -oE "Error[^|]{0,110}" | head -1)
