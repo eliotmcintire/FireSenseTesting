@@ -255,6 +255,7 @@ inSim <- SpaDES.project::setupProject(
       samplingStartYear = min(.samplingRange)
     ),
     # fireSense_ELFs = list(queue_path = "experiment_queue_predict5.rds"),
+    fireSense_ELFs = list(.useCloud = FALSE), # cloud cache of the ELF maps off for now (2026-09-10)
     canClimateData = list(
       climateGCM =  ifelse(identical(.GCM, "NRV"), "CNRM-ESM2-1", .GCM) 
       ,climateSSP =  ifelse(identical(.SSP, ""), 370, .SSP) 
