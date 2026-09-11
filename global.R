@@ -196,6 +196,7 @@ inSim <- SpaDES.project::setupProject(
     
     # For batch runs, these should be off
     , reproducible.showSimilar = FALSE #interactive() && !nzchar(Sys.getenv("TMUX"))
+    , reproducible.showCachePreWarm = FALSE # the pre-warm fork only speeds an interactive showCache()
     , reproducible.useMemoise = TRUE # interactive() && !nzchar(Sys.getenv("TMUX"))
     , spades.recoveryMode = 1#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
     # Reworked 2026-09-08. This must be ON during the FIRST pass, not just the ones that
