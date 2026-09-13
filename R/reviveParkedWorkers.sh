@@ -77,6 +77,13 @@ while true; do
     err=$(tmux capture-pane -p -t "$TARGET.$p" -S -80 2>/dev/null | tr -d '\n' | grep -oE "Error[^|]{0,110}" | head -1)
     echo "$(date '+%F %T') pane $p parked on ${elf:-?} -- respawning (#$((n+1))) | ${err:0:110}" >> "$LOG"
 
+    ## The failed job's call stack exists only in this R's memory (SpaDES.project::lastTraceback());
+    ## killing the pane loses it (2026-09-12 21:01, 9.2.1). Print it and keep the scrollback first.
+    cap=~/claudeSessions/2026-09-04-spreadfit-elf-cluster/pane-errors/$(date +%H%M%S)_${TARGET//:/_}_${p}_revive.txt
+    tmux send-keys -t "$TARGET.$p" "traceback(SpaDES.project::lastTraceback())" Enter
+    sleep 5
+    tmux capture-pane -p -J -t "$TARGET.$p" -S -3000 > "$cap" 2>/dev/null
+
     ## respawn-pane replaces whatever runs in the pane -- R directly, or bash with R under it --
     ## with a fresh worker. Typing the command instead only works at a shell prompt: typed into
     ## an R-as-pane process it is just an R syntax error.
