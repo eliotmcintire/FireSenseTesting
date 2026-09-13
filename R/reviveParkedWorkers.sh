@@ -61,6 +61,13 @@ while true; do
     prof=$(tr '\0' '\n' < /proc/$rpid/environ 2>/dev/null | sed -n 's/^R_PROFILE_USER=//p')
     case "$(basename "$prof")" in
       worker_startup_local_*|worker_respawn.R) ;;
+      callr-upr-*)
+        ## With pane_mode = "killAndNewPane" every job after a pane's first runs in a fresh R that
+        ## callr started with a temporary profile, gone once that R exits. Relaunch such a pane with
+        ## the queue's own respawn profile (written by experimentTmux next to the worker profiles).
+        prof=$(ls -t "$HOME/GitHub/FireSenseTesting/logs/"*/worker_respawn.R 2>/dev/null | head -1)
+        [ -n "$prof" ] || { echo "$(date '+%F %T') pane $p parked (callr job) but no worker_respawn.R found; left alone" >> "$LOG"; continue; }
+        ;;
       *) echo "$(date '+%F %T') pane $p is not a queue worker (R_PROFILE_USER='$prof'); left alone" >> "$LOG"; continue;;
     esac
 

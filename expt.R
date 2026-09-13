@@ -36,7 +36,12 @@ if (!require("pak")) install.packages("pak")
             # branch, so track main.
             "PredictiveEcology/LandR@development",
             "PredictiveEcology/clusters@main",
-            "PredictiveEcology/climateData@development",
+            # PINNED to a feature branch, not development: PR #24 adds the years argument to
+            # climateLayers() plus latestHistoricalYear(), and the 2023/2024 tile-index rows
+            # this campaign's end year depends on. Tracking @development here would silently
+            # overwrite it on the next launch and drop the end year back to 2022.
+            # Move back to @development once PR #24 merges.
+            "PredictiveEcology/climateData@feat/climate-layers-years",
             "PredictiveEcology/quickPlot@development"), ask = FALSE)
 
 ####################
@@ -54,6 +59,43 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 options(spades.useRequire = FALSE)
 
 ####################
+# RESOLVE THE FITTING YEARS -- ONCE, here, for the whole campaign
+####################
+# Each of the 15 workers sources global.R itself, so a "latest year" looked up per worker
+# could differ between ELFs if a data release landed mid-campaign. Resolve it once here and
+# pin it onto every row of `expt`, so every ELF is fit on the identical window.
+#
+# The end year must be the MINIMUM over inputs (latest-fire-year.md sec 2): spread fitting
+# needs NBAC polygons AND climate for every year; ignition fitting needs NFDB points AND
+# climate. A year missing from the fire data is silently kept as a no-fire year, which is
+# a wrong fit with no error -- hence the minimum, not the maximum.
+#
+# Climate binds today: latestHistoricalYear() is 2024 (the tile index now carries the
+# 2023/2024 rows), NBAC reaches 2025, the local NFDB copy 2024. fireregimetools has no
+# latest_fire_year() yet, so the fire side is asserted below rather than queried.
+#
+# These are NOT pushed to the workers as queue columns. Each worker's global.R takes the
+# window from its own `defaultDots`; passing it as a dot as well produced a self-reference
+# (`.fireYearStart = .fireYearStart`) that resolved to NA in every worker on 2026-09-11.
+# The check below is what keeps the two in step: if the resolved end year ever moves away
+# from what global.R defaults to, this stops rather than fitting the wrong window.
+.fireYearStart <- 1985L                                  # first SCANFI V2 year
+.fireYearEnd <- as.integer(climateData::latestHistoricalYear())
+stopifnot(is.finite(.fireYearEnd), .fireYearEnd > .fireYearStart)
+
+.globalTxt <- readLines("global.R")
+.globalStart <- as.integer(sub(".*\\.fireYearStart = ([0-9]+)L.*", "\\1",
+                               grep("^\\s*\\.fireYearStart = [0-9]+L,", .globalTxt, value = TRUE)[1]))
+.globalEnd <- as.integer(sub(".*\\.fireYearEnd = ([0-9]+)L.*", "\\1",
+                             grep("^\\s*\\.fireYearEnd = [0-9]+L,", .globalTxt, value = TRUE)[1]))
+if (!identical(.globalStart, .fireYearStart) || !identical(.globalEnd, .fireYearEnd))
+  stop("global.R defaultDots has fire years ", .globalStart, ":", .globalEnd,
+       " but this campaign resolved ", .fireYearStart, ":", .fireYearEnd,
+       ".\nEdit global.R's .fireYearStart/.fireYearEnd to match -- the workers read the window",
+       " from there, not from the queue.")
+message("Fitting fire years ", .fireYearStart, ":", .fireYearEnd)
+
+####################
 # RUN fireSense_ELFs to get the ELF map
 ####################
 
@@ -62,7 +104,9 @@ options(spades.useRequire = FALSE)
 # when queue_path does not yet exist (tmux.R ~L855); pointing at the old
 # experiment_queue_predict5.rds would silently reuse its March 2026 rows --
 # including 6 rows still marked RUNNING -- and ignore `expt` entirely.
-queue_path <- "experiment_queue_fits_2026-09-10.rds" # new queue after clearCache: terra now attached before terraOptions() (global.R require)
+# 2026-09-11: the 2026-09-10 queue is FINISHED (54 DONE, 9 QUARANTINED) and was fit on
+# fire years 2002-2022, so reusing its name would queue nothing at all.
+queue_path <- "experiment_queue_fits_2026-09-12b.rds"
 outs$params$fireSense_ELFs$queue_path <- queue_path
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 # Already-fitted ELFs, straight from the shared cloud ledger that fireSense_SpreadFit
@@ -115,6 +159,30 @@ expt <- rbind(expt[!expt$.ELFind %in% problematic,], expt[expt$.ELFind %in% prob
 # 5.1.3); no SCANFI species at all (3.2.1, 3.2.4).
 dataBlocked <- c("15.1", "3.2.3", "5.1.3", "3.2.1", "3.2.4")
 expt <- expt[!expt$.ELFind %in% dataBlocked, ]
+
+# THIS CAMPAIGN: rerun exactly the ELFs that completed phase 1 on the old fire years.
+# The 9 ELFs quarantined in that queue (3.1.2, 3.2.2, 3.2.5, 3.3.1, 3.3.2, 8.2, 10.1,
+# 10.3.2, 12.1) are being worked on in a SEPARATE session -- their causes are no-tree /
+# missing-land-cover / too-few-fires, none of which this rebuild fixes on its own.
+#
+# This list is written out rather than read from experiment_queue_fits_2026-09-10.rds:
+# that file is being deleted (it was fit on 2002-2022 and is wrong for this campaign), and
+# a file.exists() guard would silently fall through to "queue every ELF" once it was gone.
+rerunELFs <- c(
+  "10.2.1", "10.2.2", "10.3.1", "11.1", "11.2", "11.3", "11.4", "12.2", "12.3", "12.4",
+  "13.1", "13.2.1", "13.2.2", "13.3", "14.1", "14.2", "14.3", "14.4", "15.2.1", "15.2.2",
+  "3.1.1", "4.1", "4.2.1", "4.2.2", "4.3", "5.1.1", "5.1.2", "5.2.1", "5.2.2", "5.3.1",
+  "5.3.2", "5.4", "6.1.1", "6.1.2", "6.1.3", "6.2.1", "6.2.2", "6.2.3", "6.3.1", "6.3.2",
+  "6.4", "6.5", "6.6.1", "6.6.2", "7.1", "7.2", "7.3", "8.1", "9.1.1", "9.1.2", "9.2.1",
+  "9.2.2", "9.2.3", "9.3"
+)
+missingFromELFs <- setdiff(rerunELFs, expt$.ELFind)
+if (length(missingFromELFs))
+  stop("rerunELFs not present in the ELF map or dropped by an exclusion above: ",
+       paste(missingFromELFs, collapse = ", "))
+expt <- expt[expt$.ELFind %in% rerunELFs, ]
+stopifnot(NROW(expt) == length(rerunELFs))
+message("Queueing ", NROW(expt), " ELFs for fire years ", .fireYearStart, ":", .fireYearEnd)
 
 # First runs: ELFs that fail in the vecseq fuel-class join, so fireSenseUtils #50's message
 # naming the duplicated species arrives early.
