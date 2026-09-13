@@ -18,6 +18,8 @@ while true; do
     for f in spat_*_${pid}_*; do
       [ -e "$f" ] || continue
       [ -n "$(find "$f" -maxdepth 0 -mmin -10)" ] && continue
+      ## Per-file record so a later "source file missing" error can be checked against it.
+      echo "$(date '+%F %T') $f $(stat --printf '%s %y' "$f")" >> "${LOG%.log}-files.log"
       bytes=$((bytes + $(stat --printf %s "$f"))); rm -f "$f" && n=$((n+1))
     done
   done
