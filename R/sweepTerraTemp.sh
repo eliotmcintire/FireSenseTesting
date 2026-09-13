@@ -7,6 +7,13 @@
 # (spat_<hex>_<PID>_<session>.tif), so "no such live PID" identifies an orphan exactly.
 # Files younger than 10 minutes are left alone, in case a process is still starting.
 #
+# RUN THIS ONLY WHEN NO JOB IS RUNNING (the relaunch window). "No such live PID" is NOT
+# proof that nothing uses the file: on a cache hit reproducible < 3.2.1.9028 hardlinks a
+# cached raster back to the path it was produced at -- for a terra temp file, a path named
+# for the (dead) worker that produced it -- so a live job can hold a raster under a dead
+# PID's name. Sweeping while jobs ran killed 9.2.1 three times on 2026-09-12
+# ("[project] cannot create dataset from source"); see reproducible PR #601.
+#
 # Usage:  R/sweepTerraTemp.sh [interval_seconds]     (0 = one pass, then exit)
 INTERVAL=${1:-1200}
 LOG=~/claudeSessions/2026-09-04-spreadfit-elf-cluster/terra-sweep.log
