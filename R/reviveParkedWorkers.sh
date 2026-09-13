@@ -34,7 +34,9 @@ while true; do
     ## Parked = the pane sits at an R prompt AND "Worker idle" was printed after the last
     ## "Claimed job". Warnings printed after "Worker idle" can push it well above the last
     ## 10 lines (13:03 pane 15: six warnings), so look further back but anchor on the prompt.
-    tail=$(tmux capture-pane -p -J -t "$TARGET.$p" -S -80 2>/dev/null | grep -v '^[[:space:]]*$')
+    ## A traceback() typed into the parked pane pushes it 800+ lines back (2026-09-12 pane 15 sat
+    ## idle 5 h). The awk below orders the markers, so the window can be the whole scrollback.
+    tail=$(tmux capture-pane -p -J -t "$TARGET.$p" -S -5000 2>/dev/null | grep -v '^[[:space:]]*$')
     [ "$(echo "$tail" | tail -1 | sed 's/[[:space:]]*$//')" = ">" ] || continue
     ## Only a job that ended in an error. "Worker idle: res=empty" means the queue had nothing to
     ## claim; respawning that worker only makes it poll the empty queue again (2026-09-11 03:12).
