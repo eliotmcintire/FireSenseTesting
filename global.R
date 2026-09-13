@@ -207,6 +207,13 @@ inSim <- SpaDES.project::setupProject(
     # makeClusterPSOCK ("invalid connection", 9.2.1, 2026-09-12). Mosaicking is disk-bound;
     # 8 is plenty. Anything else that consults mc.cores gets the same sane per-process cap.
     , mc.cores = 8
+    # STOPGAP until SpaDES.core > 3.2.1.9007 is installed (fleet runs 9005): its progress-tick
+    # handler records the time of the last shown tick only on the non-dynamic path, so a
+    # dynamic (\r) tick followed by a plain one dies with "argument is of length zero" in
+    # `if (as.numeric(now - .pkgEnv$.progressLastShown) >= ...)` (14.4, 2026-09-12 22:32,
+    # inside a Google Drive fetch in canClimateData). Non-dynamic cli output never takes the
+    # \r path. Remove once the fixed SpaDES.core is installed.
+    , cli.dynamic = FALSE
     # , reproducible.prepInputsUrlTiles = "https://drive.google.com/drive/folders/1IfeQ9rZ3-RIQwtcdo2T5Kn51NJJRWeox?usp=drive_link"
     # spades.useRequire is deliberately NOT set here. Its default is
     #   !tolower(Sys.getenv("SPADES_USE_REQUIRE")) %in% "false"
