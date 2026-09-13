@@ -41,7 +41,7 @@ if (!require("pak")) install.packages("pak")
             # this campaign's end year depends on. Tracking @development here would silently
             # overwrite it on the next launch and drop the end year back to 2022.
             # Move back to @development once PR #24 merges.
-            "PredictiveEcology/climateData@feat/climate-layers-years",
+            "PredictiveEcology/climateData@fireSense/combined-fixes",
             "PredictiveEcology/quickPlot@development"), ask = FALSE)
 
 ####################

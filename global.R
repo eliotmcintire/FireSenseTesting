@@ -65,6 +65,24 @@ inSim <- SpaDES.project::setupProject(
                      .SSP = 370,
                      .GCM = "CNRM-ESM2-1", # "NRV"
                      .samplingRange = 1990:2020, # vector
+                     # Fire years for FITTING. 1985 is the first SCANFI V2 year; the end is
+                     # the last year every input can supply, which is climate:
+                     # climateData::latestHistoricalYear() is 2024 (NBAC reaches 2025, the
+                     # local NFDB copy 2024). See latest-fire-year.md sec 2 for why the end
+                     # year must be the minimum over inputs.
+                     #
+                     # NB these are the ONLY definition of the window. There is deliberately
+                     # no `.fireYearStart = .fireYearStart` dot in the setupProject() call
+                     # above: on 2026-09-11 that self-referencing form resolved to NA in the
+                     # workers (the queue columns and the job env both held 1985/2024), so
+                     # `.fireYearStart:.fireYearEnd` raised "NA/NaN argument", setupProject
+                     # TOLERATED it, and every job then died three frames later in
+                     # Require::modifyList2. 12 of 15 workers failed that way. The same shape
+                     # is what the `.studyAreaName` comment below warns about.
+                     # expt.R still stops unless its resolved end year matches .fireYearEnd,
+                     # so the campaign window cannot drift from this default silently.
+                     .fireYearStart = 1985L,
+                     .fireYearEnd = 2024L,
                      .cores = c("birds", "biomass", "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
                                 , "mpb", "sbw", "mega"
@@ -132,6 +150,7 @@ inSim <- SpaDES.project::setupProject(
   packages = c(
     # "PrectiveEcology/reproducible@development (>=3.1.1.9020)"
     "SpaDES.core (>=3.1.2.9003)"
+    , "eliotmcintire/fireregimetools@perf/read-study-area-only (>= 0.1.0.9007)"
     , "reproducible (>= 3.1.1)"
     , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
     , "PredictiveEcology/LandR@development (>= 1.2.0)"
@@ -141,7 +160,10 @@ inSim <- SpaDES.project::setupProject(
     , "qs2", "filelock"
     , "archive"
     , "googlesheets4"
-    , "PredictiveEcology/climateData@development (>= 2.2.2.9006)"
+    # fireSense/combined-fixes = development + PRs #23, #24 (years args, latestHistoricalYear)
+    # and #25 (tile-dir regexp, the "[rast] extents do not match" fix), merged 2026-09-12
+    # because the package's lead author has not merged them yet.
+    , "PredictiveEcology/climateData@fireSense/combined-fixes (>= 2.2.3.9004)"
     , "terra" # "leaflet", "tidyterra",
     , "plyr"#, "scfmutils",
     , "geodata", "usethis"
@@ -179,6 +201,12 @@ inSim <- SpaDES.project::setupProject(
     , fireSenseUtils.runTests = FALSE
     , reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
     , reproducible.nThreads = 1 #  When in parallel; can't do >1 ... only a warning
+    # climateData::buildClimateMosaics() sizes its PSOCK cluster with parallelly::availableCores(),
+    # which is the whole machine (80 here) unless mc.cores caps it: 40 nodes (historical) or 80
+    # (future) per process. With 14 concurrent workers that launch failed inside
+    # makeClusterPSOCK ("invalid connection", 9.2.1, 2026-09-12). Mosaicking is disk-bound;
+    # 8 is plenty. Anything else that consults mc.cores gets the same sane per-process cap.
+    , mc.cores = 8
     # , reproducible.prepInputsUrlTiles = "https://drive.google.com/drive/folders/1IfeQ9rZ3-RIQwtcdo2T5Kn51NJJRWeox?usp=drive_link"
     # spades.useRequire is deliberately NOT set here. Its default is
     #   !tolower(Sys.getenv("SPADES_USE_REQUIRE")) %in% "false"
@@ -232,7 +260,8 @@ inSim <- SpaDES.project::setupProject(
   ),
   .climVars = c("CMD_sm", "CMD_sp"),
   climateVariables = {
-    climateData::climateLayers(.climVars, fun = quote(calcAsIs), 
+    climateData::climateLayers(.climVars, fun = quote(calcAsIs),
+                               historicalYears = .fireYearStart:.fireYearEnd,
                                projected = ifelse(identical(.GCM, "NRV"), FALSE, TRUE))
   },
   climateVariablesForFire = list(ignition = gsub("_", "", .climVars), # This must match a layer in climateVariables (without 'historical_')
@@ -241,7 +270,10 @@ inSim <- SpaDES.project::setupProject(
   saveAndPlotInterval = 100,
   params = list(
     .globals = list(
-      spreadFitFilename = "fireSenseParams2026-09.rds" # the object on the cloud with the fits (new file => every ELF refits)
+      # The cloud object holding the fits. The year range is in the name: a different
+      # fitting window is a different set of fits, so a new range refits every ELF on
+      # purpose and the previous campaign's fits stay on Drive.
+      spreadFitFilename = paste0("fireSenseParams_", .fireYearStart, "-", .fireYearEnd, ".rds")
       # dataYear = 2011,
       , .studyAreaName = .ELFind
       , .runName = runName
@@ -295,6 +327,10 @@ inSim <- SpaDES.project::setupProject(
       , doObjFunAssertions = FALSE
     ),
     fireSense_dataPrepFit = list(
+      # Fire years and the vegetation/land-cover years they join to. Every fire year uses
+      # the dataYear at or before it, so the first dataYear must not postdate .fireYearStart.
+      fireYears = .fireYearStart:.fireYearEnd,
+      dataYears = c(1985L, 1990L, 2000L, 2010L, 2020L),
       # missingLCCgroup = c("nf_dryland"), # must match fuel class land cover
       .useCache = c(".inputObjects",
                     # "init", # CAN'T cache this one because it is the trigger to "skip" a whole bunch if SpreadParams exist for the StudyArea
