@@ -15,10 +15,9 @@ suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there 
 if (!require("pak")) install.packages("pak")
  pak::pak(c("PredictiveEcology/Require@development",
             "PredictiveEcology/SpaDES.project@development",
-            # TEMPORARY PIN until reproducible PRs #601 (no restore into a foreign temp dir) and the
-            # useCache = FALSE bypass fix merge; the branch is development + both. Back to
-            # @development once merged.
-            "PredictiveEcology/reproducible@fireSense/combined-fixes",
+            # reproducible PRs #601 (no restore into a foreign temp dir) and #602 (useCache = FALSE
+            # bypass) merged 2026-09-14; back on development.
+            "PredictiveEcology/reproducible@development",
             # SpaDES.core PRs #449, #450, #451, #452 merged 2026-09-14; back on development.
             "PredictiveEcology/SpaDES.core@development",
             # fireSenseUtils carries the objective function; the `packages` list below
