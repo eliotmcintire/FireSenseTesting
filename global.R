@@ -240,6 +240,10 @@ inSim <- SpaDES.project::setupProject(
     # pass to chain from. The benefit still only appears from the second run of an ELF
     # onward -- the prediction phase's replicates are where it should show.
     , spades.cacheChaining = TRUE
+    # 2026-09-13 (Eliot): event-level caching only. Module-internal Cache() calls wrote 74 GB in
+    # 2 h on the previous pass, 57 GB of it never read back; the event caches (19 GB) are what
+    # let a failed job resume. Needs SpaDES.core >= 3.2.1.9006 (option added in PR #447).
+    , spades.useCache = "eventsOnly"
     , reproducible.cacheChaining = FALSE #interactive()
     
     , reproducible.gdalwarp = FALSE

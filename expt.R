@@ -106,7 +106,9 @@ message("Fitting fire years ", .fireYearStart, ":", .fireYearEnd)
 # including 6 rows still marked RUNNING -- and ignore `expt` entirely.
 # 2026-09-11: the 2026-09-10 queue is FINISHED (54 DONE, 9 QUARANTINED) and was fit on
 # fire years 2002-2022, so reusing its name would queue nothing at all.
-queue_path <- "experiment_queue_fits_2026-09-12b.rds"
+# 2026-09-13: the 2026-09-12b queue FINISHED (54/54 DONE) but with module-internal caching on; this
+# pass reruns phase 1 from a cleared cache with options(spades.useCache = "eventsOnly").
+queue_path <- "experiment_queue_fits_2026-09-13.rds"
 outs$params$fireSense_ELFs$queue_path <- queue_path
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 # Already-fitted ELFs, straight from the shared cloud ledger that fireSense_SpreadFit
