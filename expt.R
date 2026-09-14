@@ -15,7 +15,10 @@ suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there 
 if (!require("pak")) install.packages("pak")
  pak::pak(c("PredictiveEcology/Require@development",
             "PredictiveEcology/SpaDES.project@development",
-            "PredictiveEcology/reproducible@development",
+            # TEMPORARY PIN until reproducible PRs #601 (no restore into a foreign temp dir) and the
+            # useCache = FALSE bypass fix merge; the branch is development + both. Back to
+            # @development once merged.
+            "PredictiveEcology/reproducible@fireSense/combined-fixes",
             # TEMPORARY PIN until SpaDES.core PR #452 merges: Plots(useCache = TRUE) dies under
             # spades.useCache = "eventsOnly", and its exit handler empties the whole cache. Back to
             # @development once merged.
