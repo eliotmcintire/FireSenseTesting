@@ -111,7 +111,19 @@ message("Fitting fire years ", .fireYearStart, ":", .fireYearEnd)
 # fire years 2002-2022, so reusing its name would queue nothing at all.
 # 2026-09-13: the 2026-09-12b queue FINISHED (54/54 DONE) but with module-internal caching on; this
 # pass reruns phase 1 from a cleared cache with options(spades.useCache = "eventsOnly").
-queue_path <- "experiment_queue_fits_2026-09-13.rds"
+# Per-phase launch settings. FS_PHASE is the same switch global.R reads for the events
+# barrier (1 caches, 2 fit, 3 predict). Each later phase queues only the ELFs the previous
+# phase's queue finished (`from`), so a phase can start while the one before still runs.
+# A queue name is resumed, never extended: to add ELFs that finish later, use a new name.
+.phase <- as.integer(Sys.getenv("FS_PHASE", unset = "1"))
+.phaseSetup <- list(
+  list(queue = "experiment_queue_fits_2026-09-13.rds",    n_workers = 15, from = NULL),
+  list(queue = "experiment_queue_fit_2026-09-14.rds",     n_workers = 5,  # each fit takes a ~100-node cluster
+       from = "experiment_queue_fits_2026-09-13.rds"),
+  list(queue = "experiment_queue_predict_2026-09-14.rds", n_workers = 5,
+       from = "experiment_queue_fit_2026-09-14.rds")
+)[[.phase]]
+queue_path <- .phaseSetup$queue
 outs$params$fireSense_ELFs$queue_path <- queue_path
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 # Already-fitted ELFs, straight from the shared cloud ledger that fireSense_SpreadFit
@@ -187,6 +199,13 @@ if (length(missingFromELFs))
        paste(missingFromELFs, collapse = ", "))
 expt <- expt[expt$.ELFind %in% rerunELFs, ]
 stopifnot(NROW(expt) == length(rerunELFs))
+if (!is.null(.phaseSetup$from)) {
+  .prev <- as.data.frame(readRDS(.phaseSetup$from))
+  .prevDone <- .prev[[grep("ELFind$", names(.prev), value = TRUE)[1]]][.prev$status == "DONE"]
+  expt <- expt[expt$.ELFind %in% .prevDone, ]
+  message("Phase ", .phase, ": ", NROW(expt), " of ", length(rerunELFs), " ELFs are DONE in ",
+          .phaseSetup$from, "; the rest need a later queue")
+}
 message("Queueing ", NROW(expt), " ELFs for fire years ", .fireYearStart, ":", .fireYearEnd)
 
 # First runs: ELFs that fail in the vecseq fuel-class join, so fireSenseUtils #50's message
@@ -201,7 +220,7 @@ rownames(expt) <- 1:NROW(expt) # re-number each row
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",
-  n_workers           = 15,   # memfrac = 0 keeps per-worker memory down; measured 90th-pct peak 37.7 GB
+  n_workers           = .phaseSetup$n_workers,   # phase 1: memfrac = 0 keeps per-worker memory down; measured 90th-pct peak 37.7 GB
   queue_path          = queue_path,
   delay_before_source = 120,
   statusCalculate = quote({dd <- dir(file.path("outputs", runName), recursive = TRUE, full.names = TRUE)
