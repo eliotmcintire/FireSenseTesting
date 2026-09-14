@@ -16,7 +16,10 @@ if (!require("pak")) install.packages("pak")
  pak::pak(c("PredictiveEcology/Require@development",
             "PredictiveEcology/SpaDES.project@development",
             "PredictiveEcology/reproducible@development",
-            "PredictiveEcology/SpaDES.core@development",
+            # TEMPORARY PIN until SpaDES.core PR #452 merges: Plots(useCache = TRUE) dies under
+            # spades.useCache = "eventsOnly", and its exit handler empties the whole cache. Back to
+            # @development once merged.
+            "PredictiveEcology/SpaDES.core@fix/plots-usecache-off",
             # fireSenseUtils carries the objective function; the `packages` list below
             # pins it with a floor (>= 0.2.0), so once any 0.2.x was installed it never
             # moved again. That is why the fits ran without the objFunSpread adTest fix
