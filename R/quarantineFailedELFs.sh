@@ -12,6 +12,10 @@
 # This is triage, not a fix: it keeps the run moving while the underlying per-ELF bugs
 # (the vecseq many-to-many join, `all(dir.exists(allDirs))`) are still open.
 #
+# Network failures are NOT deterministic and are left PENDING for the fleet to retry:
+# 2026-09-15 04:45 a brief DNS outage ("Could not resolve host: www.googleapis.com") failed
+# 4.3 an hour into its phase-2 job, and this script quarantined it a minute later.
+#
 # Usage:  R/quarantineFailedELFs.sh [interval_seconds] [queue.rds]
 #         The Google Sheet is the queue file name without ".rds", as experimentTmux names it.
 INTERVAL=${1:-600}
@@ -28,7 +32,9 @@ while true; do
     qp <- Sys.getenv("QUEUE_RDS")
     if (!file.exists(qp)) quit(save = "no")
     q <- as.data.frame(readRDS(qp))
-    idx <- which(!is.na(q$last_error) & q$status %in% c("PENDING", "INTERRUPTED"))
+    network <- "resolve host|Timeout was reached|Failed to connect|Connection reset|Connection timed out|SSL connect error|HTTP error 5[0-9][0-9]"
+    idx <- which(!is.na(q$last_error) & q$status %in% c("PENDING", "INTERRUPTED") &
+                 !grepl(network, q$last_error, ignore.case = TRUE))
     if (length(idx)) {
       q$status[idx] <- "QUARANTINED"; saveRDS(q, qp)
       ss <- googledrive::drive_get(path = sub("\\.rds$", "", qp))$id[1]
