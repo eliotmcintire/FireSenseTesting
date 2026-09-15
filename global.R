@@ -15,18 +15,6 @@ if (Sys.info()["user"] == "ieddy"){
 }
 dir.create(projectDir, recursive = TRUE, showWarnings = FALSE)
 setwd(projectDir)
-# terra enables PROJ network access when it loads, so every projection may try to fetch
-# datum-shift grids from cdn.proj.org (CloudFront). With flaky routing to that host, six
-# workers sat in SYN-SENT for hours inside terra::project() (2026-09-07). Ballpark datum
-# shifts (~1 m) are irrelevant at this resolution, so keep projections offline.
-# if (requireNamespace("terra", quietly = TRUE)) terra::projNetwork(FALSE)
-# terra assumes it owns the machine: memfrac = 0.6 lets EACH R session use 60% of RAM for
-# raster operations, so six workers are entitled to 3.6 TB. On 2026-09-07 21:56 three workers
-# reached ~100 GB each, the user slice peaked at 999 GB of 1005, and the OOM killer took the
-# tmux server and every job. Cap terra at 60 GB per worker (six workers -> 360 GB); beyond
-# that terra processes rasters in chunks from disk, slower but bounded.
-# if (requireNamespace("terra", quietly = TRUE)) terra::terraOptions(memfrac = 0.06, memmax = 60)
-
 # Google's OAuth endpoint (oauth2.googleapis.com) resolves to several addresses and one of
 # them is intermittently black-holed from this network (2026-09-07: three fits lost to
 # "Timeout was reached ... after 10002 ms" during a token refresh). curl only moves on to
@@ -38,14 +26,6 @@ setwd(projectDir)
 if (requireNamespace("httr", quietly = TRUE))
   httr::set_config(httr::config(connecttimeout = 60L,
                                 resolve = "oauth2.googleapis.com:443:172.217.112.4,172.217.114.4"))
-# Load the Drive token up front. reproducible's auth cascade only runs when no token is
-# loaded, and until reproducible PR #589 is in the library a transient failure inside that
-# cascade calls drive_deauth(), which is process-wide and makes every later direct
-# googledrive call (LandR's SCANFI drive_ls()) fail with "Does not exist". With a token
-# already loaded the cascade short-circuits and nothing can deauthorise the session.
-if (requireNamespace("googledrive", quietly = TRUE) && nzchar(getOption("gargle_oauth_email", "")))
-  try(suppressMessages(googledrive::drive_auth(email = getOption("gargle_oauth_email"),
-                                               cache = getOption("gargle_oauth_cache"))), silent = TRUE)
 inSim <- SpaDES.project::setupProject(
   .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
   .rep = .rep,
@@ -99,7 +79,7 @@ inSim <- SpaDES.project::setupProject(
                      .times = list(start = 2020, end = 3020),
                      .modules = c("PredictiveEcology/canClimateData@development"
                                   ,"PredictiveEcology/climateYear@development"
-                                  , "PredictiveEcology/fireSense_ELFs@main"
+                                  , "PredictiveEcology/fireSense_ELFs@development" # #13 (no-tree) merged to development; main is behind
                                   , "PredictiveEcology/fireSense_dataPrepFit@development"
                                   , "PredictiveEcology/fireSense_IgnitionFit@development"
                                   , "PredictiveEcology/fireSense_SpreadFit@development"
@@ -153,9 +133,9 @@ inSim <- SpaDES.project::setupProject(
     , "eliotmcintire/fireregimetools@perf/read-study-area-only (>= 0.1.0.9007)"
     , "reproducible (>= 3.1.1)"
     , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
-    , "PredictiveEcology/LandR@development (>= 1.2.0)"
+    , "PredictiveEcology/LandR@development (>= 1.2.0.9015)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
-    , "PredictiveEcology/fireSenseUtils@development (>= 0.2.0)"
+    , "PredictiveEcology/fireSenseUtils@development (>= 0.2.3.9014)"
     , "PredictiveEcology/pemisc@development (>= 0.0.4.9016)" # needed for LandWebUtils; not sure why
     , "qs2", "filelock"
     , "archive"
@@ -181,9 +161,7 @@ inSim <- SpaDES.project::setupProject(
     #                    # , 'https://dmlc.r-universe.dev'
     #                    , getOption("repos")))
     , reproducible.cacheSaveFormat = "qs2"
-    , reproducible.qsFormat = "qs2"
     , reproducible.useTry = FALSE
-    , SpaDES.project.fast = FALSE
     , reproducible.shapefileRead = "terra::vect"
     , reproducible.overwrite = TRUE
     , reproducible.destinationPathShared = "/mnt/fast/data"
@@ -197,10 +175,8 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9"
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
-    , reproducible.savePreDigest = FALSE
     , fireSenseUtils.runTests = FALSE
     , reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
-    , reproducible.nThreads = 1 #  When in parallel; can't do >1 ... only a warning
     # climateData::buildClimateMosaics() sizes its PSOCK cluster with parallelly::availableCores(),
     # which is the whole machine (80 here) unless mc.cores caps it: 40 nodes (historical) or 80
     # (future) per process. With 14 concurrent workers that launch failed inside
@@ -223,7 +199,6 @@ inSim <- SpaDES.project::setupProject(
     
     
     # For batch runs, these should be off
-    , reproducible.showSimilar = FALSE #interactive() && !nzchar(Sys.getenv("TMUX"))
     , reproducible.showCachePreWarm = FALSE # the pre-warm fork only speeds an interactive showCache()
     , reproducible.useMemoise = TRUE # interactive() && !nzchar(Sys.getenv("TMUX"))
     , spades.recoveryMode = 1#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
@@ -237,27 +212,30 @@ inSim <- SpaDES.project::setupProject(
     # 2 h on the previous pass, 57 GB of it never read back; the event caches (19 GB) are what
     # let a failed job resume. Needs SpaDES.core >= 3.2.1.9006 (option added in PR #447).
     , spades.useCache = "eventsOnly"
-    , reproducible.cacheChaining = FALSE #interactive()
     
-    , reproducible.gdalwarp = FALSE
     , Require.cloneFrom = Sys.getenv("R_LIBS_USER")
-    , Require.usePak = TRUE
-    , Require.verbose = 1
-    , spades.moduleCodeChecks = FALSE
     , spades.allowInitDuringSimInit = TRUE
-    , spades.evalPostEvent =  NULL
+      # spades.evalPostEvent hooks used while debugging:
       # quote(print({co <- capture.output(terra::terraOptions()); co[[1]]}))
       # quote({ print(.robustDigest(sim$studyArea));
       #         print(.robustDigest(sim$studyAreaELF))
       # })
     , warnPartialMatchArgs = TRUE #fireSense has objects that will be fooled by partial matching (rstLCC, rstLCCs)
     , warnPartialMatchAttr = TRUE
-    , warnPartialMatchDollar = TRUE
-    , spades.debugModule = NULL),
+    , warnPartialMatchDollar = TRUE),
   sideEffects = list(
     {gd <- file.path(paths$inputPath, "geodata"); geodata::geodata_path(gd)} # gadm on a non-interactive sessino needs this
     , terra::gdalCache(size = 2048)   # 2 GB
+    # terra enables PROJ network access when it loads, so every projection may try to fetch
+    # datum-shift grids from cdn.proj.org (CloudFront). With flaky routing to that host, six
+    # workers sat in SYN-SENT for hours inside terra::project() (2026-09-07). Ballpark datum
+    # shifts (~1 m) are irrelevant at this resolution, so keep projections offline.
     , terra::projNetwork(FALSE)
+    # terra assumes it owns the machine: memfrac = 0.6 lets EACH R session use 60% of RAM for
+    # raster operations, so six workers are entitled to 3.6 TB. On 2026-09-07 21:56 three workers
+    # reached ~100 GB each, the user slice peaked at 999 GB of 1005, and the OOM killer took the
+    # tmux server and every job. Cap terra at 60 GB per worker (six workers -> 360 GB); beyond
+    # that terra processes rasters in chunks from disk, slower but bounded.
     , terra::terraOptions(memmax = 4, todisk = TRUE, memfrac = 0)
     
     # , "OtherExtras.R" # Eliot has some dev things he does incl pkgload::
