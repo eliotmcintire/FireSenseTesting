@@ -98,8 +98,8 @@ inSim <- SpaDES.project::setupProject(
                                   # , "FOR-CAST/NRV_summary@development"
                                   , "PredictiveEcology/NRV_summary@modsForFireSense"
                                   , "PredictiveEcology/burnSummaries@modsForFireSense"
-                                  , "PredictiveEcology/fireSense_summary@development"
-                                  , "PredictiveEcology/Biomass_summary@main"
+                                  , "PredictiveEcology/fireSense_summary@modsForFireSense" # fireSense commits not yet in development
+                                  , "PredictiveEcology/Biomass_summary@modsForFireSense" # fireSense commits not yet in development; main was behind
                      )),
   # NB there is deliberately no `.studyAreaName` dot. A `...` argument that
   # references ANOTHER `...` argument does not resolve in setupProject(): both
@@ -132,7 +132,7 @@ inSim <- SpaDES.project::setupProject(
     "SpaDES.core (>=3.1.2.9003)"
     , "eliotmcintire/fireregimetools@perf/read-study-area-only (>= 0.1.0.9007)"
     , "reproducible (>= 3.1.1)"
-    , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
+    , "PredictiveEcology/SpaDES.project@development (>= 1.0.1)"
     , "PredictiveEcology/LandR@development (>= 1.2.0.9015)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
     , "PredictiveEcology/fireSenseUtils@development (>= 0.2.3.9015)" # 9015: spread-fit buffers repeat for the same seed (#57)
