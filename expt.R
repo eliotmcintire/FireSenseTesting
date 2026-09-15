@@ -118,8 +118,10 @@ message("Fitting fire years ", .fireYearStart, ":", .fireYearEnd)
 .phase <- as.integer(Sys.getenv("FS_PHASE", unset = "1"))
 .phaseSetup <- list(
   list(queue = "experiment_queue_fits_2026-09-14.rds",    n_workers = 15, from = NULL),  # every ELF in the map
+  ## 2026-09-14: the first phase-2 queue fits the 54 ELFs that finished the phase-1 rerun; ELFs from the
+  ## all-ELF phase-1 queue above need a later phase-2 queue name (a queue is resumed, never extended)
   list(queue = "experiment_queue_fit_2026-09-14.rds",     n_workers = 5,  # each fit takes a ~100-node cluster
-       from = "experiment_queue_fits_2026-09-14.rds"),
+       from = "experiment_queue_fits_2026-09-13.rds"),
   list(queue = "experiment_queue_predict_2026-09-14.rds", n_workers = 5,
        from = "experiment_queue_fit_2026-09-14.rds")
 )[[.phase]]
