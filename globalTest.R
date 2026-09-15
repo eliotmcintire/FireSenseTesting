@@ -100,7 +100,6 @@ inSim <- SpaDES.project::setupProject(
                        , getOption("repos")))
     , reproducible.cacheSaveFormat = "qs2"
     , reproducible.qsFormat = "qs2"
-    , reproducible.useTry = FALSE
     , SpaDES.project.fast = FALSE
     , reproducible.shapefileRead = "terra::vect"
     , reproducible.overwrite = TRUE
@@ -109,7 +108,7 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
     , reproducible.savePreDigest = FALSE
-    , fireSenseUtils.runTests = FALSE
+    , fireSense.runTests = FALSE
     , reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
     , reproducible.nThreads = 4 # 
     , reproducible.inputPaths = "~/data" # means I can share data from other projects
@@ -125,7 +124,6 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.cacheChaining = FALSE #interactive()
     
     , reproducible.gdalwarp = FALSE
-    , Require.cloneFrom = Sys.getenv("R_LIBS_USER")
     , spades.moduleCodeChecks = FALSE
     , spades.allowInitDuringSimInit = TRUE
     , spades.evalPostEvent = NULL

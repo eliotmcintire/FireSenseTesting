@@ -161,7 +161,6 @@ inSim <- SpaDES.project::setupProject(
     #                    # , 'https://dmlc.r-universe.dev'
     #                    , getOption("repos")))
     , reproducible.cacheSaveFormat = "qs2"
-    , reproducible.useTry = FALSE
     , reproducible.shapefileRead = "terra::vect"
     , reproducible.overwrite = TRUE
     , reproducible.destinationPathShared = "/mnt/fast/data"
@@ -175,7 +174,7 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9"
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
-    , fireSenseUtils.runTests = FALSE
+    , fireSense.runTests = FALSE # NB: unset means isFALSE(NULL) == FALSE, which would disable useCache in SpreadFit
     , reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
     # climateData::buildClimateMosaics() sizes its PSOCK cluster with parallelly::availableCores(),
     # which is the whole machine (80 here) unless mc.cores caps it: 40 nodes (historical) or 80
@@ -213,7 +212,6 @@ inSim <- SpaDES.project::setupProject(
     # let a failed job resume. Needs SpaDES.core >= 3.2.1.9006 (option added in PR #447).
     , spades.useCache = "eventsOnly"
     
-    , Require.cloneFrom = Sys.getenv("R_LIBS_USER")
     , spades.allowInitDuringSimInit = TRUE
       # spades.evalPostEvent hooks used while debugging:
       # quote(print({co <- capture.output(terra::terraOptions()); co[[1]]}))

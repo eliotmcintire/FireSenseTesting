@@ -114,7 +114,6 @@ inSim <- SpaDES.project::setupProject(
     #                    , getOption("repos")))
     , reproducible.cacheSaveFormat = "qs2"
     , reproducible.qsFormat = "qs2"
-    , reproducible.useTry = FALSE
     , SpaDES.project.fast = FALSE
     , reproducible.shapefileRead = "terra::vect"
     , reproducible.overwrite = TRUE
@@ -123,7 +122,7 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
     , reproducible.savePreDigest = FALSE
-    , fireSenseUtils.runTests = FALSE
+    , fireSense.runTests = FALSE
     , reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
     , reproducible.nThreads = 1 #  When in parallel; can't do >1 ... only a warning
     # , reproducible.prepInputsUrlTiles = "https://drive.google.com/drive/folders/1IfeQ9rZ3-RIQwtcdo2T5Kn51NJJRWeox?usp=drive_link"
@@ -144,8 +143,6 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.cacheChaining = FALSE #interactive()
     
     , reproducible.gdalwarp = FALSE
-    , Require.cloneFrom = Sys.getenv("R_LIBS_USER")
-    , Require.usePak = TRUE
     , Require.verbose = 1
     , spades.moduleCodeChecks = FALSE
     , spades.allowInitDuringSimInit = TRUE
