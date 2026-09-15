@@ -117,9 +117,9 @@ message("Fitting fire years ", .fireYearStart, ":", .fireYearEnd)
 # A queue name is resumed, never extended: to add ELFs that finish later, use a new name.
 .phase <- as.integer(Sys.getenv("FS_PHASE", unset = "1"))
 .phaseSetup <- list(
-  list(queue = "experiment_queue_fits_2026-09-13.rds",    n_workers = 15, from = NULL),
+  list(queue = "experiment_queue_fits_2026-09-14.rds",    n_workers = 15, from = NULL),  # every ELF in the map
   list(queue = "experiment_queue_fit_2026-09-14.rds",     n_workers = 5,  # each fit takes a ~100-node cluster
-       from = "experiment_queue_fits_2026-09-13.rds"),
+       from = "experiment_queue_fits_2026-09-14.rds"),
   list(queue = "experiment_queue_predict_2026-09-14.rds", n_workers = 5,
        from = "experiment_queue_fit_2026-09-14.rds")
 )[[.phase]]
@@ -171,39 +171,11 @@ ord3 <- as.numeric(!ord) * (max(ord2) + 1)
 expt <- expt[order(ord3), ]
 expt <- rbind(expt[!expt$.ELFind %in% problematic,], expt[expt$.ELFind %in% problematic,])
 
-# Data problems, not code -- each fails only after a full cold run, so leave them out until
-# the data are fixed: tile 39's CNRM-ESM2-1 ssp370 2010s archive lacks 2013-2016 (15.1, 3.2.3,
-# 5.1.3); no SCANFI species at all (3.2.1, 3.2.4).
-dataBlocked <- c("15.1", "3.2.3", "5.1.3", "3.2.1", "3.2.4")
-expt <- expt[!expt$.ELFind %in% dataBlocked, ]
-
-# THIS CAMPAIGN: rerun exactly the ELFs that completed phase 1 on the old fire years.
-# The 9 ELFs quarantined in that queue (3.1.2, 3.2.2, 3.2.5, 3.3.1, 3.3.2, 8.2, 10.1,
-# 10.3.2, 12.1) are being worked on in a SEPARATE session -- their causes are no-tree /
-# missing-land-cover / too-few-fires, none of which this rebuild fixes on its own.
-#
-# This list is written out rather than read from experiment_queue_fits_2026-09-10.rds:
-# that file is being deleted (it was fit on 2002-2022 and is wrong for this campaign), and
-# a file.exists() guard would silently fall through to "queue every ELF" once it was gone.
-rerunELFs <- c(
-  "10.2.1", "10.2.2", "10.3.1", "11.1", "11.2", "11.3", "11.4", "12.2", "12.3", "12.4",
-  "13.1", "13.2.1", "13.2.2", "13.3", "14.1", "14.2", "14.3", "14.4", "15.2.1", "15.2.2",
-  "3.1.1", "4.1", "4.2.1", "4.2.2", "4.3", "5.1.1", "5.1.2", "5.2.1", "5.2.2", "5.3.1",
-  "5.3.2", "5.4", "6.1.1", "6.1.2", "6.1.3", "6.2.1", "6.2.2", "6.2.3", "6.3.1", "6.3.2",
-  "6.4", "6.5", "6.6.1", "6.6.2", "7.1", "7.2", "7.3", "8.1", "9.1.1", "9.1.2", "9.2.1",
-  "9.2.2", "9.2.3", "9.3"
-)
-missingFromELFs <- setdiff(rerunELFs, expt$.ELFind)
-if (length(missingFromELFs))
-  stop("rerunELFs not present in the ELF map or dropped by an exclusion above: ",
-       paste(missingFromELFs, collapse = ", "))
-expt <- expt[expt$.ELFind %in% rerunELFs, ]
-stopifnot(NROW(expt) == length(rerunELFs))
 if (!is.null(.phaseSetup$from)) {
   .prev <- as.data.frame(readRDS(.phaseSetup$from))
   .prevDone <- .prev[[grep("ELFind$", names(.prev), value = TRUE)[1]]][.prev$status == "DONE"]
   expt <- expt[expt$.ELFind %in% .prevDone, ]
-  message("Phase ", .phase, ": ", NROW(expt), " of ", length(rerunELFs), " ELFs are DONE in ",
+  message("Phase ", .phase, ": ", NROW(expt), " ELFs are DONE in ",
           .phaseSetup$from, "; the rest need a later queue")
 }
 message("Queueing ", NROW(expt), " ELFs for fire years ", .fireYearStart, ":", .fireYearEnd)
