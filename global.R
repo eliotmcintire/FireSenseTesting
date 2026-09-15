@@ -135,7 +135,7 @@ inSim <- SpaDES.project::setupProject(
     , "PredictiveEcology/SpaDES.project@main (>= 1.0.1)"
     , "PredictiveEcology/LandR@development (>= 1.2.0.9015)"
     , "PredictiveEcology/clusters@main (>= 0.0.22)"
-    , "PredictiveEcology/fireSenseUtils@development (>= 0.2.3.9014)"
+    , "PredictiveEcology/fireSenseUtils@development (>= 0.2.3.9015)" # 9015: spread-fit buffers repeat for the same seed (#57)
     , "PredictiveEcology/pemisc@development (>= 0.0.4.9016)" # needed for LandWebUtils; not sure why
     , "qs2", "filelock"
     , "archive"
@@ -314,6 +314,7 @@ inSim <- SpaDES.project::setupProject(
       # missingLCCgroup = c("nf_dryland"), # must match fuel class land cover
       .useCache = c(".inputObjects",
                     # "init", # CAN'T cache this one because it is the trigger to "skip" a whole bunch if SpreadParams exist for the StudyArea
+                    "dataPrepBuild", # the land-cover, fuel-class and time-since-disturbance work init used to do (module >= 1.2.0.9004)
                     "dataPrepInit",
                     "prepEscapeFitData",
                     "prepSpreadFitData",
