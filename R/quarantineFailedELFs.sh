@@ -16,7 +16,8 @@
 #         The Google Sheet is the queue file name without ".rds", as experimentTmux names it.
 INTERVAL=${1:-600}
 QUEUE=${2:-experiment_queue_fits_2026-09-10.rds}
-LOG=~/claudeSessions/2026-09-04-spreadfit-elf-cluster/quarantine.log
+SESSION_DIR=${SESSION_DIR:-$HOME/claudeSessions/2026-09-13-phase1-rerun-eventsOnly}
+LOG=$SESSION_DIR/quarantine.log
 cd ~/GitHub/FireSenseTesting || exit 1
 while true; do
   QUEUE_RDS="$QUEUE" \
