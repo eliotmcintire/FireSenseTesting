@@ -32,7 +32,9 @@ while true; do
     qp <- Sys.getenv("QUEUE_RDS")
     if (!file.exists(qp)) quit(save = "no")
     q <- as.data.frame(readRDS(qp))
-    network <- "resolve host|Timeout was reached|Failed to connect|Connection reset|Connection timed out|SSL connect error|HTTP error 5[0-9][0-9]"
+    ## last_error is truncated (4.3 ended at "Caused by error in `curl::c"), so match the curl-level
+    ## failure itself as well as the messages; a Drive permission error is an HTTP status, not a curl error.
+    network <- "Caused by error in .curl::|curl_fetch|resolve host|Timeout was reached|Failed to connect|Connection reset|Connection timed out|SSL connect error|HTTP error 5[0-9][0-9]"
     idx <- which(!is.na(q$last_error) & q$status %in% c("PENDING", "INTERRUPTED") &
                  !grepl(network, q$last_error, ignore.case = TRUE))
     if (length(idx)) {
