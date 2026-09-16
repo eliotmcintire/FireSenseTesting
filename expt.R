@@ -117,7 +117,14 @@ message("Fitting fire years ", .fireYearStart, ":", .fireYearEnd)
 # A queue name is resumed, never extended: to add ELFs that finish later, use a new name.
 .phase <- as.integer(Sys.getenv("FS_PHASE", unset = "1"))
 .phaseSetup <- list(
-  list(queue = "experiment_queue_fits_2026-09-14.rds",    n_workers = 15, from = NULL),  # every ELF in the map
+  ## 2026-09-15 (Eliot): rebuild, at a slower pace alongside phase 2, the event caches that the 2026-09-14 module
+  ## updates invalidated, for the ELFs phase 2 has still to fit. `reverse` starts from the end of phase 2's order, so
+  ## the two campaigns rarely work on the same ELF; `skipDoneIn` leaves out what phase 2 already finished.
+  ## The all-ELF phase-1 queue waits for fireSense_ELFs #14:
+  ##   list(queue = "experiment_queue_fits_2026-09-14.rds", n_workers = 15, from = NULL)  # every ELF in the map
+  list(queue = "experiment_queue_caches_2026-09-15.rds",  n_workers = 6,
+       from = "experiment_queue_fits_2026-09-13.rds", reverse = TRUE,
+       skipDoneIn = "experiment_queue_fit_2026-09-14.rds"),
   ## 2026-09-14: the first phase-2 queue fits the 54 ELFs that finished the phase-1 rerun; ELFs from the
   ## all-ELF phase-1 queue above need a later phase-2 queue name (a queue is resumed, never extended)
   list(queue = "experiment_queue_fit_2026-09-14.rds",     n_workers = 5,  # each fit takes a ~100-node cluster
@@ -186,6 +193,19 @@ message("Queueing ", NROW(expt), " ELFs for fire years ", .fireYearStart, ":", .
 # naming the duplicated species arrives early.
 firstRuns <- c("14.3", "13.1")
 expt <- rbind(expt[expt$.ELFind %in% firstRuns, ], expt[!expt$.ELFind %in% firstRuns, ])
+
+if (!is.null(.phaseSetup$skipDoneIn) && file.exists(.phaseSetup$skipDoneIn)) {
+  .other <- as.data.frame(readRDS(.phaseSetup$skipDoneIn))
+  .otherDone <- .other[[grep("ELFind$", names(.other), value = TRUE)[1]]][.other$status == "DONE"]
+  expt <- expt[!expt$.ELFind %in% .otherDone, ]
+  message("Leaving out ", length(.otherDone), " ELFs already DONE in ", .phaseSetup$skipDoneIn)
+}
+if (isTRUE(.phaseSetup$reverse)) {
+  ## reverse the working order, but keep `problematic` last: phase 2 reaches those last too
+  .isProb <- expt$.ELFind %in% problematic
+  expt <- rbind(expt[!.isProb, , drop = FALSE][rev(seq_len(sum(!.isProb))), , drop = FALSE],
+                expt[.isProb, , drop = FALSE])
+}
 
 rownames(expt) <- 1:NROW(expt) # re-number each row
 ####################

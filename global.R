@@ -200,7 +200,9 @@ inSim <- SpaDES.project::setupProject(
     # For batch runs, these should be off
     , reproducible.showCachePreWarm = FALSE # the pre-warm fork only speeds an interactive showCache()
     , reproducible.useMemoise = TRUE # interactive() && !nzchar(Sys.getenv("TMUX"))
-    , spades.recoveryMode = 1#(interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
+    # tmux panes report interactive() == TRUE, so `!interactive()` alone cannot detect a batch
+    # runner; recoveryMode copies sim objects every event, which is wasted work for these.
+    , spades.recoveryMode = (interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
     # Reworked 2026-09-08. This must be ON during the FIRST pass, not just the ones that
     # benefit: cacheChainingPost() writes the chain tags with .addTagsRepo(), and that call
     # is inside `if (cacheChaining)`, so a pass run with it off records nothing for a later
