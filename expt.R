@@ -122,12 +122,30 @@ message("Fitting fire years ", .fireYearStart, ":", .fireYearEnd)
   ## the two campaigns rarely work on the same ELF; `skipDoneIn` leaves out what phase 2 already finished.
   ## The all-ELF phase-1 queue waits for fireSense_ELFs #14:
   ##   list(queue = "experiment_queue_fits_2026-09-14.rds", n_workers = 15, from = NULL)  # every ELF in the map
-  list(queue = "experiment_queue_caches_2026-09-15.rds",  n_workers = 6,
-       from = "experiment_queue_fits_2026-09-13.rds", reverse = TRUE,
-       skipDoneIn = "experiment_queue_fit_2026-09-14.rds"),
+  ## 2026-09-16: the 2026-09-15 cache queue is retired. Its remaining rows were all ELFs that phase 2 is
+  ## fitting right now, so every worker that freed up claimed one, hit the collision guard and was closed --
+  ## the campaign consumed itself without advancing (36 of 53 done). A queue is resumed, never extended, so
+  ## this is a new name holding only ELFs no fit will reach for many hours: 5.3.2 is absent from the fit
+  ## queue entirely, and the rest sit at fit-queue positions 37-43. 6.2.3 and 6.3.1 are DELIBERATELY left
+  ## out -- they are at fit positions 4 and 5 and would be claimed within the hour.
+  ## Phase 1 still runs estimateThreshold, which now caches a DETERMINISTIC threshold (.elfSeed), and NP is
+  ## not part of that key -- so this warms exactly what the later fits will look up.
+  ## ...-16.rds was created at 14:04 from a whitelist that still contained 5.3.2, and a queue lives in the
+  ## GOOGLE SHEET -- deleting the local .rds mirror and relaunching just RESUMED that sheet, stale list and
+  ## all, so the collision guard had to close a worker twice. A queue is resumed, never edited: use a new name.
+  list(queue = "experiment_queue_caches_2026-09-16b.rds",  n_workers = 3,
+       from = "experiment_queue_fits_2026-09-13.rds",
+       ## 5.3.2 was dropped from this list at 14:06: it was safe when computed against SIX live fits, but
+       ## raising phase 2 to TEN workers advanced the fit queue and a fit claimed it minutes later. Recompute
+       ## a whitelist AFTER the fits have claimed, never before.
+       onlyELFs = c("5.1.1", "5.1.2", "5.2.2", "5.4", "11.1", "11.2", "3.1.1")),
   ## 2026-09-14: the first phase-2 queue fits the 54 ELFs that finished the phase-1 rerun; ELFs from the
   ## all-ELF phase-1 queue above need a later phase-2 queue name (a queue is resumed, never extended)
-  list(queue = "experiment_queue_fit_2026-09-14.rds",     n_workers = 5,  # each fit takes a ~100-node cluster
+  ## 2026-09-16: NP is the cluster size (clusters:::.clusterNP), so nCoresNeeded = 60 in global.R makes each
+  ## fit a 60-worker cluster. 10 fits x 60 = 600 of 704 cores, and the allocator's proportional split then
+  ## puts 45 workers on each 48-core host, 14 on each 16-core host and 45 (incl. 10 masters) on mega's 80 --
+  ## all at or under capacity. 11 fits would put 50 on the 48-core hosts, so 10 is the ceiling here.
+  list(queue = "experiment_queue_fit_2026-09-14.rds",     n_workers = 10,  # each fit is a 60-worker cluster
        from = "experiment_queue_fits_2026-09-13.rds"),
   list(queue = "experiment_queue_predict_2026-09-14.rds", n_workers = 5,
        from = "experiment_queue_fit_2026-09-14.rds")
@@ -199,6 +217,16 @@ if (!is.null(.phaseSetup$skipDoneIn) && file.exists(.phaseSetup$skipDoneIn)) {
   .otherDone <- .other[[grep("ELFind$", names(.other), value = TRUE)[1]]][.other$status == "DONE"]
   expt <- expt[!expt$.ELFind %in% .otherDone, ]
   message("Leaving out ", length(.otherDone), " ELFs already DONE in ", .phaseSetup$skipDoneIn)
+}
+if (!is.null(.phaseSetup$onlyELFs)) {
+  ## An explicit whitelist, for a queue that must avoid ELFs another campaign is working on. Named
+  ## rather than derived, because "what phase 2 is running right now" changes minute to minute and a
+  ## queue is built once. Anything named but absent from the map is reported rather than ignored.
+  .missing <- setdiff(.phaseSetup$onlyELFs, expt$.ELFind)
+  if (length(.missing))
+    warning("onlyELFs names ELFs that are not in this map: ", paste(.missing, collapse = ", "))
+  expt <- expt[expt$.ELFind %in% .phaseSetup$onlyELFs, , drop = FALSE]
+  message("Restricting to ", NROW(expt), " named ELFs: ", paste(expt$.ELFind, collapse = " "))
 }
 if (isTRUE(.phaseSetup$reverse)) {
   ## reverse the working order, but keep `problematic` last: phase 2 reaches those last too

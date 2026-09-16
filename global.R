@@ -172,6 +172,11 @@ inSim <- SpaDES.project::setupProject(
     # this long instead of dying after hours of input preparation (clusters >= 0.0.29).
     , clusters.waitForCores = 8 * 3600
     , reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9"
+    # When a Cache call misses, say WHICH argument differed. Without this a miss is silent, and a
+    # miss on fireSense_SpreadFit's estimateThreshold is expensive: it re-draws the SNLL threshold,
+    # which changes the objective and invalidates every cached DEoptim generation for that ELF
+    # (4.2.2 lost ~17 h that way on 2026-09-16, while 4.1 hit cache and replayed 797 generations).
+    , reproducible.showSimilar = TRUE
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
     , fireSense.runTests = FALSE # NB: unset means isFALSE(NULL) == FALSE, which would disable useCache in SpreadFit
@@ -293,7 +298,15 @@ inSim <- SpaDES.project::setupProject(
       #   youngAge = c("nf", unique(makeSppEquiv(ecoprovinceNum = ecoprovince)$fuel))
       # ),
       # .useCache = FALSE,
-      , iterDEoptim = 1000
+      # 2026-09-16: NP 60 needs more generations than NP 120, so the budget doubles. With the working
+      # convergence criterion (clusters >= 0.0.43) a fit stops when it stops improving, so itermax is
+      # a ceiling rather than the expected run length.
+      , iterDEoptim = 2000
+      # The DEoptim cluster's size IS its population: clusters:::.clusterNP() sets NP to the workers
+      # built, discarding any NP asked for. Measured per ELF on 2026-09-16: a generation costs the
+      # slowest of NP evaluations and that barely falls with NP (4.1: 68.0 s at 120, 64.9 s at 60),
+      # so throughput comes from running more ELFs at once -- 11 at NP 60 against 5 at NP 120.
+      , nCoresNeeded = 60
       , rep = .rep # This means that all Cache of DEoptim will now be different name
       , iterStep = 1 # run this many iterations before running again; this should be
       # set to itermax if Cache is not used; it is only useful for Cache
