@@ -19,6 +19,12 @@ if (!require("pak")) install.packages("pak")
             # bypass) merged 2026-09-14; back on development.
             "PredictiveEcology/reproducible@development",
             # SpaDES.core PRs #449, #450, #451, #452 merged 2026-09-14; back on development.
+            # LOCAL INTEGRATION (2026-09-17, Eliot: no merges to development until he has met achubaty and
+            # ceresbarros). These two are PR BRANCHES, not development, and every launch reinstalls from
+            # whatever is listed here -- pinning @development silently reverted them once already.
+            #   SpaDES.core#456: an event's cacheId no longer depends on outputs(sim)$arguments' class
+            #   2026-09-18: #456 merged (4663c1c) and its branch deleted -> the branch pin broke pak.
+            #   development == the branch's code (compare: 1 merge commit, 0 files).
             "PredictiveEcology/SpaDES.core@development",
             # fireSenseUtils carries the objective function; the `packages` list below
             # pins it with a floor (>= 0.2.0), so once any 0.2.x was installed it never
@@ -37,14 +43,16 @@ if (!require("pak")) install.packages("pak")
             # terraOptions restore (#213) and the SCANFI drive fallback; clusters carries
             # the PSOCK host handling this run depends on. clusters has no development
             # branch, so track main.
+            #   LandR#228 merged 2026-09-17, so development now carries prepInputs_CWIM() and
+            #   wetlandToLCC(); it also carries LandR#236, without which every ELF dies in
+            #   Biomass_speciesData:init ("cropTo must be a Raster*..."). Do NOT pin LandR back to a
+            #   branch: this pak block runs on EVERY launch and would reinstall over both fixes.
             "PredictiveEcology/LandR@development",
             "PredictiveEcology/clusters@main",
-            # PINNED to a feature branch, not development: PR #24 adds the years argument to
-            # climateLayers() plus latestHistoricalYear(), and the 2023/2024 tile-index rows
-            # this campaign's end year depends on. Tracking @development here would silently
-            # overwrite it on the next launch and drop the end year back to 2022.
-            # Move back to @development once PR #24 merges.
-            "PredictiveEcology/climateData@fireSense/combined-fixes",
+            #   climateData PRs #22-#25 all merged 2026-09-18, so development now carries the
+            #   years argument to climateLayers(), latestHistoricalYear(), the tile-dir regexp
+            #   fix and the hms Imports declaration. Back on @development as of 2026-09-18.
+            "PredictiveEcology/climateData@development",
             "PredictiveEcology/quickPlot@development"), ask = FALSE)
 
 ####################
@@ -141,14 +149,28 @@ message("Fitting fire years ", .fireYearStart, ":", .fireYearEnd)
        onlyELFs = c("5.1.1", "5.1.2", "5.2.2", "5.4", "11.1", "11.2", "3.1.1")),
   ## 2026-09-14: the first phase-2 queue fits the 54 ELFs that finished the phase-1 rerun; ELFs from the
   ## all-ELF phase-1 queue above need a later phase-2 queue name (a queue is resumed, never extended)
-  ## 2026-09-16: NP is the cluster size (clusters:::.clusterNP), so nCoresNeeded = 60 in global.R makes each
-  ## fit a 60-worker cluster. 10 fits x 60 = 600 of 704 cores, and the allocator's proportional split then
-  ## puts 45 workers on each 48-core host, 14 on each 16-core host and 45 (incl. 10 masters) on mega's 80 --
-  ## all at or under capacity. 11 fits would put 50 on the 48-core hosts, so 10 is the ceiling here.
-  list(queue = "experiment_queue_fit_2026-09-14.rds",     n_workers = 10,  # each fit is a 60-worker cluster
-       from = "experiment_queue_fits_2026-09-13.rds"),
+  ## 2026-09-17 WAVE 2, the same 10 ELFs as the 2026-09-16 wave, so the two can be compared. A queue is
+  ## resumed and never edited, so this needs its own name and its own Google Sheet.
+  ## NP is the cluster size (clusters:::.clusterNP), and global.R now asks for 40: 10 fits x 40 = 400 of 704
+  ## cores, leaving room for the centring trial (2 x 40) and headroom on every host.
+  ## What changed since wave 1, all of it deliberate (Eliot, 2026-09-17: "always run the best we have"):
+  ## adaptive truncation (fireSenseUtils#61 + clusters#17), population-median convergence (clusters#19),
+  ## final-population re-scoring so the ledger keeps 5 DISTINCT best members (fireSenseUtils#63 +
+  ## fireSense_SpreadFit#25), deterministic buffers (#62) and threshold seed, the calibration cutoff fix
+  ## (fireSense_SpreadFit#26), SCANFI + CWIM land cover, and Biomass_borealDataPrep #116-#123.
+  ## The vegetation inputs therefore differ from wave 1: compare SPEED (wall per generation, generations to
+  ## converge), not objective values.
+  ## The smoke-test queue experiment_queue_fit_2026-09-17.rds (4.3 alone) FAILED at Biomass_borealDataPrep's
+  ## .inputObjects: the pak block above had reinstalled LandR from @development over the local #228 build, so
+  ## prepInputs_CWIM() was gone. Both pins now point at the integration branches, and all ten ELFs run here.
+  list(queue = "experiment_queue_fit_2026-09-17b.rds",    n_workers = 10,  # each fit is a 40-worker cluster
+       from = "experiment_queue_fits_2026-09-13.rds",
+       ## their inputs changed (SCANFI + CWIM, Biomass #116-#123, deterministic buffers), so the stored
+       ## parameters are stale: refit, which also needs fireSense_SpreadFit's refitExisting (global.R)
+       refitFitted = TRUE,
+       onlyELFs = c("4.1", "4.2.2", "4.3", "5.2.1", "5.3.1", "5.3.2", "6.1.1", "6.1.2", "6.1.3", "6.2.1")),
   list(queue = "experiment_queue_predict_2026-09-14.rds", n_workers = 5,
-       from = "experiment_queue_fit_2026-09-14.rds")
+       from = "experiment_queue_fit_2026-09-17b.rds")
 )[[.phase]]
 queue_path <- .phaseSetup$queue
 outs$params$fireSense_ELFs$queue_path <- queue_path
@@ -170,8 +192,16 @@ if (exists(".modules"))
 if (exists(".times"))
   expt <- cbind(expt, .times = I(lapply(seq_len(NROW(expt)), function(x) .times)))
 
-# Only fit what the ledger says is missing
-expt <- expt[!expt$.ELFind %in% .ELFsFitted, ]
+# Only fit what the ledger says is missing -- unless this phase is deliberately REFITTING ELFs whose
+# stored parameters are stale because their inputs changed (new land cover, new vegetation parameters,
+# a new objective). The ledger row is then no longer an answer to this run's question.
+# fireSense_SpreadFit's own `refitExisting` parameter must be set too (global.R): the module skips a
+# polygon that has a row, wherever the queue came from.
+if (isTRUE(.phaseSetup$refitFitted)) {
+  message("Refitting ", sum(expt$.ELFind %in% .ELFsFitted), " ELFs that already have ledger rows")
+} else {
+  expt <- expt[!expt$.ELFind %in% .ELFsFitted, ]
+}
 
 # These errored in earlier attempts. They are no longer excluded -- the causes may have
 # been fixed since -- but they are sorted to the back so the well-behaved ELFs get the

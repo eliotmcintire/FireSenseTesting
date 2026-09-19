@@ -140,10 +140,11 @@ inSim <- SpaDES.project::setupProject(
     , "qs2", "filelock"
     , "archive"
     , "googlesheets4"
-    # fireSense/combined-fixes = development + PRs #23, #24 (years args, latestHistoricalYear)
-    # and #25 (tile-dir regexp, the "[rast] extents do not match" fix), merged 2026-09-12
-    # because the package's lead author has not merged them yet.
-    , "PredictiveEcology/climateData@fireSense/combined-fixes (>= 2.2.3.9004)"
+    # PRs #22-#25 merged upstream 2026-09-18, so development carries everything the
+    # fireSense/combined-fixes branch had, plus the hms Imports fix. NOTE the floor is
+    # 9002, not 9004: development's DESCRIPTION is 2.2.3.9002 (the branch bumped further
+    # on its own), and a floor development cannot satisfy would fail every launch.
+    , "PredictiveEcology/climateData@development (>= 2.2.3.9002)"
     , "terra" # "leaflet", "tidyterra",
     , "plyr"#, "scfmutils",
     , "geodata", "usethis"
@@ -176,6 +177,11 @@ inSim <- SpaDES.project::setupProject(
     # miss on fireSense_SpreadFit's estimateThreshold is expensive: it re-draws the SNLL threshold,
     # which changes the objective and invalidates every cached DEoptim generation for that ELF
     # (4.2.2 lost ~17 h that way on 2026-09-16, while 4.1 hit cache and replayed 797 generations).
+    # Land cover is SCANFI + CWIM wetland (fireSenseUtils >= 0.2.3.9023's default), matching
+    # Biomass_borealDataPrep's track. It needs LandR::prepInputs_CWIM(), which exists only in the LOCAL
+    # LandR build (development + PredictiveEcology/LandR#228, 1.2.0.9022) installed in this project's
+    # library -- a LandR taken fresh from development has no such function and the run stops at
+    # .inputObjects. Set fireSense.lccSource = "NTEMS" to go back.
     , reproducible.showSimilar = TRUE
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
@@ -217,7 +223,10 @@ inSim <- SpaDES.project::setupProject(
     # 2026-09-13 (Eliot): event-level caching only. Module-internal Cache() calls wrote 74 GB in
     # 2 h on the previous pass, 57 GB of it never read back; the event caches (19 GB) are what
     # let a failed job resume. Needs SpaDES.core >= 3.2.1.9006 (option added in PR #447).
-    , spades.useCache = "eventsOnly"
+    # 2026-09-18 (Eliot): back to "all". A failure inside dataPrepFit's .inputObjects lost ~2.5 h
+    # of LCC prep per ELF twice (09-17, 09-18), because an unfinished event is never cached.
+    # Safe for the LCC only with fireSense_dataPrepFit #36 (makeFireSenseLCCDeps() cache key).
+    , spades.useCache = "all"
     
     , spades.allowInitDuringSimInit = TRUE
       # spades.evalPostEvent hooks used while debugging:
@@ -292,7 +301,10 @@ inSim <- SpaDES.project::setupProject(
       #   "estimateThreshold" -- adds the forking threshold calibration
       #   "run"               -- adds DEoptim, one run at a time on the cluster
       #   NA                  -- carry on into SpreadPredict and the rest
-      DEoptimTests = c("adTest", "SNLL_FS")
+      # Wave 2 refits the 10 ELFs that wave 1 fitted: their inputs changed (SCANFI + CWIM land cover,
+      # Biomass_borealDataPrep #116-#123, deterministic buffers), so the ledger rows are stale.
+      refitExisting = TRUE
+      , DEoptimTests = c("adTest", "SNLL_FS")
       , stopIfNoPreRunFit = SpaDES.project::user("emcintir") %in% FALSE
       # mutuallyExclusiveCols = list(
       #   youngAge = c("nf", unique(makeSppEquiv(ecoprovinceNum = ecoprovince)$fuel))
@@ -306,7 +318,10 @@ inSim <- SpaDES.project::setupProject(
       # built, discarding any NP asked for. Measured per ELF on 2026-09-16: a generation costs the
       # slowest of NP evaluations and that barely falls with NP (4.1: 68.0 s at 120, 64.9 s at 60),
       # so throughput comes from running more ELFs at once -- 11 at NP 60 against 5 at NP 120.
-      , nCoresNeeded = 60
+      # NP is the cluster size (clusters:::.clusterNP). 40 rather than 60: on ELF 4.3, NP 120 needed
+      # 74,600 evaluations to reach 58419 while NP 60 reached 58255 in 56,100 -- smaller populations were
+      # more evaluation-efficient here, and 40 leaves cores for more ELFs at once (2026-09-17).
+      , nCoresNeeded = 40
       , rep = .rep # This means that all Cache of DEoptim will now be different name
       , iterStep = 1 # run this many iterations before running again; this should be
       # set to itermax if Cache is not used; it is only useful for Cache
@@ -340,6 +355,10 @@ inSim <- SpaDES.project::setupProject(
       rescalers = c("CMDsm" = 1000),
       .useCache = c(".inputObjects", "init", "prepIgnitionFitData", "run")
     ),
+    # TEMPORARY (2026-09-18, Eliot): fixed deciduousCoverWeight (module default 0.93, BDP #127) for the
+    # phase-2 wave rather than estimating it per ELF. Reaches the nested BDP runs too: fireSense_dataPrepFit
+    # copies P(sim, module = "Biomass_borealDataPrep") into them. UNDO when the estimate is trusted.
+    Biomass_borealDataPrep = list(fitDeciduousCoverWeight = FALSE),
     burnSummaries = list(mode = "single", reps = .rep), #TODO confirm all params
     NRV_summary = list(mode = "single", reps = .rep), #TODO: confirm if all prams okay 
     fireSense_summary = list(mode = "single",
