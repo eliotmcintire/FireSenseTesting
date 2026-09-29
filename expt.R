@@ -230,7 +230,7 @@ if (identical(Sys.getenv("FS_SET"), "mackenzie")) {
 ## escaped-fire count, both folds of an ELF next to each other. Folds ignore the ledger (a full fit does not stop them).
 if (identical(Sys.getenv("FS_SET"), "heldout")) {
   if (.phase1Only) stop("FS_SET=heldout has no phase-1 entry")
-  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-09-29d.rds", n_workers = 14,  # each fold job is a 40-worker cluster
+  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-09-29e.rds", n_workers = 14,  # each fold job is a 40-worker cluster
                       onlyELFs = c("6.2.1", "14.4", "4.3", "4.2.2", "4.1", "5.2.1", "14.3", "5.3.1", "5.3.2", "13.1"),
                       keepOrder = TRUE, heldOutFolds = 1:2, ignoreLedger = TRUE)
   message("FS_SET=heldout: ", length(.phaseSetup$onlyELFs), " ELFs x ", length(.phaseSetup$heldOutFolds),

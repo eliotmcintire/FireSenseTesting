@@ -264,6 +264,9 @@ inSim <- SpaDES.project::setupProject(
       spreadFitFilename = paste0("fireSenseParams_", .fireYearStart, "-", .fireYearEnd, fireSenseUtils::spreadFitFileTag, ".rds")
       # dataYear = 2011,
       , .studyAreaName = .ELFind
+      # held-out validation fold (NA = normal fit): fireSense_spreadFit fits only that fold, and
+      #   fireSense_dataPrepFit and fireSense_ELFs skip the SpreadFit ledger. Each checks the others agree.
+      , heldOutFold = as.integer(.heldOutFold)
       , .runName = runName
       , .plotInterval = saveAndPlotInterval
       , .plots = c("png")
@@ -319,7 +322,6 @@ inSim <- SpaDES.project::setupProject(
       # , NP = {if (identical(cores, unique(cores))) 100 else length(cores)}
       , trace = 1
       , mode = strsplit(.spreadFitMode, ",")[[1]] # "visualize"),
-      , heldOutFold = as.integer(.heldOutFold)
       # mode = "debug",
       # SNLL_FS_thresh = snll_thresh,
       , doObjFunAssertions = FALSE
@@ -435,8 +437,9 @@ if (.phase1Only) {
   ## with "validate" or a held-out fold, crossValidate is the fit's last event, after run. The defaultDots
   ## (.spreadFitMode, .heldOutFold) are not variables here, after setupProject(): read the resolved params.
   .sfp <- inSimCopy$params$fireSense_spreadFit
+  .heldOut <- inSimCopy$params$.globals$heldOutFold # set in .globals for all three fold-aware modules
   inSimCopy$events <- list(.stopAfter = list(fireSense_spreadFit =
-    if ("validate" %in% .sfp$mode || isTRUE(!is.na(.sfp$heldOutFold))) "crossValidate" else "run"))
+    if ("validate" %in% .sfp$mode || isTRUE(!is.na(.heldOut))) "crossValidate" else "run"))
 }
 
 ########################################
