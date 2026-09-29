@@ -56,3 +56,7 @@
 	path = modules/fireSense_summary
 	url = https://github.com/PredictiveEcology/fireSense_summary
 	branch = development
+[submodule "modules/fireSense"]
+	path = modules/fireSense
+	url = https://github.com/PredictiveEcology/fireSense.git
+	branch = development

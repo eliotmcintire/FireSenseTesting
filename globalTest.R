@@ -42,15 +42,8 @@ inSim <- SpaDES.project::setupProject(
                      .times = list(start = 2020, end = 3020),
                      .modules = c("PredictiveEcology/canClimateData@improveCache1"
                                   ,"PredictiveEcology/climateYear@development"
-                                  , "PredictiveEcology/fireSense_ELFs@main"
-                                  , "PredictiveEcology/fireSense_dataPrepFit@development"
-                                  , "PredictiveEcology/fireSense_ignitionFit@development"
-                                  , "PredictiveEcology/fireSense_spreadFit@development"
+                                  , "PredictiveEcology/fireSense@development" # parent: the 9 fireSense modules (ELFs, dataPrepFit, ignitionFit, spreadFit, dataPrepPredict, ignitionPredict, spreadPredict, burn, summary)
                                   
-                                  , "PredictiveEcology/fireSense_dataPrepPredict@development" # prepares data for predictions
-                                  , "PredictiveEcology/fireSense_ignitionPredict@development" # predicts ignitions & escapes
-                                  , "PredictiveEcology/fireSense_spreadPredict@development" # predicts raster of spreadProb
-                                  , "PredictiveEcology/fireSense_burn@development" # does burning
                                   # biomass modules
                                   , "PredictiveEcology/Biomass_borealDataPrep@development"
                                   , "PredictiveEcology/Biomass_speciesParameters@development"
@@ -60,7 +53,6 @@ inSim <- SpaDES.project::setupProject(
                                   # summary modules 
                                   , "FOR-CAST/NRV_summary@development"
                                   , "PredictiveEcology/burnSummaries@development"
-                                  , "PredictiveEcology/fireSense_summary@development"
                                   , "PredictiveEcology/Biomass_summary@main"
                      )),
   .objfunFireReps = .objfunFireReps,
