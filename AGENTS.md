@@ -28,7 +28,7 @@ persisted for days).
 
 There is deliberately **no** `.studyAreaName` dot in `setupProject()` — a `...` arg referencing another
 `...` arg does not resolve. Refer to `.ELFind` directly at each use site. The study area name must stay
-the bare ELF id: `fireSense_SpreadFit` keys the shared cloud fit ledger on it.
+the bare ELF id: `fireSense_spreadFit` keys the shared cloud fit ledger on it.
 
 ## Queue mechanics
 `experiment_queue_fits_<date>.rds` + a Google Sheet of the same name (no `.rds`), in folder

@@ -45,13 +45,13 @@ inSim <- SpaDES.project::setupProject(
                                   ,"PredictiveEcology/climateYear@development"
                                   , "PredictiveEcology/fireSense_ELFs@main"
                                   , "PredictiveEcology/fireSense_dataPrepFit@development"
-                                  , "PredictiveEcology/fireSense_IgnitionFit@development"
-                                  , "PredictiveEcology/fireSense_SpreadFit@development"
+                                  , "PredictiveEcology/fireSense_ignitionFit@development"
+                                  , "PredictiveEcology/fireSense_spreadFit@development"
                                   
                                   , "PredictiveEcology/fireSense_dataPrepPredict@development" # prepares data for predictions
-                                  , "PredictiveEcology/fireSense_IgnitionPredict@development" # predicts ignitions & escapes
-                                  , "PredictiveEcology/fireSense_SpreadPredict@development" # predicts raster of spreadProb
-                                  , "PredictiveEcology/fireSense@development" # does burning
+                                  , "PredictiveEcology/fireSense_ignitionPredict@development" # predicts ignitions & escapes
+                                  , "PredictiveEcology/fireSense_spreadPredict@development" # predicts raster of spreadProb
+                                  , "PredictiveEcology/fireSense_burn@development" # does burning
                                   # biomass modules
                                   , "PredictiveEcology/Biomass_borealDataPrep@development"
                                   , "PredictiveEcology/Biomass_speciesParameters@development"
@@ -194,8 +194,8 @@ inSim <- SpaDES.project::setupProject(
       samplingRange = .samplingRange,
       samplingStartYear = max(.samplingRange) +1
     ),
-    # fireSense = list(.plots = c("screen", "png")),
-    fireSense_SpreadFit = list(
+    # fireSense_burn = list(.plots = c("screen", "png")),
+    fireSense_spreadFit = list(
       DEoptimTests = c("adTest", "SNLL_FS")
       , stopIfNoPreRunFit = SpaDES.project::user("emcintir") %in% FALSE
       # mutuallyExclusiveCols = list(
@@ -227,7 +227,7 @@ inSim <- SpaDES.project::setupProject(
                     "prepIgnitionFitData",
                     "run")
     ),
-    fireSense_IgnitionFit = list(
+    fireSense_ignitionFit = list(
       rescalers = c("CMDsm" = 1000),
       .useCache = c(".inputObjects", "init", "prepIgnitionFitData", "run")
     ),

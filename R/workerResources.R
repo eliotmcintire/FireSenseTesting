@@ -1,7 +1,7 @@
 ## Measure what one ELF actually costs, so the next pass can be sized from evidence
 ## instead of guessed at.
 ##
-## The fitting workflow runs in stages (see fireSense_SpreadFit's `stopAfterEvent`)
+## The fitting workflow runs in stages (see fireSense_spreadFit's `stopAfterEvent`)
 ## whose resource profiles differ by an order of magnitude. Deciding how many runs
 ## fit on this machine needs the *per-run* cost of the stage about to be run, and
 ## the honest number for that is private memory: the resident-set size of a worker

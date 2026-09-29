@@ -41,20 +41,34 @@ if (!require("pak")) install.packages("pak")
             # floor, so a satisfying build already on the machine is never replaced and
             # merged fixes never reach a worker. LandR in particular carries the
             # terraOptions restore (#213) and the SCANFI drive fallback; clusters carries
-            # the PSOCK host handling this run depends on. clusters has no development
-            # branch, so track main.
+            # the PSOCK host handling this run depends on. clusters got a development branch
+            # on 2026-09-28; track it like the other packages.
             #   LandR#228 merged 2026-09-17, so development now carries prepInputs_CWIM() and
             #   wetlandToLCC(); it also carries LandR#236, without which every ELF dies in
             #   Biomass_speciesData:init ("cropTo must be a Raster*..."). Do NOT pin LandR back to a
             #   branch: this pak block runs on EVERY launch and would reinstall over both fixes.
             "PredictiveEcology/LandR@development",
-            "PredictiveEcology/clusters@main",
+            "PredictiveEcology/clusters@development",
+            #   filelock: CRAN/RSPM 1.0.3 leaks one file descriptor per failed timed lock attempt, and
+            #   reproducible retries a held cache lock every 2.5 s. A fold waiting ~1.5 h on its twin's
+            #   inputs reached ~2000 fds, and mclapply then failed with "file descriptor is too large for
+            #   select()" (held-out 4.2.2, 2026-09-28). The fork (>= 1.0.3.9001) closes it.
+            "PredictiveEcology/filelock@main",
             #   climateData PRs #22-#25 all merged 2026-09-18, so development now carries the
             #   years argument to climateLayers(), latestHistoricalYear(), the tile-dir regexp
             #   fix and the hms Imports declaration. Back on @development as of 2026-09-18.
             "PredictiveEcology/climateData@development",
             "PredictiveEcology/quickPlot@development"), ask = FALSE)
-
+## LandR INTEGRATION BRANCH (2026-09-28, Eliot): LandR PRs from the FireSense work stay open against
+## development, unmerged, until the LandR developers have met. Runs use LandR@modsForFireSense instead:
+## development plus those PR branches, merged in. Currently:
+##   LandR#248: imputed ages from a log(age) model, never negative (Biomass_borealDataPrep#131, #132).
+##   LandR#250: SCANFI v3 non-forest land cover (fireSenseUtils >= 0.2.3.9061 defaults to it).
+## Installed after the call above; dependencies = FALSE keeps what the call above installed.
+## A new LandR change: PR against development AND merge its branch into modsForFireSense.
+## Go back to @development above once the group has merged them.
+pak::pkg_install("PredictiveEcology/LandR@modsForFireSense",
+                 ask = FALSE, upgrade = FALSE, dependencies = FALSE)
 ####################
 # pre RUN the global.R setupProject
 ####################
@@ -119,11 +133,17 @@ message("Fitting fire years ", .fireYearStart, ":", .fireYearEnd)
 # fire years 2002-2022, so reusing its name would queue nothing at all.
 # 2026-09-13: the 2026-09-12b queue FINISHED (54/54 DONE) but with module-internal caching on; this
 # pass reruns phase 1 from a cleared cache with options(spades.useCache = "eventsOnly").
-# Per-phase launch settings. FS_PHASE is the same switch global.R reads for the events
-# barrier (1 caches, 2 fit, 3 predict). Each later phase queues only the ELFs the previous
-# phase's queue finished (`from`), so a phase can start while the one before still runs.
+# Per-phase launch settings: [[1]] phase 1 (caches), [[2]] fit or predict, whichever each ELF needs.
+# FS_PHASE1_ONLY is the same switch global.R reads. The [[2]] queue takes only the ELFs the phase-1
+# queue finished (`from`), so it can start while phase 1 still runs.
 # A queue name is resumed, never extended: to add ELFs that finish later, use a new name.
-.phase <- as.integer(Sys.getenv("FS_PHASE", unset = "1"))
+## 2026-09-23 (Eliot): phases 2 and 3 are no longer chosen here -- global.R's `.stopAfter` barrier makes an ELF
+## without a fit fit and stop, and one with a fit predict. Only phase 1 is asked for: FS_PHASE1_ONLY=TRUE, the same
+## switch global.R reads. So there are two setups: [[1]] phase 1, [[2]] everything else (fit or predict).
+if (nzchar(Sys.getenv("FS_PHASE")))
+  stop("FS_PHASE is retired; use FS_PHASE1_ONLY=TRUE for phase 1, and leave it unset to fit or predict")
+.phase1Only <- isTRUE(as.logical(Sys.getenv("FS_PHASE1_ONLY", unset = "FALSE")))
+.phase <- if (.phase1Only) 1L else 2L   # index into the setups below
 .phaseSetup <- list(
   ## 2026-09-15 (Eliot): rebuild, at a slower pace alongside phase 2, the event caches that the 2026-09-14 module
   ## updates invalidated, for the ELFs phase 2 has still to fit. `reverse` starts from the end of phase 2's order, so
@@ -141,12 +161,19 @@ message("Fitting fire years ", .fireYearStart, ":", .fireYearEnd)
   ## ...-16.rds was created at 14:04 from a whitelist that still contained 5.3.2, and a queue lives in the
   ## GOOGLE SHEET -- deleting the local .rds mirror and relaunching just RESUMED that sheet, stale list and
   ## all, so the collision guard had to close a worker twice. A queue is resumed, never edited: use a new name.
-  list(queue = "experiment_queue_caches_2026-09-16b.rds",  n_workers = 3,
+  ## (previous phase-1 entry, 2026-09-16: queue "experiment_queue_caches_2026-09-16b.rds", n_workers = 3,
+  ##  from the fits queue, onlyELFs = 5.1.1 5.1.2 5.2.2 5.4 11.1 11.2 3.1.1 -- a whitelist computed AFTER the
+  ##  fits had claimed; 5.3.2 had to be dropped from it when phase 2 went from six to ten workers.)
+  ## 2026-09-20 LINEAR-FUEL WAVE, preparation pass. Inputs changed (deciduousCoverWeight is estimated again,
+  ## and fireSense_spreadFit #29 calibrates its threshold on linear fuel), so every ELF is prepared again
+  ## BEFORE any fit starts: a fit that has to rebuild its own inputs took 85-176 GB, and ten at once is
+  ## more than mega has. 4 at a time. No fit queue is live, so no whitelist is needed.
+  ## Do not launch before fireSenseUtils #70 and fireSense_spreadFit #29 are on development.
+  list(queue = "experiment_queue_caches_2026-09-21.rds",  n_workers = 4,
        from = "experiment_queue_fits_2026-09-13.rds",
-       ## 5.3.2 was dropped from this list at 14:06: it was safe when computed against SIX live fits, but
-       ## raising phase 2 to TEN workers advanced the fit queue and a fit claimed it minutes later. Recompute
-       ## a whitelist AFTER the fits have claimed, never before.
-       onlyELFs = c("5.1.1", "5.1.2", "5.2.2", "5.4", "11.1", "11.2", "3.1.1")),
+       ## too few fires by fireSenseUtils::ELFmergePlan()'s 50 / 50 rule over 1985-2024 (13.3: 40 fire
+       ## polygons; 5.4: 46 natural ignitions). ELF merging is pinned (global.R), so they are left out.
+       skipELFs = c("13.3", "5.4")),
   ## 2026-09-14: the first phase-2 queue fits the 54 ELFs that finished the phase-1 rerun; ELFs from the
   ## all-ELF phase-1 queue above need a later phase-2 queue name (a queue is resumed, never extended)
   ## 2026-09-17 WAVE 2, the same 10 ELFs as the 2026-09-16 wave, so the two can be compared. A queue is
@@ -156,26 +183,72 @@ message("Fitting fire years ", .fireYearStart, ":", .fireYearEnd)
   ## What changed since wave 1, all of it deliberate (Eliot, 2026-09-17: "always run the best we have"):
   ## adaptive truncation (fireSenseUtils#61 + clusters#17), population-median convergence (clusters#19),
   ## final-population re-scoring so the ledger keeps 5 DISTINCT best members (fireSenseUtils#63 +
-  ## fireSense_SpreadFit#25), deterministic buffers (#62) and threshold seed, the calibration cutoff fix
-  ## (fireSense_SpreadFit#26), SCANFI + CWIM land cover, and Biomass_borealDataPrep #116-#123.
+  ## fireSense_spreadFit#25), deterministic buffers (#62) and threshold seed, the calibration cutoff fix
+  ## (fireSense_spreadFit#26), SCANFI + CWIM land cover, and Biomass_borealDataPrep #116-#123.
   ## The vegetation inputs therefore differ from wave 1: compare SPEED (wall per generation, generations to
   ## converge), not objective values.
   ## The smoke-test queue experiment_queue_fit_2026-09-17.rds (4.3 alone) FAILED at Biomass_borealDataPrep's
   ## .inputObjects: the pak block above had reinstalled LandR from @development over the local #228 build, so
   ## prepInputs_CWIM() was gone. Both pins now point at the integration branches, and all ten ELFs run here.
-  list(queue = "experiment_queue_fit_2026-09-17b.rds",    n_workers = 10,  # each fit is a 40-worker cluster
-       from = "experiment_queue_fits_2026-09-13.rds",
-       ## their inputs changed (SCANFI + CWIM, Biomass #116-#123, deterministic buffers), so the stored
-       ## parameters are stale: refit, which also needs fireSense_SpreadFit's refitExisting (global.R)
-       refitFitted = TRUE,
-       onlyELFs = c("4.1", "4.2.2", "4.3", "5.2.1", "5.3.1", "5.3.2", "6.1.1", "6.1.2", "6.1.3", "6.2.1")),
-  list(queue = "experiment_queue_predict_2026-09-14.rds", n_workers = 5,
-       from = "experiment_queue_fit_2026-09-17b.rds")
+  ## (previous phase-2 entry, 2026-09-17: queue "experiment_queue_fit_2026-09-17b.rds", n_workers = 10, from the
+  ##  fits queue, refitFitted = TRUE, onlyELFs = 4.1 4.2.2 4.3 5.2.1 5.3.1 5.3.2 6.1.1 6.1.2 6.1.3 6.2.1.)
+  ## 2026-09-20 LINEAR-FUEL WAVE, replicate 1 of every ELF: one fuel column per fuel class on the linear
+  ## scale, / 1e4 (chosen from 36 model-selection fits + replicates; see
+  ## ~/claudeSessions/2026-09-18-fireSense-phase2-fit/appendix-notes.md). Fits only what the preparation pass
+  ## above finished. Results go to a NEW parameter object (global.R, "_linearFuel"). Replicates 2 and 3
+  ## follow in their own queues once this one is done (Eliot: every ELF gets parameters first).
+  list(queue = "experiment_queue_fit_2026-09-21.rds",    n_workers = 10,  # each fit is a 40-worker cluster
+       from = "experiment_queue_caches_2026-09-21.rds",
+       refitFitted = TRUE,   # harmless with a new parameter object; kept so a resumed queue cannot skip
+       skipELFs = c("13.3", "5.4")),
+  ## (a third, predict-only entry, "experiment_queue_predict_2026-09-14.rds", is gone: an ELF that has a fit
+  ##  now predicts from the [[2]] queue.)
+  NULL
 )[[.phase]]
+## 2026-09-23 FRIDAY MACKENZIE (Eliot): Phase 1 + 2 for the two ELFs along the middle/lower Mackenzie River,
+## 4.2.2 and 4.2.1, for a 2025-2044 two-ELF forecast. Selected with FS_SET=mackenzie so the wave entries above
+## stay as they are. Their climate caches (canClimateData init) were cleared 2026-09-23: global.R's terra
+## memfrac fix is not in any cache key, and the old rasters were smoothed (session log, Addendum 81).
+if (identical(Sys.getenv("FS_SET"), "mackenzie")) {
+  .phaseSetup <- list(
+    list(queue = "experiment_queue_caches_2026-09-23mack.rds", n_workers = 2,
+         onlyELFs = c("4.2.2", "4.2.1")),
+    ## no `from`: phase 1 was stopped (Eliot, 2026-09-23 evening); a fit run does phase 1's work first anyway
+    list(queue = "experiment_queue_fit_2026-09-23mack.rds", n_workers = 2,  # each fit is a 40-worker cluster
+         refitFitted = TRUE,
+         onlyELFs = c("4.2.2", "4.2.1"))
+  )[[.phase]]
+  message("FS_SET=mackenzie: ", if (.phase1Only) "phase 1" else "fit or predict", ", queue ", .phaseSetup$queue)
+}
+## 2026-09-26 OKANAGAN (Eliot): phase 1 for 14.3 (Okanagan valley, south-central BC) and 14.4, to add them to the
+## held-out experiment (~/claudeSessions/2026-09-18-fireSense-phase2-fit/centring, tag cyb). Their "phase 2" is
+## the experiment's own fits (runArm.R from the caches built here), not a fit queue, so only phase 1 is defined.
+## 2026-09-27 (Eliot): their phase 2 runs through the module, not side scripts: fit + the module's own held-out-years
+## validation (fireSense_spreadFit mode "validate" -> crossValidate). spreadFitMode reaches global.R's `.spreadFitMode`.
+## 2026-09-28 HELD-OUT SET (Eliot): each ELF as two jobs, one per held-out fold (fireSense_spreadFit `heldOutFold`,
+## >= 1.0.6.9021): fit on the other fold's years, score the held-out fold, no full fit, no ledger. Largest first by
+## escaped-fire count, both folds of an ELF next to each other. Folds ignore the ledger (a full fit does not stop them).
+if (identical(Sys.getenv("FS_SET"), "heldout")) {
+  if (.phase1Only) stop("FS_SET=heldout has no phase-1 entry")
+  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-09-29c.rds", n_workers = 14,  # each fold job is a 40-worker cluster
+                      onlyELFs = c("6.2.1", "14.4", "4.3", "4.2.2", "4.1", "5.2.1", "14.3", "5.3.1", "5.3.2", "13.1"),
+                      keepOrder = TRUE, heldOutFolds = 1:2, ignoreLedger = TRUE)
+  message("FS_SET=heldout: ", length(.phaseSetup$onlyELFs), " ELFs x ", length(.phaseSetup$heldOutFolds),
+          " folds, queue ", .phaseSetup$queue)
+}
+if (identical(Sys.getenv("FS_SET"), "okanagan")) {
+  .phaseSetup <- list(
+    list(queue = "experiment_queue_caches_2026-09-26okan.rds", n_workers = 2,
+         onlyELFs = c("14.3", "14.4")),
+    list(queue = "experiment_queue_fitValidate_2026-09-28okan.rds", n_workers = 2,  # each fit is a 40-worker cluster; 09-28: fresh queue after the youngAge/hillSlope/fuel fixes
+         onlyELFs = c("14.3", "14.4"), spreadFitMode = "fit,validate")
+  )[[.phase]]
+  message("FS_SET=okanagan: ", if (.phase1Only) "phase 1" else "fit + validate", ", queue ", .phaseSetup$queue)
+}
 queue_path <- .phaseSetup$queue
 outs$params$fireSense_ELFs$queue_path <- queue_path
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
-# Already-fitted ELFs, straight from the shared cloud ledger that fireSense_SpreadFit
+# Already-fitted ELFs, straight from the shared cloud ledger that fireSense_spreadFit
 # writes to (`fireSenseParams_*.rds`). This is the same list fireSense_dataPrepFit uses
 # to decide whether to skip a fit, so deriving the queue from it means re-running this
 # script can never re-fit something that is already done.
@@ -195,10 +268,15 @@ if (exists(".times"))
 # Only fit what the ledger says is missing -- unless this phase is deliberately REFITTING ELFs whose
 # stored parameters are stale because their inputs changed (new land cover, new vegetation parameters,
 # a new objective). The ledger row is then no longer an answer to this run's question.
-# fireSense_SpreadFit's own `refitExisting` parameter must be set too (global.R): the module skips a
-# polygon that has a row, wherever the queue came from.
-if (isTRUE(.phaseSetup$refitFitted)) {
+# The queue carries `.refitExisting = TRUE` to global.R, which passes it to fireSense_spreadFit's
+# `refitExisting`; without it the module skips a polygon that has a row, wherever the queue came from.
+if (!is.null(.phaseSetup$spreadFitMode))
+  expt$.spreadFitMode <- .phaseSetup$spreadFitMode   # global.R's `.spreadFitMode` dot, read per job from the queue
+if (isTRUE(.phaseSetup$ignoreLedger)) {
+  message("Ignoring the ledger: held-out folds never read or write it")
+} else if (isTRUE(.phaseSetup$refitFitted)) {
   message("Refitting ", sum(expt$.ELFind %in% .ELFsFitted), " ELFs that already have ledger rows")
+  expt$.refitExisting <- TRUE   # global.R's `.refitExisting` dot, read per job from the queue
 } else {
   expt <- expt[!expt$.ELFind %in% .ELFsFitted, ]
 }
@@ -232,7 +310,7 @@ if (!is.null(.phaseSetup$from)) {
   .prev <- as.data.frame(readRDS(.phaseSetup$from))
   .prevDone <- .prev[[grep("ELFind$", names(.prev), value = TRUE)[1]]][.prev$status == "DONE"]
   expt <- expt[expt$.ELFind %in% .prevDone, ]
-  message("Phase ", .phase, ": ", NROW(expt), " ELFs are DONE in ",
+  message(if (.phase1Only) "Phase 1" else "Fit or predict", ": ", NROW(expt), " ELFs are DONE in ",
           .phaseSetup$from, "; the rest need a later queue")
 }
 message("Queueing ", NROW(expt), " ELFs for fire years ", .fireYearStart, ":", .fireYearEnd)
@@ -256,7 +334,22 @@ if (!is.null(.phaseSetup$onlyELFs)) {
   if (length(.missing))
     warning("onlyELFs names ELFs that are not in this map: ", paste(.missing, collapse = ", "))
   expt <- expt[expt$.ELFind %in% .phaseSetup$onlyELFs, , drop = FALSE]
+  if (isTRUE(.phaseSetup$keepOrder))  # the order given in onlyELFs, not the default priority order
+    expt <- expt[order(match(expt$.ELFind, .phaseSetup$onlyELFs)), , drop = FALSE]
   message("Restricting to ", NROW(expt), " named ELFs: ", paste(expt$.ELFind, collapse = " "))
+}
+if (!is.null(.phaseSetup$heldOutFolds)) {
+  ## one row per ELF x fold, the folds of an ELF adjacent; global.R's `.heldOutFold` dot, read per job
+  .nf <- length(.phaseSetup$heldOutFolds)
+  expt <- expt[rep(seq_len(NROW(expt)), each = .nf), , drop = FALSE]
+  expt$.heldOutFold <- rep(as.integer(.phaseSetup$heldOutFolds), times = NROW(expt) / .nf)
+}
+if (!is.null(.phaseSetup$skipELFs)) {
+  ## An explicit blacklist: ELFs left out of this queue whatever else selects them.
+  .skipped <- intersect(.phaseSetup$skipELFs, expt$.ELFind)
+  expt <- expt[!expt$.ELFind %in% .phaseSetup$skipELFs, , drop = FALSE]
+  message("Leaving out ", length(.skipped), " named ELFs: ", paste(.skipped, collapse = " "),
+          "; ", NROW(expt), " remain")
 }
 if (isTRUE(.phaseSetup$reverse)) {
   ## reverse the working order, but keep `problematic` last: phase 2 reaches those last too
@@ -269,6 +362,16 @@ rownames(expt) <- 1:NROW(expt) # re-number each row
 ####################
 # Run the experiment -- this must be run at a command prompt, inside tmux
 ####################
+## Worker panes take the tmux SESSION's environment, not this process's, so FS_PHASE1_ONLY given on this command
+## line never reached global.R in the workers: on 2026-09-26 an Okanagan phase-1 launch ran the spread fit. Put the
+## switch into the session (TRUE or FALSE, so a stale value from an earlier launch cannot linger).
+if (nzchar(Sys.getenv("TMUX"))) {
+  system2("tmux", c("set-environment", "FS_PHASE1_ONLY", if (.phase1Only) "TRUE" else "FALSE"))
+  ## an expt.R fit queue is a strict phase-2 wave: fit, then stop (global.R otherwise goes on to predict)
+  system2("tmux", c("set-environment", "FS_PHASE2_ONLY", if (.phase1Only) "FALSE" else "TRUE"))
+} else if (.phase1Only) {
+  stop("FS_PHASE1_ONLY=TRUE needs expt.R to run inside tmux, so the worker panes can inherit it")
+}
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,          # df provided here
   global_path         = "global.R",

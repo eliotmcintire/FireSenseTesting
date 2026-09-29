@@ -1,3 +1,9 @@
+## globalFireCarbon.R -- global.R plus carbon (CBM) for a fire-and-carbon FORECAST (phase 3), 2025-2065, ELF 4.2.2
+## (a one-ELF version of the Mackenzie runs, with carbon). Everything else is global.R as of 2026-09-25; keep the
+## two in step by hand until this is folded back in.
+## A forecast needs a fit for the ELF in the spread-fit ledger (current model tag); without one, the run fits
+## 4.2.2 first and stops (phase 2), and a second run then forecasts.
+
 ## Package installation happens in expt.R, NOT here -- see its pak::pak() call.
 ## Every worker sources this file at the start of every job, so installing from here meant
 ## 13 processes writing one shared library: on 2026-09-09 a worker rewrote SpaDES.tools at
@@ -25,7 +31,6 @@ setwd(projectDir)
 if (requireNamespace("httr", quietly = TRUE))
   httr::set_config(httr::config(connecttimeout = 60L,
                                 resolve = "oauth2.googleapis.com:443:172.217.112.4,172.217.114.4"))
-userInteractive <- interactive() && !nzchar(Sys.getenv("TMUX"))
 inSim <- SpaDES.project::setupProject(
   .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
   .rep = .rep,
@@ -36,7 +41,7 @@ inSim <- SpaDES.project::setupProject(
   .GCM = .GCM,
   .samplingRange = unlist(.samplingRange),
   defaultDots = list(.rep = 1,
-                     .ELFind = "4.3",
+                     .ELFind = "4.2.2",
                      .SSP = 370,
                      .GCM = "CNRM-ESM2-1", # "NRV"
                      .samplingRange = 1990:2020, # vector
@@ -62,12 +67,6 @@ inSim <- SpaDES.project::setupProject(
                      # inputs or the model changed, so the stored fit is stale); FALSE fits only ELFs
                      # without parameters and predicts the rest. expt.R sets it per queue (`refitFitted`).
                      .refitExisting = FALSE,
-                     # fireSense_spreadFit `mode`, comma-separated so it fits in one queue cell: "fit" or
-                     # "fit,validate" (validate adds the module's held-out-years crossValidate). expt.R sets it per queue.
-                     .spreadFitMode = "fit",
-                     # fireSense_spreadFit `heldOutFold`: NA = normal fit; 1 or 2 = that held-out fold only (no full fit,
-                     # no ledger). expt.R's FS_SET=heldout sets it per job.
-                     .heldOutFold = NA_integer_,
                      .cores = c("birds", # "biomass", # TEMPORARY 2026-09-29: Dominique is rerunning BiomeBGC on biomass; put it back when she is done
                                 "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
@@ -82,7 +81,7 @@ inSim <- SpaDES.project::setupProject(
                      ),
                      # .studyAreaName = "ELF", #{browser(); paste0("ELF", .ELFind)},
                      FRU = 25,
-                     .times = list(start = 2020, end = 3020),
+                     .times = list(start = 2025, end = 2065), # 40 years (Eliot 2026-09-28; was 2050)
                      .modules = c("PredictiveEcology/canClimateData@development"
                                   ,"PredictiveEcology/climateYear@development"
                                   , "PredictiveEcology/fireSense_ELFs@development" # #13 (no-tree) merged to development; main is behind
@@ -106,6 +105,12 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/burnSummaries@modsForFireSense"
                                   , "PredictiveEcology/fireSense_summary@modsForFireSense" # fireSense commits not yet in development
                                   , "PredictiveEcology/Biomass_summary@modsForFireSense" # fireSense commits not yet in development; main was behind
+                                  # carbon modules (Biomass_yieldTables and LandRCBM_split3pools have no development branch)
+                                  , "PredictiveEcology/CBM_defaults@development"
+                                  , "PredictiveEcology/CBM_dataPrep@development"
+                                  , "PredictiveEcology/CBM_core@development"
+                                  , "PredictiveEcology/Biomass_yieldTables@main"
+                                  , "PredictiveEcology/LandRCBM_split3pools@main"
                      )),
   # NB there is deliberately no `.studyAreaName` dot. A `...` argument that
   # references ANOTHER `...` argument does not resolve in setupProject(): both
@@ -121,7 +126,7 @@ inSim <- SpaDES.project::setupProject(
   # useGit = "eliotmcintire",
   # Restart = TRUE,
   overwrite = FALSE, #!SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
-  paths = list(outputPath = SpaDES.project::pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep),
+  paths = list(outputPath = SpaDES.project::pathBuild(pre = "outputs/fireCarbon", .ELFind, .samplingRange, .GCM, .SSP, .rep),
                # cachePath = "/mnt/shared_cache/cache",
                cachePath = "/mnt/fast/cache",
                scratchPath = "/mnt/fast/scratch",
@@ -204,10 +209,10 @@ inSim <- SpaDES.project::setupProject(
     
     # For batch runs, these should be off
     , reproducible.showCachePreWarm = FALSE # the pre-warm fork only speeds an interactive showCache()
-    , reproducible.useMemoise = userInteractive
+    , reproducible.useMemoise = TRUE # interactive() && !nzchar(Sys.getenv("TMUX"))
     # tmux panes report interactive() == TRUE, so `!interactive()` alone cannot detect a batch
     # runner; recoveryMode copies sim objects every event, which is wasted work for these.
-    , spades.recoveryMode = userInteractive + 0
+    , spades.recoveryMode = (interactive() && !nzchar(Sys.getenv("TMUX"))) + 0
     # Reworked 2026-09-08. This must be ON during the FIRST pass, not just the ones that
     # benefit: cacheChainingPost() writes the chain tags with .addTagsRepo(), and that call
     # is inside `if (cacheChaining)`, so a pass run with it off records nothing for a later
@@ -261,6 +266,11 @@ inSim <- SpaDES.project::setupProject(
   ## projected years. Supply `climateVariablesForFire` here only to override.
   saveAndPlotInterval = 100,
   params = list(
+    # LandRCBM_split3pools prepares CBM's annual inputs from LandR's cohorts (as in PredictiveEcology/LandRCBM)
+    ## .useCache = FALSE (the module default) overrides the project-wide .globals .useCache: CBM_core's init selects
+    ## the Python virtualenv (reticulate::use_virtualenv), a per-session side effect that a cache hit skips, after
+    ## which spinup cannot import libcbm. The init takes ~3.5 s, so caching it gains nothing.
+    CBM_core = list(skipPrepareCBMvars = TRUE, .useCache = FALSE),
     .globals = list(
       # The cloud object holding the fits. The year range is in the name: a different
       # fitting window is a different set of fits, so a new range refits every ELF on
@@ -326,8 +336,7 @@ inSim <- SpaDES.project::setupProject(
       ## parameter). The population size is the number of workers, i.e. `nCoresNeeded` above: 40.
       # , NP = {if (identical(cores, unique(cores))) 100 else length(cores)}
       , trace = 1
-      , mode = strsplit(.spreadFitMode, ",")[[1]] # "visualize"),
-      , heldOutFold = as.integer(.heldOutFold)
+      , mode = "fit"# "visualize"),
       # mode = "debug",
       # SNLL_FS_thresh = snll_thresh,
       , doObjFunAssertions = FALSE
@@ -346,8 +355,12 @@ inSim <- SpaDES.project::setupProject(
     fireSense_ignitionFit = list(
       .useCache = c(".inputObjects", "init", "prepIgnitionFitData", "run")
     ),
-    burnSummaries = list(mode = "single", reps = .rep), #TODO confirm all params
-    NRV_summary = list(mode = "single", reps = .rep), #TODO: confirm if all prams okay 
+    ## summaryPeriod/timeSeriesTimes default to start + 600..1000 (NRV-length runs); a forecast must set them
+    burnSummaries = list(mode = "single", reps = .rep,
+                         summaryPeriod = as.integer(c(times$start, times$end)), summaryInterval = 5L),
+    NRV_summary = list(mode = "single", reps = .rep,
+                       summaryPeriod = as.integer(c(times$start, times$end)), summaryInterval = 5L,
+                       timeSeriesTimes = times$start:times$end),
     fireSense_summary = list(mode = "single"), 
     Biomass_summary = list(years = c(times$start, times$end), 
                            studyAreaName  = .ELFind,
@@ -356,6 +369,15 @@ inSim <- SpaDES.project::setupProject(
     )
   ), 
   # objectSynonyms = list(c("flammableRTM", "flammableMap")),
+  # CBM_dataPrep needs `masterRaster`, the grid CBM works on, and has no default for it; here that grid is the
+  # fire/vegetation `rasterToMatch` (made by fireSense_ELFs). For now, until CBM_dataPrep defaults to it.
+  objectSynonyms = list(c("rasterToMatch", "masterRaster")),
+  # Fire -> carbon: CBM_dataPrep reads the raster named in `sourceObjectName` from the sim every year and turns its
+  # pixels with `sourceValue` into disturbance events (CBM_dataPrep.R:704-748). fireSense's burn module writes this
+  # year's burned pixels as 1 in `rstCurrentBurn`. Same wiring as spadesCBM's scfm + CBM project
+  # (research/Boisvenue2026/global-SK-SCFM.R).
+  disturbanceMeta = data.table::data.table(eventID = 1, disturbance_type_id = 1, wholeStand = 1, name = "Wildfire",
+                                           sourceValue = 1, sourceDelay = 1, sourceObjectName = "rstCurrentBurn"),
   outputs =  {
     outputs <- rbind(
       data.table(objectName = "pixelGroupMap", saveTime = c(seq(times$start, times$end, saveAndPlotInterval)), 
@@ -435,16 +457,10 @@ if (!"stoppedAt" %in% getNamespaceExports("SpaDES.core"))
        "Update SpaDES.core to development >= be8c209e.")
 
 if (.phase1Only) {
-  ## Stop before the fit, or, for an ELF that already has one (no `run` is scheduled), before the first
-  ## prediction event. The time span is left alone: the summary modules check their summaryPeriod against it.
-  inSimCopy$events <- list(.stopBefore = list(fireSense_spreadFit = "run",
-                                              fireSense_dataPrepPredict = "getClimateRasters"))
+  inSimCopy$events <- list(.stopBefore = list(fireSense_spreadFit = "run"))
+  inSimCopy$times$end <- inSimCopy$times$start
 } else if (.phase2Only) {
-  ## with "validate" or a held-out fold, crossValidate is the fit's last event, after run. The defaultDots
-  ## (.spreadFitMode, .heldOutFold) are not variables here, after setupProject(): read the resolved params.
-  .sfp <- inSimCopy$params$fireSense_spreadFit
-  inSimCopy$events <- list(.stopAfter = list(fireSense_spreadFit =
-    if ("validate" %in% .sfp$mode || isTRUE(!is.na(.sfp$heldOutFold))) "crossValidate" else "run"))
+  inSimCopy$events <- list(.stopAfter = list(fireSense_spreadFit = "run"))
 }
 
 ########################################
@@ -458,6 +474,8 @@ if (.phase1Only) {
   o[c("memfrac", "memmax", "todisk")]
 }
 .terraBefore <- .terraOpts("in force after global.R")
+
+if (!(interactive() && !nzchar(Sys.getenv("TMUX")))) { # eliot trying something interactive
 suppressPackageStartupMessages(
   simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
 )
@@ -503,4 +521,7 @@ if (FALSE) {
     outSims <- restartSpades()
   }
   
+}
+} else {
+  simOut <- SpaDES.core::simInit2(inSimCopy)
 }

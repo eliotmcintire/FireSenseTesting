@@ -22,9 +22,9 @@
 [submodule "modules/climateYear"]
 	path = modules/climateYear
 	url = https://github.com/PredictiveEcology/climateYear
-[submodule "modules/fireSense"]
-	path = modules/fireSense
-	url = https://github.com/PredictiveEcology/fireSense
+[submodule "modules/fireSense_burn"]
+	path = modules/fireSense_burn
+	url = https://github.com/PredictiveEcology/fireSense_burn.git
 [submodule "modules/NRV_summary"]
 	path = modules/NRV_summary
 	url = https://github.com/PredictiveEcology/NRV_summary
@@ -37,18 +37,18 @@
 [submodule "modules/fireSense_dataPrepPredict"]
 	path = modules/fireSense_dataPrepPredict
 	url = https://github.com/PredictiveEcology/fireSense_dataPrepPredict.git
-[submodule "modules/fireSense_IgnitionFit"]
-	path = modules/fireSense_IgnitionFit
-	url = https://github.com/PredictiveEcology/fireSense_IgnitionFit.git
-[submodule "modules/fireSense_IgnitionPredict"]
-	path = modules/fireSense_IgnitionPredict
-	url = https://github.com/PredictiveEcology/fireSense_IgnitionPredict.git
-[submodule "modules/fireSense_SpreadFit"]
-	path = modules/fireSense_SpreadFit
-	url = https://github.com/PredictiveEcology/fireSense_SpreadFit.git
-[submodule "modules/fireSense_SpreadPredict"]
-	path = modules/fireSense_SpreadPredict
-	url = https://github.com/PredictiveEcology/fireSense_SpreadPredict.git
+[submodule "modules/fireSense_ignitionFit"]
+	path = modules/fireSense_ignitionFit
+	url = https://github.com/PredictiveEcology/fireSense_ignitionFit.git
+[submodule "modules/fireSense_ignitionPredict"]
+	path = modules/fireSense_ignitionPredict
+	url = https://github.com/PredictiveEcology/fireSense_ignitionPredict.git
+[submodule "modules/fireSense_spreadFit"]
+	path = modules/fireSense_spreadFit
+	url = https://github.com/PredictiveEcology/fireSense_spreadFit.git
+[submodule "modules/fireSense_spreadPredict"]
+	path = modules/fireSense_spreadPredict
+	url = https://github.com/PredictiveEcology/fireSense_spreadPredict.git
 [submodule "modules/fireSense_ELFs"]
 	path = modules/fireSense_ELFs
 	url = https://github.com/PredictiveEcology/fireSense_ELFs.git
