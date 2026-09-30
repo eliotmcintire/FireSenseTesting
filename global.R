@@ -197,6 +197,8 @@ inSim <- SpaDES.project::setupProject(
     # For batch runs, these should be off
     , reproducible.showCachePreWarm = FALSE # the pre-warm fork only speeds an interactive showCache()
     , reproducible.useMemoise = userInteractive
+    # each module sees only its own reqdPkgs (like a package's imports); nothing is attached (SpaDES.core >= 3.2.1.9030)
+    , spades.reqdPkgsAttach = FALSE
     # tmux panes report interactive() == TRUE, so `!interactive()` alone cannot detect a batch
     # runner; recoveryMode copies sim objects every event, which is wasted work for these.
     , spades.recoveryMode = userInteractive + 0
