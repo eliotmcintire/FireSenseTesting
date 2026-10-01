@@ -342,8 +342,13 @@ inSim <- SpaDES.project::setupProject(
     fireSense_ignitionFit = list(
       .useCache = c(".inputObjects", "init", "prepIgnitionFitData", "run")
     ),
-    burnSummaries = list(mode = "single", reps = .rep), #TODO confirm all params
-    NRV_summary = list(mode = "single", reps = .rep), #TODO: confirm if all prams okay 
+    ## Summarise every saved map, from start(sim) (year 0) to the end, every 100 years: the time series shows
+    ## whether the landscape has stopped changing directionally (Eliot, 2026-10-01). The module default
+    ## (start + 700 to start + 1000) showed only the last 300 years.
+    burnSummaries = list(mode = "single", reps = .rep, #TODO confirm all params
+                         summaryPeriod = as.integer(c(times$start, times$end)), summaryInterval = as.integer(saveAndPlotInterval)),
+    NRV_summary = list(mode = "single", reps = .rep, #TODO: confirm if all prams okay
+                       summaryPeriod = as.integer(c(times$start, times$end)), summaryInterval = as.integer(saveAndPlotInterval)),
     fireSense_summary = list(mode = "single"), 
     Biomass_summary = list(years = c(times$start, times$end), 
                            studyAreaName  = .ELFind,
