@@ -247,6 +247,24 @@ if (identical(Sys.getenv("FS_SET"), "heldout")) {
   message("FS_SET=heldout: ", length(.phaseSetup$onlyELFs), " ELFs x ", length(.phaseSetup$heldOutFolds),
           " folds, queue ", .phaseSetup$queue)
 }
+## 2026-10-01 PHASE 3 NRV (Eliot): 1000-year NRV runs (.times 2020-3020) for 3 ELFs with good held-out scores
+## and middling fit times (30b: 14.4, 4.1, 4.2.2), 5 reps each. All reps of an ELF share one fit, so two waves:
+##   FS_NRV_WAVE=1: rep 1 per ELF, refit without folds (refitExisting), then predict;
+##   FS_NRV_WAVE=2: reps 2-5, launched only after wave 1 has written the 3 fits to the ledger; predict only.
+## Launching wave 2 earlier would start 4 more fits of each ELF at once.
+if (identical(Sys.getenv("FS_SET"), "nrv")) {
+  if (.phase1Only) stop("FS_SET=nrv has no phase-1 entry")
+  .nrvWave <- Sys.getenv("FS_NRV_WAVE")
+  if (!.nrvWave %in% c("1", "2")) stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1) or 2 (reps 2-5)")
+  .phaseSetup <- list(queue = paste0("experiment_queue_nrv_2026-10-01_wave", .nrvWave, ".rds"),
+                      onlyELFs = c("14.4", "4.1", "4.2.2"), keepOrder = TRUE,
+                      reps = if (.nrvWave == "1") 1L else 2:5,
+                      n_workers = if (.nrvWave == "1") 3 else 12,  # wave 1: each fit is a 40-worker cluster
+                      GCM = "NRV", predict = TRUE,
+                      refitFitted = .nrvWave == "1", predictFitted = .nrvWave == "2")
+  message("FS_SET=nrv wave ", .nrvWave, ": ", paste(.phaseSetup$onlyELFs, collapse = " "), ", reps ",
+          paste(.phaseSetup$reps, collapse = ","), ", queue ", .phaseSetup$queue)
+}
 if (identical(Sys.getenv("FS_SET"), "heldoutsmoke")) {
   ## one small fold end to end before relaunching the held-out set (2026-09-30)
   if (.phase1Only) stop("FS_SET=heldoutsmoke has no phase-1 entry")
@@ -276,8 +294,10 @@ outs$params$fireSense_ELFs$queue_path <- queue_path
 # SET UP EXPERIMENT
 ####################
 
-.reps <- 1
+.reps <- if (is.null(.phaseSetup$reps)) 1 else .phaseSetup$reps
 expt <- expand.grid(.ELFind = .ELFinds, .rep = .reps, stringsAsFactors = FALSE)
+if (!is.null(.phaseSetup$GCM))
+  expt$.GCM <- .phaseSetup$GCM   # global.R's `.GCM` dot, read per job from the queue
 if (exists(".modules"))
   expt <- cbind(expt, .modules = I(lapply(seq_len(NROW(expt)), function(x) .modules)))
 if (exists(".times"))
@@ -295,6 +315,9 @@ if (isTRUE(.phaseSetup$ignoreLedger)) {
 } else if (isTRUE(.phaseSetup$refitFitted)) {
   message("Refitting ", sum(expt$.ELFind %in% .ELFsFitted), " ELFs that already have ledger rows")
   expt$.refitExisting <- TRUE   # global.R's `.refitExisting` dot, read per job from the queue
+} else if (isTRUE(.phaseSetup$predictFitted)) {
+  message("Predicting from the ledger: ", sum(expt$.ELFind %in% .ELFsFitted), " of ", NROW(expt),
+          " jobs' ELFs have a fit")
 } else {
   expt <- expt[!expt$.ELFind %in% .ELFsFitted, ]
 }
@@ -386,7 +409,9 @@ rownames(expt) <- 1:NROW(expt) # re-number each row
 if (nzchar(Sys.getenv("TMUX"))) {
   system2("tmux", c("set-environment", "FS_PHASE1_ONLY", if (.phase1Only) "TRUE" else "FALSE"))
   ## an expt.R fit queue is a strict phase-2 wave: fit, then stop (global.R otherwise goes on to predict)
-  system2("tmux", c("set-environment", "FS_PHASE2_ONLY", if (.phase1Only) "FALSE" else "TRUE"))
+  ## ... unless the queue predicts (FS_SET=nrv): fit if needed, then predict
+  system2("tmux", c("set-environment", "FS_PHASE2_ONLY",
+                    if (.phase1Only || isTRUE(.phaseSetup$predict)) "FALSE" else "TRUE"))
 } else if (.phase1Only) {
   stop("FS_PHASE1_ONLY=TRUE needs expt.R to run inside tmux, so the worker panes can inherit it")
 }
