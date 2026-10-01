@@ -51,8 +51,8 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/Biomass_regeneration@development"
                                   , "PredictiveEcology/Biomass_core@development"
                                   # summary modules 
-                                  , "FOR-CAST/NRV_summary@development"
-                                  , "PredictiveEcology/burnSummaries@development"
+                                  , "PredictiveEcology/NRV_summary@modsForFireSense"
+                                  , "PredictiveEcology/burnSummaries@modsForFireSense"
                                   , "PredictiveEcology/Biomass_summary@main"
                      )),
   .objfunFireReps = .objfunFireReps,
