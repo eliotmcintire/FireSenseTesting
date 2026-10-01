@@ -11,12 +11,12 @@ outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 # List + filter on the Drive side. outList() already does name-pattern filtering.
 allOnGS <- SpaDES.project::outList(outs$.uploadGSdir, pattern = "6\\.2\\.2.+NRV")
 
-# get tar from GDrive, untar all objs, change the filenames from 
-#   the old /home/emcintir/GitHub to ~/... 
+# get tar from GDrive, untar all objs, change the filenames from
+#   the old /home/emcintir/GitHub (where the runs were made) to this user's ~/GitHub
 sims <- SpaDES.project::reGetUntarLoad(
   allOnGS,
   destDir   = "/mnt/shared_cache/multi"
-  , pathRemap = c(old = "/home/emcintir/GitHub", new = "~/jvanelsl/GitHub")
+  , pathRemap = c(old = "/home/emcintir/GitHub", new = path.expand("~/GitHub"))
 )
 
 # SpaDES.project::outSave(lazy = TRUE, sim = sims[[1]], runName = sims[[1]]@params$.globals$.runName,
@@ -25,7 +25,14 @@ sims <- SpaDES.project::reGetUntarLoad(
 #   but not all. What is needed is based on what the Summary modules need
 outs$firePolys <- .unwrap(sims[[1]]$firePolys)
 outs$outputsDF <- lapply(sims, SpaDES.core::outputs) |> data.table::rbindlist()
-outs$reportingPolygons <- .unwrap(sims[[1]]$studyAreaReporting)
+outs$studyAreaReporting <- .unwrap(sims[[1]]$studyAreaReporting)
+## The sims hold no `reportingPolygons`. NRV_summary wants a named list of polygons, each with a label
+## column given by attr(, "field"). Until real ones are built (LandWebUtils::buildReportingPolygons()),
+## report on the ELF itself.
+rp <- outs$studyAreaReporting
+rp$Name <- sims[[1]]@params$.globals$.studyAreaName
+attr(rp, "field") <- "Name"
+outs$reportingPolygons <- list(ELF = rp)
 
 
 summaryMods <- grep("summar", outs$modules, ignore.case = TRUE, value = TRUE)
@@ -34,7 +41,8 @@ outs$modules <- summaryMods
 
 
 nams <- Map(nam = basename(names(sims)), function(nam) SpaDES.project::pathParse(nam))
-reps <- Map(nam = nams, function(nam) nam[[".rep"]])
+## pathParse() gives .rep = "rep1"; the summary modules match integer rep ids
+reps <- Map(nam = nams, function(nam) as.integer(sub("^rep", "", nam[[".rep"]])))
 for (mod in summaryMods) {
   outs$params[[mod]]$mode <- "multi"
   outs$params[[mod]]$reps <- reps
