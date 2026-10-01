@@ -54,6 +54,7 @@ burnSummaries             development  12                    -
 CBM_core                  development  -                     -
 CBM_dataPrep              development  -                     -
 LandRCBM_split3pools      main         -                     -
+fireSense_summary         development  -                     -
 '
 
 DRYRUN=0
