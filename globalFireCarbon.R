@@ -83,15 +83,15 @@ inSim <- SpaDES.project::setupProject(
                      FRU = 25,
                      .times = list(start = 2025, end = 2065), # 40 years (Eliot 2026-09-28; was 2050)
                      .modules = c("PredictiveEcology/canClimateData@development"
-                                  ,"PredictiveEcology/climateYear@development"
+                                  ,"PredictiveEcology/climateYear@modsForFireSense" # development/main + our open PRs; R/updateModsForFireSense.sh
                                   , "PredictiveEcology/fireSense@development" # parent: the 9 fireSense modules (ELFs, dataPrepFit, ignitionFit, spreadFit, dataPrepPredict, ignitionPredict, spreadPredict, burn, summary)
                                   
                                   # biomass modules
-                                  , "PredictiveEcology/Biomass_borealDataPrep@development"
+                                  , "PredictiveEcology/Biomass_borealDataPrep@modsForFireSense"
                                   , "PredictiveEcology/Biomass_speciesParameters@development"
                                   , "PredictiveEcology/Biomass_speciesData@development"
                                   , "PredictiveEcology/Biomass_regeneration@development"
-                                  , "PredictiveEcology/Biomass_core@development"
+                                  , "PredictiveEcology/Biomass_core@modsForFireSense" # development/main + our open PRs; R/updateModsForFireSense.sh
                                   # summary modules 
                                   # , "FOR-CAST/NRV_summary@development"
                                   , "PredictiveEcology/NRV_summary@modsForFireSense"
@@ -99,10 +99,10 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/Biomass_summary@modsForFireSense" # fireSense commits not yet in development; main was behind
                                   # carbon modules (Biomass_yieldTables and LandRCBM_split3pools have no development branch)
                                   , "PredictiveEcology/CBM_defaults@development"
-                                  , "PredictiveEcology/CBM_dataPrep@development"
-                                  , "PredictiveEcology/CBM_core@development"
+                                  , "PredictiveEcology/CBM_dataPrep@modsForFireSense" # development/main + our open PRs; R/updateModsForFireSense.sh
+                                  , "PredictiveEcology/CBM_core@modsForFireSense" # development/main + our open PRs; R/updateModsForFireSense.sh
                                   , "PredictiveEcology/Biomass_yieldTables@main"
-                                  , "PredictiveEcology/LandRCBM_split3pools@main"
+                                  , "PredictiveEcology/LandRCBM_split3pools@modsForFireSense" # development/main + our open PRs; R/updateModsForFireSense.sh
                      )),
   # NB there is deliberately no `.studyAreaName` dot. A `...` argument that
   # references ANOTHER `...` argument does not resolve in setupProject(): both

@@ -59,15 +59,22 @@ if (!require("pak")) install.packages("pak")
             #   fix and the hms Imports declaration. Back on @development as of 2026-09-18.
             "PredictiveEcology/climateData@development",
             "PredictiveEcology/quickPlot@development"), ask = FALSE)
-## LandR INTEGRATION BRANCH (2026-09-28, Eliot): LandR PRs from the FireSense work stay open against
-## development, unmerged, until the LandR developers have met. Runs use LandR@modsForFireSense instead:
-## development plus those PR branches, merged in. Currently:
+## INTEGRATION BRANCHES (2026-09-28, Eliot): PRs from the FireSense work stay open against
+## development, unmerged, until the other maintainers have reviewed them. Runs use <repo>@modsForFireSense
+## instead: development plus those PR branches, merged in. R/updateModsForFireSense.sh rebuilds them
+## (merges forward, never force-pushes); rerun it after opening or updating such a PR. Currently:
 ##   LandR#248: imputed ages from a log(age) model, never negative (Biomass_borealDataPrep#131, #132).
 ##   LandR#250: SCANFI v3 non-forest land cover (fireSenseUtils >= 0.2.3.9061 defaults to it).
-## Installed after the call above; dependencies = FALSE keeps what the call above installed.
-## A new LandR change: PR against development AND merge its branch into modsForFireSense.
-## Go back to @development above once the group has merged them.
-pak::pkg_install("PredictiveEcology/LandR@modsForFireSense",
+##   LandR#251: forest land never relabels water, snow/ice or 0 as disturbed forest.
+##   LandR#255, #256: LANDISDisp ward-screen fix + pgv argument (Biomass_core#121 needs it); OpenMP threads.
+##   climateData#29: climate stacks written band-interleaved and tiled.
+## Modules are pinned @modsForFireSense in global.R / globalFireCarbon.R the same way.
+## Installed after the call above; dependencies = FALSE keeps what the call above installed. Module
+## reqdPkgs that say LandR@development (>= x) are satisfied by this install: an integration branch's
+## version is the highest of development and its merged PR branches, so Require does not replace it.
+## Go back to @development above once the PRs are merged.
+pak::pkg_install(c("PredictiveEcology/LandR@modsForFireSense",
+                   "PredictiveEcology/climateData@modsForFireSense"),
                  ask = FALSE, upgrade = FALSE, dependencies = FALSE)
 ####################
 # pre RUN the global.R setupProject
@@ -230,11 +237,20 @@ if (identical(Sys.getenv("FS_SET"), "mackenzie")) {
 ## escaped-fire count, both folds of an ELF next to each other. Folds ignore the ledger (a full fit does not stop them).
 if (identical(Sys.getenv("FS_SET"), "heldout")) {
   if (.phase1Only) stop("FS_SET=heldout has no phase-1 entry")
-  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-09-29f.rds", n_workers = 14,  # each fold job is a 40-worker cluster
+  ## 2026-09-30: new queue after per-fold SNLL threshold, other_agb removed, annual youngAge (spread + ignition),
+  ## cap-hit penalty, fold fits saved as ledger rows. (previous: experiment_queue_heldout_2026-09-29f.rds)
+  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-09-30a.rds", n_workers = 14,  # each fold job is a 40-worker cluster
                       onlyELFs = c("6.2.1", "14.4", "4.3", "4.2.2", "4.1", "5.2.1", "14.3", "5.3.1", "5.3.2", "13.1"),
                       keepOrder = TRUE, heldOutFolds = 1:2, ignoreLedger = TRUE)
   message("FS_SET=heldout: ", length(.phaseSetup$onlyELFs), " ELFs x ", length(.phaseSetup$heldOutFolds),
           " folds, queue ", .phaseSetup$queue)
+}
+if (identical(Sys.getenv("FS_SET"), "heldoutsmoke")) {
+  ## one small fold end to end before relaunching the held-out set (2026-09-30)
+  if (.phase1Only) stop("FS_SET=heldoutsmoke has no phase-1 entry")
+  .phaseSetup <- list(queue = "experiment_queue_heldoutsmoke_2026-09-30a.rds", n_workers = 1,
+                      onlyELFs = "13.1", keepOrder = TRUE, heldOutFolds = 1L, ignoreLedger = TRUE)
+  message("FS_SET=heldoutsmoke: 13.1 fold 1, queue ", .phaseSetup$queue)
 }
 if (identical(Sys.getenv("FS_SET"), "okanagan")) {
   .phaseSetup <- list(

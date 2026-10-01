@@ -84,15 +84,15 @@ inSim <- SpaDES.project::setupProject(
                      FRU = 25,
                      .times = list(start = 2020, end = 3020),
                      .modules = c("PredictiveEcology/canClimateData@development"
-                                  ,"PredictiveEcology/climateYear@development"
+                                  ,"PredictiveEcology/climateYear@modsForFireSense" # development/main + our open PRs; R/updateModsForFireSense.sh
                                   , "PredictiveEcology/fireSense@development" # parent: the 9 fireSense modules (ELFs, dataPrepFit, ignitionFit, spreadFit, dataPrepPredict, ignitionPredict, spreadPredict, burn, summary)
                                   
                                   # biomass modules
-                                  , "PredictiveEcology/Biomass_borealDataPrep@development"
+                                  , "PredictiveEcology/Biomass_borealDataPrep@modsForFireSense"
                                   , "PredictiveEcology/Biomass_speciesParameters@development"
                                   , "PredictiveEcology/Biomass_speciesData@development"
                                   , "PredictiveEcology/Biomass_regeneration@development"
-                                  , "PredictiveEcology/Biomass_core@development"
+                                  , "PredictiveEcology/Biomass_core@modsForFireSense" # development/main + our open PRs; R/updateModsForFireSense.sh
                                   # summary modules 
                                   # , "FOR-CAST/NRV_summary@development"
                                   , "PredictiveEcology/NRV_summary@modsForFireSense"
