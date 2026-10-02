@@ -245,7 +245,9 @@ if (identical(Sys.getenv("FS_SET"), "heldout")) {
   ## 2026-10-02a: fireSenseUtils#127 (runaway size only in the per-fire likelihood; 30b under-burned, area
   ## sim/obs 0.54 vs 29f 1.33) + spreadFit#62 (objective bodies in the fit cache key, so 30b's fits are
   ## not served again) + the k-edge-cell runaway rule (#125/#61). (previous: ..._2026-09-30b.rds)
-  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-10-02a.rds", n_workers = 14,  # each fold job is a 40-worker cluster
+  ## 2026-10-02b: 02a restarted on clusters 0.0.63 (#34: workers rebalanced every 100 generations, free cores
+  ## capped by booked workers); fits resume from their cached generations. (previous: ..._2026-10-02a.rds)
+  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-10-02b.rds", n_workers = 14,  # each fold job is a 40-worker cluster
                       onlyELFs = c("6.2.1", "14.4", "4.3", "4.2.2", "4.1", "5.2.1", "14.3", "5.3.1", "5.3.2", "13.1"),
                       keepOrder = TRUE, heldOutFolds = 1:2, ignoreLedger = TRUE)
   message("FS_SET=heldout: ", length(.phaseSetup$onlyELFs), " ELFs x ", length(.phaseSetup$heldOutFolds),
