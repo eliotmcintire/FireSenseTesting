@@ -48,7 +48,10 @@ if (!require("pak")) install.packages("pak")
             #   wetlandToLCC(); it also carries LandR#236, without which every ELF dies in
             #   Biomass_speciesData:init ("cropTo must be a Raster*..."). Do NOT pin LandR back to a
             #   branch: this pak block runs on EVERY launch and would reinstall over both fixes.
-            "PredictiveEcology/LandR@development",
+            #   2026-10-02: @modsForFireSense (development + our open PRs; see INTEGRATION BRANCHES below).
+            #   Installing @development here and @modsForFireSense after it swapped LandR twice on every
+            #   launch, under any run already going from this library.
+            "PredictiveEcology/LandR@modsForFireSense",
             "PredictiveEcology/clusters@development",
             #   filelock: CRAN/RSPM 1.0.3 leaks one file descriptor per failed timed lock attempt, and
             #   reproducible retries a held cache lock every 2.5 s. A fold waiting ~1.5 h on its twin's
@@ -58,7 +61,7 @@ if (!require("pak")) install.packages("pak")
             #   climateData PRs #22-#25 all merged 2026-09-18, so development now carries the
             #   years argument to climateLayers(), latestHistoricalYear(), the tile-dir regexp
             #   fix and the hms Imports declaration. Back on @development as of 2026-09-18.
-            "PredictiveEcology/climateData@development",
+            "PredictiveEcology/climateData@modsForFireSense",
             "PredictiveEcology/quickPlot@development"), ask = FALSE)
 ## INTEGRATION BRANCHES (2026-09-28, Eliot): PRs from the FireSense work stay open against
 ## development, unmerged, until the other maintainers have reviewed them. Runs use <repo>@modsForFireSense
@@ -69,14 +72,11 @@ if (!require("pak")) install.packages("pak")
 ##   LandR#251: forest land never relabels water, snow/ice or 0 as disturbed forest.
 ##   LandR#255, #256: LANDISDisp ward-screen fix + pgv argument (Biomass_core#121 needs it); OpenMP threads.
 ##   climateData#29: climate stacks written band-interleaved and tiled.
-## Modules are pinned @modsForFireSense in global.R / globalFireCarbon.R the same way.
-## Installed after the call above; dependencies = FALSE keeps what the call above installed. Module
-## reqdPkgs that say LandR@development (>= x) are satisfied by this install: an integration branch's
-## version is the highest of development and its merged PR branches, so Require does not replace it.
-## Go back to @development above once the PRs are merged.
-pak::pkg_install(c("PredictiveEcology/LandR@modsForFireSense",
-                   "PredictiveEcology/climateData@modsForFireSense"),
-                 ask = FALSE, upgrade = FALSE, dependencies = FALSE)
+## Modules are pinned @modsForFireSense in global.R / globalFireCarbon.R the same way. LandR and
+## climateData are installed @modsForFireSense in the call above. Module reqdPkgs that say
+## LandR@development (>= x) are satisfied by it: an integration branch's version is the highest of
+## development and its merged PR branches, so Require does not replace it. Go back to @development
+## above once the PRs are merged.
 ####################
 # pre RUN the global.R setupProject
 ####################
@@ -249,7 +249,9 @@ if (identical(Sys.getenv("FS_SET"), "heldout")) {
   ## capped by booked workers); fits resume from their cached generations. (previous: ..._2026-10-02a.rds)
   ## 2026-10-02c: 02b restarted at 14:05 -- launching heldoutlong installed clusters 0.0.64 into the library 02b
   ## ran from ("lazy-load database ... corrupt"); fits resume from their cached generations. (previous: ..._2026-10-02b.rds)
-  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-10-02c.rds", n_workers = 14,  # each fold job is a 40-worker cluster
+  ## 2026-10-02d: restarted after development was merged into LandR's modsForFireSense and the integration
+  ## branches reinstalled (LandR and climateData now installed once, from modsForFireSense). (previous: ..._02c)
+  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-10-02d.rds", n_workers = 14,  # each fold job is a 40-worker cluster
                       onlyELFs = c("6.2.1", "14.4", "4.3", "4.2.2", "4.1", "5.2.1", "14.3", "5.3.1", "5.3.2", "13.1"),
                       keepOrder = TRUE, heldOutFolds = 1:2, ignoreLedger = TRUE)
   message("FS_SET=heldout: ", length(.phaseSetup$onlyELFs), " ELFs x ", length(.phaseSetup$heldOutFolds),
@@ -280,7 +282,7 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
 ## first (scratchpad/stopRule/fold2_stopped_02b.rds).
 if (identical(Sys.getenv("FS_SET"), "heldoutlong")) {
   if (.phase1Only) stop("FS_SET=heldoutlong has no phase-1 entry")
-  .phaseSetup <- list(queue = "experiment_queue_heldoutlong_2026-10-02b.rds", n_workers = 1,
+  .phaseSetup <- list(queue = "experiment_queue_heldoutlong_2026-10-02c.rds", n_workers = 1,
                       onlyELFs = "14.3", keepOrder = TRUE, heldOutFolds = 2L, ignoreLedger = TRUE,
                       queueCols = list(.deoptimMinGenerations = 1000L))
   message("FS_SET=heldoutlong: 14.3 fold 2 continued to >= 1000 generations, queue ", .phaseSetup$queue)
