@@ -247,7 +247,9 @@ if (identical(Sys.getenv("FS_SET"), "heldout")) {
   ## not served again) + the k-edge-cell runaway rule (#125/#61). (previous: ..._2026-09-30b.rds)
   ## 2026-10-02b: 02a restarted on clusters 0.0.63 (#34: workers rebalanced every 100 generations, free cores
   ## capped by booked workers); fits resume from their cached generations. (previous: ..._2026-10-02a.rds)
-  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-10-02b.rds", n_workers = 14,  # each fold job is a 40-worker cluster
+  ## 2026-10-02c: 02b restarted at 14:05 -- launching heldoutlong installed clusters 0.0.64 into the library 02b
+  ## ran from ("lazy-load database ... corrupt"); fits resume from their cached generations. (previous: ..._2026-10-02b.rds)
+  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-10-02c.rds", n_workers = 14,  # each fold job is a 40-worker cluster
                       onlyELFs = c("6.2.1", "14.4", "4.3", "4.2.2", "4.1", "5.2.1", "14.3", "5.3.1", "5.3.2", "13.1"),
                       keepOrder = TRUE, heldOutFolds = 1:2, ignoreLedger = TRUE)
   message("FS_SET=heldout: ", length(.phaseSetup$onlyELFs), " ELFs x ", length(.phaseSetup$heldOutFolds),
