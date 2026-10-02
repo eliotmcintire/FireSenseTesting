@@ -30,10 +30,8 @@ if (!require("pak")) install.packages("pak")
             # pins it with a floor (>= 0.2.0), so once any 0.2.x was installed it never
             # moved again. That is why the fits ran without the objFunSpread adTest fix
             # from 2026-09-07. Track development here instead.
-            #   2026-10-02 (overnight, held-out 02a): PR BRANCH fireSenseUtils#127 (runaways censored in
-            #   the per-fire likelihood only; the landscape-size runawaySize made 30b under-burn). Back to
-            #   @development once #127 merges.
-            "PredictiveEcology/fireSenseUtils@fix/runaway-size-likelihood-only",
+            #   2026-10-02: held-out 02a ran on the PR branch of fireSenseUtils#127 (merged, 0.2.3.9079).
+            "PredictiveEcology/fireSenseUtils@development",
             # SpaDES.tools carries the spread() hot path. It is otherwise pulled in
             # through setupProject's `packages` list with a version FLOOR, which never
             # moves once any satisfying version is installed -- the same reason
