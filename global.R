@@ -68,11 +68,8 @@ inSim <- SpaDES.project::setupProject(
                      # fireSense_spreadFit `heldOutFold`: NA = normal fit; 1 or 2 = that held-out fold only (no full fit,
                      # no ledger). expt.R's FS_SET=heldout sets it per job.
                      .heldOutFold = NA_integer_,
-                     # fireSense_spreadFit `useCache_DE`: FALSE skips the cached whole-fit result; each
-                     # generation is still read from the cache, so a fit can carry on past where it stopped.
-                     # And clusters.deoptimMinGenerations: no early stop before this generation (NA: clusters'
-                     # default). expt.R's FS_SET=heldoutlong sets both, to continue a stopped fold (2026-10-02).
-                     .useCacheDE = TRUE,
+                     # clusters.deoptimMinGenerations: no early stop before this generation (NA: clusters'
+                     # default). expt.R's FS_SET=heldoutlong sets it, to continue a stopped fold (2026-10-02).
                      .deoptimMinGenerations = NA_integer_,
                      .cores = c("birds", # "biomass", # TEMPORARY 2026-09-29: Dominique is rerunning BiomeBGC on biomass; put it back when she is done
                                 "camas", "carbon", "caribou", "coco"
@@ -313,7 +310,6 @@ inSim <- SpaDES.project::setupProject(
       #   NA                  -- carry on into SpreadPredict and the rest
       refitExisting = .refitExisting
       , stopIfNoPreRunFit = FALSE # fit an ELF that has no fit yet (phase 2), whoever runs this
-      , useCache_DE = as.logical(.useCacheDE)
       # mutuallyExclusiveCols = list(
       #   youngAge = c("nf", unique(makeSppEquiv(ecoprovinceNum = ecoprovince)$fuel))
       # ),

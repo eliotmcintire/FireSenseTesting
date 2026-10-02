@@ -272,14 +272,15 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
           paste(.phaseSetup$reps, collapse = ","), ", queue ", .phaseSetup$queue)
 }
 ## 2026-10-02 (Eliot): does going past the early-stop rule improve a held-out fit? 14.3 fold 2 stopped at
-## generation 496 while its best members still improved. Same fit (same cached generations), the whole-fit
-## cache skipped and no early stop before generation 1000; its spreadFitHeldOut__fold2.rds replaces 02b's,
-## which is backed up first (scratchpad/stopRule/fold2_stopped_02b.rds).
+## generation 496 while its best members still improved. Same fit: its cached whole-fit result
+## (runDEoptim__cvFold2_1, d02b881295d5d2e0) was deleted, so it reloads generations 1-496 and carries on with
+## no early stop before generation 1000; its spreadFitHeldOut__fold2.rds replaces 02b's, which is backed up
+## first (scratchpad/stopRule/fold2_stopped_02b.rds).
 if (identical(Sys.getenv("FS_SET"), "heldoutlong")) {
   if (.phase1Only) stop("FS_SET=heldoutlong has no phase-1 entry")
-  .phaseSetup <- list(queue = "experiment_queue_heldoutlong_2026-10-02a.rds", n_workers = 1,
+  .phaseSetup <- list(queue = "experiment_queue_heldoutlong_2026-10-02b.rds", n_workers = 1,
                       onlyELFs = "14.3", keepOrder = TRUE, heldOutFolds = 2L, ignoreLedger = TRUE,
-                      queueCols = list(.useCacheDE = FALSE, .deoptimMinGenerations = 1000L))
+                      queueCols = list(.deoptimMinGenerations = 1000L))
   message("FS_SET=heldoutlong: 14.3 fold 2 continued to >= 1000 generations, queue ", .phaseSetup$queue)
 }
 if (identical(Sys.getenv("FS_SET"), "heldoutsmoke")) {
