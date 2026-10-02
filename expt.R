@@ -251,7 +251,11 @@ if (identical(Sys.getenv("FS_SET"), "heldout")) {
   ## ran from ("lazy-load database ... corrupt"); fits resume from their cached generations. (previous: ..._2026-10-02b.rds)
   ## 2026-10-02d: restarted after development was merged into LandR's modsForFireSense and the integration
   ## branches reinstalled (LandR and climateData now installed once, from modsForFireSense). (previous: ..._02c)
-  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-10-02d.rds", n_workers = 14,  # each fold job is a 40-worker cluster
+  ## 2026-10-02e: clusters 0.0.65 (#36): workers placed by speed, 2 cores per host kept free, and the early stop
+  ## needs both median (< 1 SE) and spread (MAD, < 10%) settled over 300 generations. The cached whole-fit results
+  ## of 14.3 fold 1 (stopped at 905) and fold 2 (496) were deleted so both carry on; 5.2.1 fold 1 resumes from 560.
+  ## (previous: ..._2026-10-02d.rds)
+  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-10-02e.rds", n_workers = 14,  # each fold job is a 40-worker cluster
                       onlyELFs = c("6.2.1", "14.4", "4.3", "4.2.2", "4.1", "5.2.1", "14.3", "5.3.1", "5.3.2", "13.1"),
                       keepOrder = TRUE, heldOutFolds = 1:2, ignoreLedger = TRUE)
   message("FS_SET=heldout: ", length(.phaseSetup$onlyELFs), " ELFs x ", length(.phaseSetup$heldOutFolds),
