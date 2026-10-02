@@ -68,6 +68,12 @@ inSim <- SpaDES.project::setupProject(
                      # fireSense_spreadFit `heldOutFold`: NA = normal fit; 1 or 2 = that held-out fold only (no full fit,
                      # no ledger). expt.R's FS_SET=heldout sets it per job.
                      .heldOutFold = NA_integer_,
+                     # fireSense_spreadFit `useCache_DE`: FALSE skips the cached whole-fit result; each
+                     # generation is still read from the cache, so a fit can carry on past where it stopped.
+                     # And clusters.deoptimMinGenerations: no early stop before this generation (NA: clusters'
+                     # default). expt.R's FS_SET=heldoutlong sets both, to continue a stopped fold (2026-10-02).
+                     .useCacheDE = TRUE,
+                     .deoptimMinGenerations = NA_integer_,
                      .cores = c("birds", # "biomass", # TEMPORARY 2026-09-29: Dominique is rerunning BiomeBGC on biomass; put it back when she is done
                                 "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
@@ -166,6 +172,7 @@ inSim <- SpaDES.project::setupProject(
     # When other live DEoptim builds hold every core, wait (re-measuring each minute) up to
     # this long instead of dying after hours of input preparation (clusters >= 0.0.29).
     , clusters.waitForCores = 8 * 3600
+    , clusters.deoptimMinGenerations = if (!is.na(.deoptimMinGenerations)) as.integer(.deoptimMinGenerations)
     , reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9"
     # When a Cache call misses, say WHICH argument differed. Without this a miss is silent, and a
     # miss on fireSense_spreadFit's estimateThreshold is expensive: it re-draws the SNLL threshold,
@@ -306,6 +313,7 @@ inSim <- SpaDES.project::setupProject(
       #   NA                  -- carry on into SpreadPredict and the rest
       refitExisting = .refitExisting
       , stopIfNoPreRunFit = FALSE # fit an ELF that has no fit yet (phase 2), whoever runs this
+      , useCache_DE = as.logical(.useCacheDE)
       # mutuallyExclusiveCols = list(
       #   youngAge = c("nf", unique(makeSppEquiv(ecoprovinceNum = ecoprovince)$fuel))
       # ),
