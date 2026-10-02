@@ -30,7 +30,10 @@ if (!require("pak")) install.packages("pak")
             # pins it with a floor (>= 0.2.0), so once any 0.2.x was installed it never
             # moved again. That is why the fits ran without the objFunSpread adTest fix
             # from 2026-09-07. Track development here instead.
-            "PredictiveEcology/fireSenseUtils@development",
+            #   2026-10-02 (overnight, held-out 02a): PR BRANCH fireSenseUtils#127 (runaways censored in
+            #   the per-fire likelihood only; the landscape-size runawaySize made 30b under-burn). Back to
+            #   @development once #127 merges.
+            "PredictiveEcology/fireSenseUtils@fix/runaway-size-likelihood-only",
             # SpaDES.tools carries the spread() hot path. It is otherwise pulled in
             # through setupProject's `packages` list with a version FLOOR, which never
             # moves once any satisfying version is installed -- the same reason
@@ -241,7 +244,10 @@ if (identical(Sys.getenv("FS_SET"), "heldout")) {
   ## buffer-edge runaway penalty (fireSenseUtils #122, spreadFit #59). 30a was stopped: it used the
   ## luck-based threshold. 30a itself: per-fold threshold, other_agb removed, annual youngAge, fold fits
   ## saved as ledger rows. (previous: experiment_queue_heldout_2026-09-30a.rds)
-  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-09-30b.rds", n_workers = 14,  # each fold job is a 40-worker cluster
+  ## 2026-10-02a: fireSenseUtils#127 (runaway size only in the per-fire likelihood; 30b under-burned, area
+  ## sim/obs 0.54 vs 29f 1.33) + spreadFit#62 (objective bodies in the fit cache key, so 30b's fits are
+  ## not served again) + the k-edge-cell runaway rule (#125/#61). (previous: ..._2026-09-30b.rds)
+  .phaseSetup <- list(queue = "experiment_queue_heldout_2026-10-02a.rds", n_workers = 14,  # each fold job is a 40-worker cluster
                       onlyELFs = c("6.2.1", "14.4", "4.3", "4.2.2", "4.1", "5.2.1", "14.3", "5.3.1", "5.3.2", "13.1"),
                       keepOrder = TRUE, heldOutFolds = 1:2, ignoreLedger = TRUE)
   message("FS_SET=heldout: ", length(.phaseSetup$onlyELFs), " ELFs x ", length(.phaseSetup$heldOutFolds),
