@@ -282,11 +282,12 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
 ## 2026-10-02 (Eliot): does going past the early-stop rule improve a held-out fit? First 14.3 fold 2 (stopped
 ## at 496 by the old rule; queues heldoutlong_2026-10-02a-c). Now 4.2.2 fold 1, which the new rule stopped at
 ## generation 930 while its 10th percentile had just dropped: run on to at least generation 3000. Its cached
-## whole-fit result (runDEoptim__cvFold1_1, c6b62e3133e70272) was deleted, so it reloads generations 1-930;
+## whole-fit results (runDEoptim__cvFold1_1 c6b62e3133e70272 and the inner DEoptimIterative__cvFold1 c44e1455b626da9d)
+## were deleted, so it reloads generations 1-930;
 ## its spreadFitHeldOut__fold1.rds replaces 02e's, backed up first (scratchpad/stopRule/4.2.2_fold1_newrule930.rds).
 if (identical(Sys.getenv("FS_SET"), "heldoutlong")) {
   if (.phase1Only) stop("FS_SET=heldoutlong has no phase-1 entry")
-  .phaseSetup <- list(queue = "experiment_queue_heldoutlong_2026-10-02e.rds", n_workers = 1,
+  .phaseSetup <- list(queue = "experiment_queue_heldoutlong_2026-10-02f.rds", n_workers = 1,
                       onlyELFs = "4.2.2", keepOrder = TRUE, heldOutFolds = 1L, ignoreLedger = TRUE,
                       queueCols = list(.deoptimMinGenerations = 3000L))
   message("FS_SET=heldoutlong: 4.2.2 fold 1 continued to >= 3000 generations, queue ", .phaseSetup$queue)
