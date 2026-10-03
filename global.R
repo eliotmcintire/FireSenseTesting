@@ -177,8 +177,7 @@ inSim <- SpaDES.project::setupProject(
     # (4.2.2 lost ~17 h that way on 2026-09-16, while 4.1 hit cache and replayed 797 generations).
     # Only in a console session: each miss scans the whole cache (tens of thousands of entries in
     # /mnt/fast/cache) for similar calls, which is minutes per miss in tmux workers and Rscript runs.
-    # tmux workers start R with --interactive, so TMUX is what tells them apart (2026-10-02).
-    , reproducible.showSimilar = interactive() && !nzchar(Sys.getenv("TMUX"))
+    , reproducible.showSimilar = userInteractive
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
     , reproducible.memoisePersist = TRUE # sets the memoise location to .GlobalEnv; persists through a `load_all`
