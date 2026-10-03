@@ -279,17 +279,17 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
   message("FS_SET=nrv wave ", .nrvWave, ": ", paste(.phaseSetup$onlyELFs, collapse = " "), ", reps ",
           paste(.phaseSetup$reps, collapse = ","), ", queue ", .phaseSetup$queue)
 }
-## 2026-10-02 (Eliot): does going past the early-stop rule improve a held-out fit? 14.3 fold 2 stopped at
-## generation 496 while its best members still improved. Same fit: its cached whole-fit result
-## (runDEoptim__cvFold2_1, d02b881295d5d2e0) was deleted, so it reloads generations 1-496 and carries on with
-## no early stop before generation 1000; its spreadFitHeldOut__fold2.rds replaces 02b's, which is backed up
-## first (scratchpad/stopRule/fold2_stopped_02b.rds).
+## 2026-10-02 (Eliot): does going past the early-stop rule improve a held-out fit? First 14.3 fold 2 (stopped
+## at 496 by the old rule; queues heldoutlong_2026-10-02a-c). Now 4.2.2 fold 1, which the new rule stopped at
+## generation 930 while its 10th percentile had just dropped: run on to at least generation 3000. Its cached
+## whole-fit result (runDEoptim__cvFold1_1, c6b62e3133e70272) was deleted, so it reloads generations 1-930;
+## its spreadFitHeldOut__fold1.rds replaces 02e's, backed up first (scratchpad/stopRule/4.2.2_fold1_newrule930.rds).
 if (identical(Sys.getenv("FS_SET"), "heldoutlong")) {
   if (.phase1Only) stop("FS_SET=heldoutlong has no phase-1 entry")
-  .phaseSetup <- list(queue = "experiment_queue_heldoutlong_2026-10-02c.rds", n_workers = 1,
-                      onlyELFs = "14.3", keepOrder = TRUE, heldOutFolds = 2L, ignoreLedger = TRUE,
-                      queueCols = list(.deoptimMinGenerations = 1000L))
-  message("FS_SET=heldoutlong: 14.3 fold 2 continued to >= 1000 generations, queue ", .phaseSetup$queue)
+  .phaseSetup <- list(queue = "experiment_queue_heldoutlong_2026-10-02d.rds", n_workers = 1,
+                      onlyELFs = "4.2.2", keepOrder = TRUE, heldOutFolds = 1L, ignoreLedger = TRUE,
+                      queueCols = list(.deoptimMinGenerations = 3000L))
+  message("FS_SET=heldoutlong: 4.2.2 fold 1 continued to >= 3000 generations, queue ", .phaseSetup$queue)
 }
 if (identical(Sys.getenv("FS_SET"), "heldoutsmoke")) {
   ## one small fold end to end before relaunching the held-out set (2026-09-30)
