@@ -286,7 +286,7 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
 ## its spreadFitHeldOut__fold1.rds replaces 02e's, backed up first (scratchpad/stopRule/4.2.2_fold1_newrule930.rds).
 if (identical(Sys.getenv("FS_SET"), "heldoutlong")) {
   if (.phase1Only) stop("FS_SET=heldoutlong has no phase-1 entry")
-  .phaseSetup <- list(queue = "experiment_queue_heldoutlong_2026-10-02d.rds", n_workers = 1,
+  .phaseSetup <- list(queue = "experiment_queue_heldoutlong_2026-10-02e.rds", n_workers = 1,
                       onlyELFs = "4.2.2", keepOrder = TRUE, heldOutFolds = 1L, ignoreLedger = TRUE,
                       queueCols = list(.deoptimMinGenerations = 3000L))
   message("FS_SET=heldoutlong: 4.2.2 fold 1 continued to >= 3000 generations, queue ", .phaseSetup$queue)
