@@ -71,6 +71,10 @@ inSim <- SpaDES.project::setupProject(
                      # clusters.deoptimMinGenerations: no early stop before this generation (NA: clusters'
                      # default). expt.R's FS_SET=heldoutlong sets it, to continue a stopped fold (2026-10-02).
                      .deoptimMinGenerations = NA_integer_,
+                     ## appended to the ledger file name (spreadFitFilename): "" is the production ledger; the
+                     ## rep-stability set (expt.R FS_SET=repstab) gives each rep its own file so reps never
+                     ## overwrite each other or the production fits
+                     .spreadFitFileSuffix = "",
                      .cores = c("birds", # "biomass", # TEMPORARY 2026-09-29: Dominique is rerunning BiomeBGC on biomass; put it back when she is done
                                 "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
@@ -270,7 +274,7 @@ inSim <- SpaDES.project::setupProject(
       # escaped fires start at 50 ha, and the annual-area and area-distribution objective terms (2026-09-25).
       # Older objects ("_linearFuel", none = log fuel) hold other models' fits. Once fireSense_dataPrepFit #43
       # (`"latest"`) merges, this line can go and every module defaults to the newest file with the ELF.
-      spreadFitFilename = paste0("fireSenseParams_", .fireYearStart, "-", .fireYearEnd, fireSenseUtils::spreadFitFileTag, ".rds")
+      spreadFitFilename = paste0("fireSenseParams_", .fireYearStart, "-", .fireYearEnd, fireSenseUtils::spreadFitFileTag, .spreadFitFileSuffix, ".rds")
       # dataYear = 2011,
       , .studyAreaName = .ELFind
       # held-out validation fold (NA = normal fit): fireSense_spreadFit fits only that fold, and
@@ -324,7 +328,7 @@ inSim <- SpaDES.project::setupProject(
       # 74,600 evaluations to reach 58419 while NP 60 reached 58255 in 56,100 -- smaller populations were
       # more evaluation-efficient here, and 40 leaves cores for more ELFs at once (2026-09-17).
       , nCoresNeeded = 40
-      , rep = .rep # This means that all Cache of DEoptim will now be different name
+      , .rep = .rep # (renamed from `rep`, spreadFit #63) each rep gets its own DEoptim cache names and random start
       , cores = cores
       ## `NP` removed 2026-09-20: fireSense_spreadFit never read it (not even before its #28, which deleted the
       ## parameter). The population size is the number of workers, i.e. `nCoresNeeded` above: 40.

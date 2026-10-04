@@ -299,6 +299,16 @@ if (identical(Sys.getenv("FS_SET"), "heldoutsmoke")) {
                       onlyELFs = "13.1", keepOrder = TRUE, heldOutFolds = 1L, ignoreLedger = TRUE)
   message("FS_SET=heldoutsmoke: 13.1 fold 1, queue ", .phaseSetup$queue)
 }
+## 2026-10-03 (Eliot): how stochastic are the DEoptim fits? Full fits (no held-out fold) of 3 fast ELFs, 4 reps
+## each, new early-stop rule; fit only (launch with FS_PHASE2_ONLY=TRUE). Each rep writes its own ledger file
+## (fireSenseParams_..._repStab_rep<k>.rds, global.R `.spreadFitFileSuffix`), never the production ledger.
+if (identical(Sys.getenv("FS_SET"), "repstab")) {
+  if (.phase1Only) stop("FS_SET=repstab has no phase-1 entry")
+  .phaseSetup <- list(queue = "experiment_queue_repstab_2026-10-03.rds", n_workers = 12,  # each fit is a 40-worker cluster
+                      onlyELFs = c("13.1", "5.2.1", "5.3.2"), keepOrder = TRUE, reps = 1:4,
+                      refitFitted = TRUE, repLedger = TRUE)
+  message("FS_SET=repstab: ", paste(.phaseSetup$onlyELFs, collapse = " "), " x reps 1-4, queue ", .phaseSetup$queue)
+}
 if (identical(Sys.getenv("FS_SET"), "okanagan")) {
   .phaseSetup <- list(
     list(queue = "experiment_queue_caches_2026-09-26okan.rds", n_workers = 2,
@@ -414,6 +424,8 @@ if (!is.null(.phaseSetup$heldOutFolds)) {
 }
 ## further global.R dots, one value for every job of the queue
 for (.nm in names(.phaseSetup$queueCols)) expt[[.nm]] <- .phaseSetup$queueCols[[.nm]]
+## one ledger file per rep (global.R `.spreadFitFileSuffix`), so reps never overwrite each other or production
+if (isTRUE(.phaseSetup$repLedger)) expt$.spreadFitFileSuffix <- paste0("_repStab_rep", expt$.rep)
 if (!is.null(.phaseSetup$skipELFs)) {
   ## An explicit blacklist: ELFs left out of this queue whatever else selects them.
   .skipped <- intersect(.phaseSetup$skipELFs, expt$.ELFind)
