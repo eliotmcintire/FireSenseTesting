@@ -31,7 +31,7 @@ if (!require("pak")) install.packages("pak")
             # moved again. That is why the fits ran without the objFunSpread adTest fix
             # from 2026-09-07. Track development here instead.
             #   2026-10-02: held-out 02a ran on the PR branch of fireSenseUtils#127 (merged, 0.2.3.9079).
-            "PredictiveEcology/fireSenseUtils@development",
+            ## fireSenseUtils: installed below, on its own
             # SpaDES.tools carries the spread() hot path. It is otherwise pulled in
             # through setupProject's `packages` list with a version FLOOR, which never
             # moves once any satisfying version is installed -- the same reason
@@ -63,6 +63,10 @@ if (!require("pak")) install.packages("pak")
             #   fix and the hms Imports declaration. Back on @development as of 2026-09-18.
             "PredictiveEcology/climateData@modsForFireSense",
             "PredictiveEcology/quickPlot@development"), ask = FALSE)
+## fireSenseUtils on its own, without dependencies (they are all in the list above). Its Remotes say
+## LandR@development, which pak cannot reconcile with LandR@modsForFireSense: every launch where fireSenseUtils
+## had to update failed with "LandR@development: Conflicts with LandR@modsForFireSense" (2026-10-03).
+pak::pkg_install("PredictiveEcology/fireSenseUtils@development", dependencies = FALSE, ask = FALSE)
 ## INTEGRATION BRANCHES (2026-09-28, Eliot): PRs from the FireSense work stay open against
 ## development, unmerged, until the other maintainers have reviewed them. Runs use <repo>@modsForFireSense
 ## instead: development plus those PR branches, merged in. R/updateModsForFireSense.sh rebuilds them
@@ -266,14 +270,19 @@ if (identical(Sys.getenv("FS_SET"), "heldout")) {
 ##   FS_NRV_WAVE=1: rep 1 per ELF, refit without folds (refitExisting), then predict;
 ##   FS_NRV_WAVE=2: reps 2-5, launched only after wave 1 has written the 3 fits to the ledger; predict only.
 ## Launching wave 2 earlier would start 4 more fits of each ELF at once.
+## 2026-10-03 (Eliot): 6.2.1 (western Ontario) the same way, for a meeting: FS_NRV_ELFS=6.2.1 (comma-separated);
+## any ELF list other than the default gets its own queue names.
 if (identical(Sys.getenv("FS_SET"), "nrv")) {
   if (.phase1Only) stop("FS_SET=nrv has no phase-1 entry")
   .nrvWave <- Sys.getenv("FS_NRV_WAVE")
   if (!.nrvWave %in% c("1", "2")) stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1) or 2 (reps 2-5)")
-  .phaseSetup <- list(queue = paste0("experiment_queue_nrv_2026-10-01_wave", .nrvWave, ".rds"),
-                      onlyELFs = c("14.4", "4.1", "4.2.2"), keepOrder = TRUE,
+  .nrvELFs <- strsplit(Sys.getenv("FS_NRV_ELFS", unset = "14.4,4.1,4.2.2"), ",")[[1]]
+  .nrvTag <- if (identical(.nrvELFs, c("14.4", "4.1", "4.2.2"))) "2026-10-01" else
+    paste0("2026-10-03_", paste(.nrvELFs, collapse = "-"))
+  .phaseSetup <- list(queue = paste0("experiment_queue_nrv_", .nrvTag, "_wave", .nrvWave, ".rds"),
+                      onlyELFs = .nrvELFs, keepOrder = TRUE,
                       reps = if (.nrvWave == "1") 1L else 2:5,
-                      n_workers = if (.nrvWave == "1") 3 else 12,  # wave 1: each fit is a 40-worker cluster
+                      n_workers = if (.nrvWave == "1") length(.nrvELFs) else min(12, 4 * length(.nrvELFs)),  # wave 1: each fit is a 40-worker cluster
                       GCM = "NRV", predict = TRUE,
                       refitFitted = .nrvWave == "1", predictFitted = .nrvWave == "2")
   message("FS_SET=nrv wave ", .nrvWave, ": ", paste(.phaseSetup$onlyELFs, collapse = " "), ", reps ",
