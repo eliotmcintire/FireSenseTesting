@@ -52,9 +52,7 @@ if (!require("pak")) install.packages("pak")
             #   Installing @development here and @modsForFireSense after it swapped LandR twice on every
             #   launch, under any run already going from this library.
             "PredictiveEcology/LandR@modsForFireSense",
-            ## clusters#41 (until merged): 0.0.68 gave the workers connectTimeout (120 s) as their read timeout, so
-            ## an idle worker quit and fits died with "error reading from connection" (2026-10-03)
-            "PredictiveEcology/clusters@fix/worker-side-timeout",
+            "PredictiveEcology/clusters@development",
             #   filelock: CRAN/RSPM 1.0.3 leaks one file descriptor per failed timed lock attempt, and
             #   reproducible retries a held cache lock every 2.5 s. A fold waiting ~1.5 h on its twin's
             #   inputs reached ~2000 fds, and mclapply then failed with "file descriptor is too large for
