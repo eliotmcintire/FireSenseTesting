@@ -80,7 +80,9 @@ inSim <- SpaDES.project::setupProject(
                      .deoptimP = NA_real_,
                      .deoptimCR = NA_real_,
                      .objfunFireReps = NA_integer_,
-                     .deoptimRescoreEvery = NA_integer_,
+                     ## 10 from 2026-10-05 (Eliot): the luck set's re-score arm converged in about half the generations
+                     ## (440-500 vs 780-1370) and reached the best scores without a lucky draw (300, 305, 315, 318)
+                     .deoptimRescoreEvery = 10L,
                      ## fireSense_dataPrepFit's spreadIntercept: a free intercept with centred covariates
                      ## (fireSenseUtils#131); on from 2026-10-05 (Eliot), starting with the NRV fits
                      .spreadIntercept = TRUE,
