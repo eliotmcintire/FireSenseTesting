@@ -346,6 +346,17 @@ if (identical(Sys.getenv("FS_SET"), "luck")) {
                       refitFitted = TRUE, repLedger = "_luckG1_rep", repCols = .luckArms)
   message("FS_SET=luck: 13.1 x 4 arms x 4 reps, queue ", .phaseSetup$queue)
 }
+## 2026-10-05 (Eliot): the 13.1 reps re-scored at 281, 305, 312-320 before the 10-05 changes (intercept with centred
+## covariates, re-scoring every 10 generations, covariate fixes of fireSenseUtils#132, 5 km US-border buffer). Do the
+## same 13.1 fits now land closer together, in score and in coefficients? 8 full fits with every current default,
+## reps 51-58 so their caches and ledgers stay apart from repstab (1-4) and luck (11-44). Fit only: FS_PHASE2_ONLY=TRUE.
+if (identical(Sys.getenv("FS_SET"), "improved")) {
+  if (.phase1Only) stop("FS_SET=improved has no phase-1 entry")
+  .phaseSetup <- list(queue = "experiment_queue_improved_2026-10-05.rds", n_workers = 8,  # each fit is a 40-worker cluster
+                      onlyELFs = "13.1", keepOrder = TRUE, reps = 51:58,
+                      refitFitted = TRUE, repLedger = "_improved_rep")
+  message("FS_SET=improved: 13.1 x reps 51-58, queue ", .phaseSetup$queue)
+}
 if (identical(Sys.getenv("FS_SET"), "okanagan")) {
   .phaseSetup <- list(
     list(queue = "experiment_queue_caches_2026-09-26okan.rds", n_workers = 2,
