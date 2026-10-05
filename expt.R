@@ -312,14 +312,18 @@ if (identical(Sys.getenv("FS_SET"), "heldoutsmoke")) {
                       onlyELFs = "13.1", keepOrder = TRUE, heldOutFolds = 1L, ignoreLedger = TRUE)
   message("FS_SET=heldoutsmoke: 13.1 fold 1, queue ", .phaseSetup$queue)
 }
+## 2026-10-04 g1: both sets relaunched once inflectionPoint1 was fixed at 1 (fireSenseUtils#130, fireSense_spreadFit#64):
+## Eliot suspects its non-identifiability is part of why reps miss the optimum. New queues and ledger files
+## (_repStabG1_rep<k>, _luckG1_rep<k>); the 2026-10-03/04 results (inflectionPoint1 fitted) stay for analysis.
+## The repstab 13.1 reps are the luck arms' baseline (default DEoptim settings).
 ## 2026-10-03 (Eliot): how stochastic are the DEoptim fits? Full fits (no held-out fold) of 3 fast ELFs, 4 reps
 ## each, new early-stop rule; fit only (launch with FS_PHASE2_ONLY=TRUE). Each rep writes its own ledger file
 ## (fireSenseParams_..._repStab_rep<k>.rds, global.R `.spreadFitFileSuffix`), never the production ledger.
 if (identical(Sys.getenv("FS_SET"), "repstab")) {
   if (.phase1Only) stop("FS_SET=repstab has no phase-1 entry")
-  .phaseSetup <- list(queue = "experiment_queue_repstab_2026-10-03.rds", n_workers = 12,  # each fit is a 40-worker cluster
+  .phaseSetup <- list(queue = "experiment_queue_repstab_2026-10-04g1.rds", n_workers = 12,  # each fit is a 40-worker cluster
                       onlyELFs = c("13.1", "5.2.1", "5.3.2"), keepOrder = TRUE, reps = 1:4,
-                      refitFitted = TRUE, repLedger = TRUE)
+                      refitFitted = TRUE, repLedger = "_repStabG1_rep")
   message("FS_SET=repstab: ", paste(.phaseSetup$onlyELFs, collapse = " "), " x reps 1-4, queue ", .phaseSetup$queue)
 }
 ## 2026-10-04 (Eliot): the 13.1 reps showed lucky single draws steering DEoptim (rep 1 kept a member at 286 for 500
@@ -336,10 +340,10 @@ if (identical(Sys.getenv("FS_SET"), "luck")) {
                           .deoptimCR = rep(c(NA, 0.9, NA, NA), each = 4),
                           .objfunFireReps = rep(c(NA, NA, 200L, NA), each = 4),
                           .deoptimRescoreEvery = rep(c(NA, NA, NA, 10L), each = 4))
-  .phaseSetup <- list(queue = "experiment_queue_luck_2026-10-04.rds", n_workers = 16,  # each fit is a 40-worker cluster
+  .phaseSetup <- list(queue = "experiment_queue_luck_2026-10-04g1.rds", n_workers = 16,  # each fit is a 40-worker cluster
                       onlyELFs = "13.1", keepOrder = TRUE,
                       reps = c(11, 21, 31, 41, 12, 22, 32, 42, 13, 23, 33, 43, 14, 24, 34, 44),  # arms interleaved
-                      refitFitted = TRUE, repLedger = "_luck_rep", repCols = .luckArms)
+                      refitFitted = TRUE, repLedger = "_luckG1_rep", repCols = .luckArms)
   message("FS_SET=luck: 13.1 x 4 arms x 4 reps, queue ", .phaseSetup$queue)
 }
 if (identical(Sys.getenv("FS_SET"), "okanagan")) {
