@@ -282,7 +282,7 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
   if (!.nrvWave %in% c("1", "2")) stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1) or 2 (reps 2-5)")
   .nrvELFs <- strsplit(Sys.getenv("FS_NRV_ELFS", unset = "14.4,4.1,4.2.2"), ",")[[1]]
   .nrvTag <- if (identical(.nrvELFs, c("14.4", "4.1", "4.2.2"))) "2026-10-01" else
-    paste0("2026-10-05k_", paste(.nrvELFs, collapse = "-"))  # k: as j (intercept + covariate fixes); 4.3 and 14.4 relaunched with FS_NO_CACHECHAINING (g1: inflectionPoint1 fixed at 1)
+    paste0("2026-10-05l_", paste(.nrvELFs, collapse = "-"))  # l: as k plus fireSense_ELFs borderBuffer (5 km from the US land border; fireSense_ELFs#24); k: 4.3 and 14.4 without cache chaining (g1: inflectionPoint1 fixed at 1)
   .phaseSetup <- list(queue = paste0("experiment_queue_nrv_", .nrvTag, "_wave", .nrvWave, ".rds"),
                       onlyELFs = .nrvELFs, keepOrder = TRUE,
                       reps = if (.nrvWave == "1") 1L else 2:5,
