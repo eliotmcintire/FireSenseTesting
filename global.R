@@ -75,6 +75,12 @@ inSim <- SpaDES.project::setupProject(
                      ## rep-stability set (expt.R FS_SET=repstab) gives each rep its own file so reps never
                      ## overwrite each other or the production fits
                      .spreadFitFileSuffix = "",
+                     ## DEoptim settings experiment (expt.R FS_SET=luck); NA leaves the module's or clusters' default.
+                     ## .deoptimP/.deoptimCR replace fireSense_spreadFit's DEoptimControl whole, so give p with CR.
+                     .deoptimP = NA_real_,
+                     .deoptimCR = NA_real_,
+                     .objfunFireReps = NA_integer_,
+                     .deoptimRescoreEvery = NA_integer_,
                      .cores = c("birds", # "biomass", # TEMPORARY 2026-09-29: Dominique is rerunning BiomeBGC on biomass; put it back when she is done
                                 "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
@@ -174,6 +180,7 @@ inSim <- SpaDES.project::setupProject(
     # this long instead of dying after hours of input preparation (clusters >= 0.0.29).
     , clusters.waitForCores = 8 * 3600
     , clusters.deoptimMinGenerations = if (!is.na(.deoptimMinGenerations)) as.integer(.deoptimMinGenerations)
+    , clusters.deoptimRescoreEvery = if (!is.na(.deoptimRescoreEvery)) as.integer(.deoptimRescoreEvery)
     , reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9"
     # When a Cache call misses, say WHICH argument differed. Without this a miss is silent, and a
     # miss on fireSense_spreadFit's estimateThreshold is expensive: it re-draws the SNLL threshold,
@@ -308,7 +315,7 @@ inSim <- SpaDES.project::setupProject(
       samplingRange = if (identical(.GCM, "NRV")) .samplingRange else NA_real_
     ),
     # fireSense_burn = list(.plots = c("screen", "png")),
-    fireSense_spreadFit = list(
+    fireSense_spreadFit = c(list(
       # Three-stage workflow, each stage sized for what it costs:
       #   "spreadFitPrepare"  -- build inputs + caches; many runs at once
       #   "estimateThreshold" -- adds the forking threshold calibration
@@ -338,6 +345,12 @@ inSim <- SpaDES.project::setupProject(
       # mode = "debug",
       # SNLL_FS_thresh = snll_thresh,
       , doObjFunAssertions = FALSE
+    ),
+    ## DEoptim settings experiment (expt.R FS_SET=luck), added only when the queue gives them: a parameter
+    ## given as NULL replaces the module's default with NULL (simInit keeps it), so it must be left out
+    if (!is.na(.objfunFireReps)) list(objfunFireReps = as.integer(.objfunFireReps)),
+    if (!is.na(.deoptimP) || !is.na(.deoptimCR))
+      list(DEoptimControl = c(if (!is.na(.deoptimP)) list(p = .deoptimP), if (!is.na(.deoptimCR)) list(CR = .deoptimCR)))
     ),
     fireSense_dataPrepFit = list(
       # missingLCCgroup = c("nf_dryland"), # must match fuel class land cover

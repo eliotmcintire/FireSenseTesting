@@ -12,6 +12,9 @@ suppressWarnings(rm(.ELFind)) # This is a precaution as this may exist if there 
 # This used to live at the top of global.R, which every worker sources at the start of
 # every job: 13 processes writing one shared library. On 2026-09-09 a worker rewrote
 # SpaDES.tools at 10:21:51 and four siblings died with "lazy-load database ... is corrupt".
+## FS_NO_INSTALL=TRUE skips this block: a launch beside running fits must not reinstall a pinned branch that
+## has moved since they started (2026-10-04: clusters and Require had moved under 9 live fits).
+if (!isTRUE(as.logical(Sys.getenv("FS_NO_INSTALL", unset = "FALSE")))) {
 if (!require("pak")) install.packages("pak")
  pak::pak(c("PredictiveEcology/Require@development",
             "PredictiveEcology/SpaDES.project@development",
@@ -67,6 +70,7 @@ if (!require("pak")) install.packages("pak")
 ## LandR@development, which pak cannot reconcile with LandR@modsForFireSense: every launch where fireSenseUtils
 ## had to update failed with "LandR@development: Conflicts with LandR@modsForFireSense" (2026-10-03).
 pak::pkg_install("PredictiveEcology/fireSenseUtils@development", dependencies = FALSE, ask = FALSE)
+} else message("FS_NO_INSTALL: skipping the package installs")
 ## INTEGRATION BRANCHES (2026-09-28, Eliot): PRs from the FireSense work stay open against
 ## development, unmerged, until the other maintainers have reviewed them. Runs use <repo>@modsForFireSense
 ## instead: development plus those PR branches, merged in. R/updateModsForFireSense.sh rebuilds them
@@ -318,6 +322,26 @@ if (identical(Sys.getenv("FS_SET"), "repstab")) {
                       refitFitted = TRUE, repLedger = TRUE)
   message("FS_SET=repstab: ", paste(.phaseSetup$onlyELFs, collapse = " "), " x reps 1-4, queue ", .phaseSetup$queue)
 }
+## 2026-10-04 (Eliot): the 13.1 reps showed lucky single draws steering DEoptim (rep 1 kept a member at 286 for 500
+## generations that re-scores at 312; rep 3 found a region 30 better). Which of four changes removes that most
+## cheaply? Each arm is 4 full fits of 13.1, compared with repstab's 13.1 reps 1-4 (the baseline) on re-scored
+## means. Arms by rep number, so their DEoptim caches and ledgers stay apart:
+##   11-14 p = 0.25 (strategy 6 aims at the top 10 of 40, not the top 4)   21-24 CR = 0.9 (crossover along the
+##   correlated ridge)   31-34 objfunFireReps = 200 (4x the replicates per evaluation)   41-44 re-score the
+##   population every 10 generations (option clusters.deoptimRescoreEvery; running mean per member)
+if (identical(Sys.getenv("FS_SET"), "luck")) {
+  if (.phase1Only) stop("FS_SET=luck has no phase-1 entry")
+  .luckArms <- data.frame(.rep = c(11:14, 21:24, 31:34, 41:44),
+                          .deoptimP = rep(c(0.25, 0.1, NA, NA), each = 4),   # the CR arm keeps p = 0.1: DEoptimControl is replaced whole
+                          .deoptimCR = rep(c(NA, 0.9, NA, NA), each = 4),
+                          .objfunFireReps = rep(c(NA, NA, 200L, NA), each = 4),
+                          .deoptimRescoreEvery = rep(c(NA, NA, NA, 10L), each = 4))
+  .phaseSetup <- list(queue = "experiment_queue_luck_2026-10-04.rds", n_workers = 16,  # each fit is a 40-worker cluster
+                      onlyELFs = "13.1", keepOrder = TRUE,
+                      reps = c(11, 21, 31, 41, 12, 22, 32, 42, 13, 23, 33, 43, 14, 24, 34, 44),  # arms interleaved
+                      refitFitted = TRUE, repLedger = "_luck_rep", repCols = .luckArms)
+  message("FS_SET=luck: 13.1 x 4 arms x 4 reps, queue ", .phaseSetup$queue)
+}
 if (identical(Sys.getenv("FS_SET"), "okanagan")) {
   .phaseSetup <- list(
     list(queue = "experiment_queue_caches_2026-09-26okan.rds", n_workers = 2,
@@ -434,7 +458,11 @@ if (!is.null(.phaseSetup$heldOutFolds)) {
 ## further global.R dots, one value for every job of the queue
 for (.nm in names(.phaseSetup$queueCols)) expt[[.nm]] <- .phaseSetup$queueCols[[.nm]]
 ## one ledger file per rep (global.R `.spreadFitFileSuffix`), so reps never overwrite each other or production
-if (isTRUE(.phaseSetup$repLedger)) expt$.spreadFitFileSuffix <- paste0("_repStab_rep", expt$.rep)
+if (isTRUE(.phaseSetup$repLedger) || is.character(.phaseSetup$repLedger))
+  expt$.spreadFitFileSuffix <- paste0(if (is.character(.phaseSetup$repLedger)) .phaseSetup$repLedger else "_repStab_rep", expt$.rep)
+## further global.R dots that differ by rep (a data.frame with a `.rep` column)
+for (.nm in setdiff(names(.phaseSetup$repCols), ".rep"))
+  expt[[.nm]] <- .phaseSetup$repCols[[.nm]][match(expt$.rep, .phaseSetup$repCols$.rep)]
 if (!is.null(.phaseSetup$skipELFs)) {
   ## An explicit blacklist: ELFs left out of this queue whatever else selects them.
   .skipped <- intersect(.phaseSetup$skipELFs, expt$.ELFind)
