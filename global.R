@@ -81,6 +81,9 @@ inSim <- SpaDES.project::setupProject(
                      .deoptimCR = NA_real_,
                      .objfunFireReps = NA_integer_,
                      .deoptimRescoreEvery = NA_integer_,
+                     ## fireSense_dataPrepFit's spreadIntercept: a free intercept with centred covariates
+                     ## (fireSenseUtils#131); on from 2026-10-05 (Eliot), starting with the NRV fits
+                     .spreadIntercept = TRUE,
                      .cores = c("birds", # "biomass", # TEMPORARY 2026-09-29: Dominique is rerunning BiomeBGC on biomass; put it back when she is done
                                 "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
@@ -353,6 +356,7 @@ inSim <- SpaDES.project::setupProject(
       list(DEoptimControl = c(if (!is.na(.deoptimP)) list(p = .deoptimP), if (!is.na(.deoptimCR)) list(CR = .deoptimCR)))
     ),
     fireSense_dataPrepFit = list(
+      spreadIntercept = isTRUE(as.logical(.spreadIntercept)),
       # missingLCCgroup = c("nf_dryland"), # must match fuel class land cover
       .useCache = c(".inputObjects",
                     # "init", # CAN'T cache this one because it is the trigger to "skip" a whole bunch if SpreadParams exist for the StudyArea
