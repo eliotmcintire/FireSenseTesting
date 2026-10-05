@@ -230,7 +230,9 @@ inSim <- SpaDES.project::setupProject(
     # is inside `if (cacheChaining)`, so a pass run with it off records nothing for a later
     # pass to chain from. The benefit still only appears from the second run of an ELF
     # onward -- the prediction phase's replicates are where it should show.
-    , spades.cacheChaining = TRUE
+    # FS_NO_CACHECHAINING=TRUE turns it off (2026-10-05): a chain step ignores the module's metadata values (version,
+    # reqdPkgs), so canClimateData#18's floors never broke the chain and 4.3/14.4 got their pre-fix climate layers back.
+    , spades.cacheChaining = !isTRUE(as.logical(Sys.getenv("FS_NO_CACHECHAINING", "FALSE")))
     # 2026-09-13 (Eliot): event-level caching only. Module-internal Cache() calls wrote 74 GB in
     # 2 h on the previous pass, 57 GB of it never read back; the event caches (19 GB) are what
     # let a failed job resume. Needs SpaDES.core >= 3.2.1.9006 (option added in PR #447).
