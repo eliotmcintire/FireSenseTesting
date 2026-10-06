@@ -389,11 +389,8 @@ inSim <- SpaDES.project::setupProject(
     ## (start + 700 to start + 1000) showed only the last 300 years.
     burnSummaries = list(mode = "single", reps = .rep, #TODO confirm all params
                          summaryPeriod = as.integer(c(times$start, times$end)), summaryInterval = as.integer(saveAndPlotInterval)),
-    ## the module's timeSeriesTimes default (start + 601:650) is past the end of a run shorter than 650 years
-    ## (the 300-year fuelpos/set5/buffer2x tests); there, animate the last 50 years
-    NRV_summary = c(list(mode = "single", reps = .rep, #TODO: confirm if all prams okay
+    NRV_summary = list(mode = "single", reps = .rep, #TODO: confirm if all prams okay
                        summaryPeriod = as.integer(c(times$start, times$end)), summaryInterval = as.integer(saveAndPlotInterval)),
-                    if (times$end - times$start < 650) list(timeSeriesTimes = times$end - 49:0)),
     fireSense_summary = list(mode = "single"), 
     Biomass_summary = list(years = c(times$start, times$end), 
                            studyAreaName  = .ELFind,
