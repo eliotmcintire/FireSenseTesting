@@ -368,6 +368,17 @@ if (identical(Sys.getenv("FS_SET"), "fuelpos")) {
                       predict = TRUE, refitFitted = TRUE, repLedger = "_fuelpos_rep")
   message("FS_SET=fuelpos: 5.4 and 14.3, rep 61, 2020-2320, queue ", .phaseSetup$queue)
 }
+## 2026-10-06 (Eliot): 5.4's rep 5 (parameter set 5, the only set with positive fuel coefficients) under-burned
+## (0.66 vs 4.5 kha/yr observed) while sets 1-4 over-burned. Is that typical of set 5? Prediction only, from the
+## production 5.4 fit; reps 10, 15, 20, 25 all take set 5 (set = (rep - 1) %% 5 + 1); 300 years.
+if (identical(Sys.getenv("FS_SET"), "set5")) {
+  if (.phase1Only) stop("FS_SET=set5 has no phase-1 entry")
+  .times <- list(start = 2020, end = 2320)
+  .phaseSetup <- list(queue = "experiment_queue_set5_2026-10-06.rds", n_workers = 4,
+                      onlyELFs = "5.4", keepOrder = TRUE, reps = c(10L, 15L, 20L, 25L), GCM = "NRV",
+                      predict = TRUE, refitFitted = FALSE, predictFitted = TRUE)
+  message("FS_SET=set5: 5.4 reps 10/15/20/25 (parameter set 5), 2020-2320, queue ", .phaseSetup$queue)
+}
 if (identical(Sys.getenv("FS_SET"), "okanagan")) {
   .phaseSetup <- list(
     list(queue = "experiment_queue_caches_2026-09-26okan.rds", n_workers = 2,
