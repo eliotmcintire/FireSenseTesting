@@ -357,6 +357,17 @@ if (identical(Sys.getenv("FS_SET"), "improved")) {
                       refitFitted = TRUE, repLedger = "_improved_rep")
   message("FS_SET=improved: 13.1 x reps 51-54, queue ", .phaseSetup$queue)
 }
+## 2026-10-06 (Eliot): NRV runs over-burned 3-6x (5.4, 14.3): fits put the intercept near the spread ceiling with
+## negative fuel-biomass coefficients, so burned (low-biomass) stands spread most. Test fuel coefficients >= 0
+## (fireSense_spreadFit default bounds): refit 5.4 and 14.3 (rep 61, own ledger file) and simulate 300 years.
+if (identical(Sys.getenv("FS_SET"), "fuelpos")) {
+  if (.phase1Only) stop("FS_SET=fuelpos has no phase-1 entry")
+  .times <- list(start = 2020, end = 2320)
+  .phaseSetup <- list(queue = "experiment_queue_fuelpos_2026-10-06.rds", n_workers = 2,  # each fit is a 40-worker cluster
+                      onlyELFs = c("5.4", "14.3"), keepOrder = TRUE, reps = 61L, GCM = "NRV",
+                      predict = TRUE, refitFitted = TRUE, repLedger = "_fuelpos_rep")
+  message("FS_SET=fuelpos: 5.4 and 14.3, rep 61, 2020-2320, queue ", .phaseSetup$queue)
+}
 if (identical(Sys.getenv("FS_SET"), "okanagan")) {
   .phaseSetup <- list(
     list(queue = "experiment_queue_caches_2026-09-26okan.rds", n_workers = 2,
