@@ -86,6 +86,10 @@ inSim <- SpaDES.project::setupProject(
                      ## fireSense_dataPrepFit's spreadIntercept: a free intercept with centred covariates
                      ## (fireSenseUtils#131); on from 2026-10-05 (Eliot), starting with the NRV fits
                      .spreadIntercept = TRUE,
+                     ## scales fireSense_dataPrepFit's per-fire buffer area (areaMultiplier, default
+                     ## fireSenseUtils::multiplier); 1 = module default. 2026-10-06 test of whether buffer size caps
+                     ## the fit's view of runaway fires (expt.R FS_SET=buffer2x).
+                     .areaMultiplierScale = 1,
                      .cores = c("birds", # "biomass", # TEMPORARY 2026-09-29: Dominique is rerunning BiomeBGC on biomass; put it back when she is done
                                 "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
@@ -359,7 +363,8 @@ inSim <- SpaDES.project::setupProject(
     if (!is.na(.deoptimP) || !is.na(.deoptimCR))
       list(DEoptimControl = c(if (!is.na(.deoptimP)) list(p = .deoptimP), if (!is.na(.deoptimCR)) list(CR = .deoptimCR)))
     ),
-    fireSense_dataPrepFit = list(
+    ## areaMultiplier is added only when .areaMultiplierScale changes it: a NULL parameter would replace the default
+    fireSense_dataPrepFit = c(list(
       spreadIntercept = isTRUE(as.logical(.spreadIntercept)),
       # missingLCCgroup = c("nf_dryland"), # must match fuel class land cover
       .useCache = c(".inputObjects",
@@ -371,6 +376,8 @@ inSim <- SpaDES.project::setupProject(
                     "prepIgnitionFitData",
                     "run")
     ),
+      if (!isTRUE(all.equal(.areaMultiplierScale, 1)))
+        list(areaMultiplier = bquote(function(size) .(.areaMultiplierScale) * fireSenseUtils::multiplier(size)))),
     ## 2026-10-05 (Eliot): predict with the ELF's own fit only for now (fireSense_dataPrepPredict#26); blending with
     ## neighbouring ELFs (the module default) needs neighbour-labelled ELF rasters in single-ELF runs first
     fireSense_dataPrepPredict = list(blendNeighbourELFs = FALSE),

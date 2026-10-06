@@ -379,6 +379,18 @@ if (identical(Sys.getenv("FS_SET"), "set5")) {
                       predict = TRUE, refitFitted = FALSE, predictFitted = TRUE)
   message("FS_SET=set5: 5.4 reps 10/15/20/25 (parameter set 5), 2020-2320, queue ", .phaseSetup$queue)
 }
+## 2026-10-06 (Eliot): do the per-fire buffers hide runaway fires from the fit? Refit 5.4 with buffers 2x larger
+## (global.R .areaMultiplierScale = 2), same code as FS_SET=fuelpos (fuel coefficients >= 0), rep 71, 300 years.
+## Compare with fuelpos (normal buffers).
+if (identical(Sys.getenv("FS_SET"), "buffer2x")) {
+  if (.phase1Only) stop("FS_SET=buffer2x has no phase-1 entry")
+  .times <- list(start = 2020, end = 2320)
+  .areaMultiplierScale <- 2
+  .phaseSetup <- list(queue = "experiment_queue_buffer2x_2026-10-06.rds", n_workers = 1,
+                      onlyELFs = "5.4", keepOrder = TRUE, reps = 71L, GCM = "NRV",
+                      predict = TRUE, refitFitted = TRUE, repLedger = "_buffer2x_rep")
+  message("FS_SET=buffer2x: 5.4 rep 71, buffers x2, 2020-2320, queue ", .phaseSetup$queue)
+}
 if (identical(Sys.getenv("FS_SET"), "okanagan")) {
   .phaseSetup <- list(
     list(queue = "experiment_queue_caches_2026-09-26okan.rds", n_workers = 2,
@@ -409,6 +421,9 @@ if (exists(".modules"))
   expt <- cbind(expt, .modules = I(lapply(seq_len(NROW(expt)), function(x) .modules)))
 if (exists(".times"))
   expt <- cbind(expt, .times = I(lapply(seq_len(NROW(expt)), function(x) .times)))
+## per-job column, so each worker's global.R sees it (FS_SET=buffer2x)
+if (exists(".areaMultiplierScale"))
+  expt$.areaMultiplierScale <- .areaMultiplierScale
 
 # Only fit what the ledger says is missing -- unless this phase is deliberately REFITTING ELFs whose
 # stored parameters are stale because their inputs changed (new land cover, new vegetation parameters,
