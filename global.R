@@ -512,11 +512,16 @@ if (!identical(.terraBefore, .terraAfter))
 
 
 # SAVE AFTERWARDS
-if (FALSE) {
-  SpaDES.project::outSaveTarUpload(
-    runName = inSim$runName, 
+## On from 2026-10-06 (Eliot): multi.R reads each rep's saved, tarred simList from Drive. Guarded so a save or
+## upload failure only warns; it cannot turn a finished run into a failed job.
+if (exists("simOut", inherits = FALSE) && is(simOut, "simList")) {
+  tryCatch(SpaDES.project::outSaveTarUpload(
+    runName = inSim$runName,
     sim = simOut,
-    gFolder = inSim$.uploadGSdir)
+    gFolder = inSim$.uploadGSdir),
+    error = function(e) warning("outSaveTarUpload failed: ", conditionMessage(e), call. = FALSE))
+}
+if (FALSE) {
   
   if (FALSE) {
     prepInputs(targetFile = "fireSenseParams.rds", url = "https://drive.google.com/file/d/1-iD7Pj4cX3kag4TEHeGxGgW42Rf0ag2l/view?usp=drivesdk",
