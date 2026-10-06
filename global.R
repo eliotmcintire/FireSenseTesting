@@ -371,6 +371,9 @@ inSim <- SpaDES.project::setupProject(
                     "prepIgnitionFitData",
                     "run")
     ),
+    ## 2026-10-05 (Eliot): predict with the ELF's own fit only for now (fireSense_dataPrepPredict#26); blending with
+    ## neighbouring ELFs (the module default) needs neighbour-labelled ELF rasters in single-ELF runs first
+    fireSense_dataPrepPredict = list(blendNeighbourELFs = FALSE),
     fireSense_ignitionFit = list(
       .useCache = c(".inputObjects", "init", "prepIgnitionFitData", "run")
     ),
