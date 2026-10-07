@@ -282,7 +282,7 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
   if (!.nrvWave %in% c("1", "2")) stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1) or 2 (reps 2-5)")
   .nrvELFs <- strsplit(Sys.getenv("FS_NRV_ELFS", unset = "14.4,4.1,4.2.2"), ",")[[1]]
   .nrvTag <- if (identical(.nrvELFs, c("14.4", "4.1", "4.2.2"))) "2026-10-01" else
-    paste0("2026-10-06m_", paste(.nrvELFs, collapse = "-"))  # m: 10x buffers + runaway scored as 2x its own buffer (fireSenseUtils#133, fireSense_spreadFit#69), fuel >= 0 (#68); l: as k plus fireSense_ELFs borderBuffer (5 km from the US land border; fireSense_ELFs#24); k: 4.3 and 14.4 without cache chaining (g1: inflectionPoint1 fixed at 1)
+    paste0("2026-10-06n_", paste(.nrvELFs, collapse = "-"))  # n: as m, and fires whose 10x buffer cannot reach its target are kept with the space available (fireSenseUtils#135); m: 10x buffers + runaway scored as 2x its own buffer (fireSenseUtils#133, fireSense_spreadFit#69), fuel >= 0 (#68); l: as k plus fireSense_ELFs borderBuffer (5 km from the US land border; fireSense_ELFs#24); k: 4.3 and 14.4 without cache chaining (g1: inflectionPoint1 fixed at 1)
   ## 2026-10-06 (Eliot): the 5.4 hindcast showed fits that match observed area inside the per-fire buffers run away on
   ## the whole ELF; NRV refits use buffers 10x larger, and the objective scores a runaway as 2x its own buffer area
   .areaMultiplierScale <- 10
