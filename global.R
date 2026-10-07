@@ -111,9 +111,9 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/fireSense@development" # parent: the 9 fireSense modules (ELFs, dataPrepFit, ignitionFit, spreadFit, dataPrepPredict, ignitionPredict, spreadPredict, burn, summary)
                                   
                                   # biomass modules
-                                  , "PredictiveEcology/localEcozones@main" # ecoregionLayer: BEC zones in BC, AB Natural Subregions, ecodistrict x 500 m elevation band elsewhere
+                                  , "PredictiveEcology/localEcozones@noElevationBands" # ecoregionLayer: BEC zones in BC, AB Natural Subregions, plain ecodistricts elsewhere (localEcozones#1)
                                   , "PredictiveEcology/Biomass_borealDataPrep@modsForFireSense"
-                                  , "PredictiveEcology/Biomass_speciesFactorial@development"
+                                  , "PredictiveEcology/Biomass_speciesFactorial@modsForFireSense" # #18: factorial tables written once to destinationPathShared, hard-linked into outputPath
                                   , "PredictiveEcology/Biomass_speciesParameters@development"
                                   , "PredictiveEcology/Biomass_speciesData@development"
                                   , "PredictiveEcology/Biomass_regeneration@development"

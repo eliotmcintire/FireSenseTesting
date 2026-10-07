@@ -18,52 +18,12 @@ if (!isTRUE(as.logical(Sys.getenv("FS_NO_INSTALL", unset = "FALSE")))) {
 if (!require("pak")) install.packages("pak")
  pak::pak(c("PredictiveEcology/Require@development",
             "PredictiveEcology/SpaDES.project@development",
-            # reproducible PRs #601 (no restore into a foreign temp dir) and #602 (useCache = FALSE
-            # bypass) merged 2026-09-14; back on development.
             "PredictiveEcology/reproducible@development",
-            # SpaDES.core PRs #449, #450, #451, #452 merged 2026-09-14; back on development.
-            # LOCAL INTEGRATION (2026-09-17, Eliot: no merges to development until he has met achubaty and
-            # ceresbarros). These two are PR BRANCHES, not development, and every launch reinstalls from
-            # whatever is listed here -- pinning @development silently reverted them once already.
-            #   SpaDES.core#456: an event's cacheId no longer depends on outputs(sim)$arguments' class
-            #   2026-09-18: #456 merged (4663c1c) and its branch deleted -> the branch pin broke pak.
-            #   development == the branch's code (compare: 1 merge commit, 0 files).
             "PredictiveEcology/SpaDES.core@development",
-            # fireSenseUtils carries the objective function; the `packages` list below
-            # pins it with a floor (>= 0.2.0), so once any 0.2.x was installed it never
-            # moved again. That is why the fits ran without the objFunSpread adTest fix
-            # from 2026-09-07. Track development here instead.
-            #   2026-10-02: held-out 02a ran on the PR branch of fireSenseUtils#127 (merged, 0.2.3.9079).
-            ## fireSenseUtils: installed below, on its own
-            # SpaDES.tools carries the spread() hot path. It is otherwise pulled in
-            # through setupProject's `packages` list with a version FLOOR, which never
-            # moves once any satisfying version is installed -- the same reason
-            # fireSenseUtils sat on a stale build. Track development here instead.
             "PredictiveEcology/SpaDES.tools@development",
-            # Same floor-only gap as the two above: LandR, clusters, climateData and
-            # quickPlot all arrive through setupProject's `packages` list with a `>=`
-            # floor, so a satisfying build already on the machine is never replaced and
-            # merged fixes never reach a worker. LandR in particular carries the
-            # terraOptions restore (#213) and the SCANFI drive fallback; clusters carries
-            # the PSOCK host handling this run depends on. clusters got a development branch
-            # on 2026-09-28; track it like the other packages.
-            #   LandR#228 merged 2026-09-17, so development now carries prepInputs_CWIM() and
-            #   wetlandToLCC(); it also carries LandR#236, without which every ELF dies in
-            #   Biomass_speciesData:init ("cropTo must be a Raster*..."). Do NOT pin LandR back to a
-            #   branch: this pak block runs on EVERY launch and would reinstall over both fixes.
-            #   2026-10-02: @modsForFireSense (development + our open PRs; see INTEGRATION BRANCHES below).
-            #   Installing @development here and @modsForFireSense after it swapped LandR twice on every
-            #   launch, under any run already going from this library.
             "PredictiveEcology/LandR@modsForFireSense",
             "PredictiveEcology/clusters@development",
-            #   filelock: CRAN/RSPM 1.0.3 leaks one file descriptor per failed timed lock attempt, and
-            #   reproducible retries a held cache lock every 2.5 s. A fold waiting ~1.5 h on its twin's
-            #   inputs reached ~2000 fds, and mclapply then failed with "file descriptor is too large for
-            #   select()" (held-out 4.2.2, 2026-09-28). The fork (>= 1.0.3.9001) closes it.
             "PredictiveEcology/filelock@main",
-            #   climateData PRs #22-#25 all merged 2026-09-18, so development now carries the
-            #   years argument to climateLayers(), latestHistoricalYear(), the tile-dir regexp
-            #   fix and the hms Imports declaration. Back on @development as of 2026-09-18.
             "PredictiveEcology/climateData@modsForFireSense",
             "PredictiveEcology/quickPlot@development"), ask = FALSE)
 ## fireSenseUtils on its own, without dependencies (they are all in the list above). Its Remotes say
@@ -282,7 +242,7 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
   if (!.nrvWave %in% c("1", "2")) stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1) or 2 (reps 2-5)")
   .nrvELFs <- strsplit(Sys.getenv("FS_NRV_ELFS", unset = "14.4,4.1,4.2.2"), ",")[[1]]
   .nrvTag <- if (identical(.nrvELFs, c("14.4", "4.1", "4.2.2"))) "2026-10-01" else
-    paste0("2026-10-06n_", paste(.nrvELFs, collapse = "-"))  # n: as m, and fires whose 10x buffer cannot reach its target are kept with the space available (fireSenseUtils#135); m: 10x buffers + runaway scored as 2x its own buffer (fireSenseUtils#133, fireSense_spreadFit#69), fuel >= 0 (#68); l: as k plus fireSense_ELFs borderBuffer (5 km from the US land border; fireSense_ELFs#24); k: 4.3 and 14.4 without cache chaining (g1: inflectionPoint1 fixed at 1)
+    paste0("2026-10-07a_", paste(.nrvELFs, collapse = "-"))  # 2026-10-07a: Poisson ignition/escape (fireSense_ignitionFit#38), NRV climate draws 1985-2024, no years in paths, outputs on /mnt/fast/outputs, BEC zones (localEcozones#1, no elevation bands) + Biomass_speciesFactorial#18 + Biomass_speciesParameters 40aa755 (balanceGrowth), fit ignores local ecoregions (fireSense_dataPrepFit#62), bufferToArea frontier (fireSenseUtils#136, 0.2.3.9087); n: as m, and fires whose 10x buffer cannot reach its target are kept with the space available (fireSenseUtils#135); m: 10x buffers + runaway scored as 2x its own buffer (fireSenseUtils#133, fireSense_spreadFit#69), fuel >= 0 (#68); l: as k plus fireSense_ELFs borderBuffer (5 km from the US land border; fireSense_ELFs#24); k: 4.3 and 14.4 without cache chaining (g1: inflectionPoint1 fixed at 1)
   ## 2026-10-06 (Eliot): the 5.4 hindcast showed fits that match observed area inside the per-fire buffers run away on
   ## the whole ELF; NRV refits use buffers 10x larger, and the objective scores a runaway as 2x its own buffer area
   .areaMultiplierScale <- 10
