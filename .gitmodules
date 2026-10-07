@@ -60,3 +60,11 @@
 	path = modules/fireSense
 	url = https://github.com/PredictiveEcology/fireSense.git
 	branch = development
+[submodule "modules/localEcozones"]
+	path = modules/localEcozones
+	url = https://github.com/PredictiveEcology/localEcozones
+	branch = main
+[submodule "modules/Biomass_speciesFactorial"]
+	path = modules/Biomass_speciesFactorial
+	url = https://github.com/PredictiveEcology/Biomass_speciesFactorial
+	branch = development

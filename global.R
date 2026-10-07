@@ -111,7 +111,9 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/fireSense@development" # parent: the 9 fireSense modules (ELFs, dataPrepFit, ignitionFit, spreadFit, dataPrepPredict, ignitionPredict, spreadPredict, burn, summary)
                                   
                                   # biomass modules
+                                  , "PredictiveEcology/localEcozones@main" # ecoregionLayer: BEC zones in BC, AB Natural Subregions, ecodistrict x 500 m elevation band elsewhere
                                   , "PredictiveEcology/Biomass_borealDataPrep@modsForFireSense"
+                                  , "PredictiveEcology/Biomass_speciesFactorial@development"
                                   , "PredictiveEcology/Biomass_speciesParameters@development"
                                   , "PredictiveEcology/Biomass_speciesData@development"
                                   , "PredictiveEcology/Biomass_regeneration@development"
@@ -381,6 +383,11 @@ inSim <- SpaDES.project::setupProject(
     ## 2026-10-05 (Eliot): predict with the ELF's own fit only for now (fireSense_dataPrepPredict#26); blending with
     ## neighbouring ELFs (the module default) needs neighbour-labelled ELF rasters in single-ELF runs first
     fireSense_dataPrepPredict = list(blendNeighbourELFs = FALSE),
+    ## Dominique Caron's settings (2026-10-02), as ~/zonationDiag: build the species-trait factorial here rather
+    ## than downloading the prebuilt one; balanceGrowth = Biomass_speciesParameters#70
+    Biomass_speciesFactorial = list(.plots = NULL, runExperiment = TRUE, factorialSize = "medium"),
+    Biomass_speciesParameters = list(standAgesForFitting = c(0, 100), speciesFittingApproach = "focal",
+                                     balanceGrowth = TRUE),
     fireSense_ignitionFit = list(
       .useCache = c(".inputObjects", "init", "prepIgnitionFitData", "run")
     ),
