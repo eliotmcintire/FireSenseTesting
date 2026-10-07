@@ -39,7 +39,7 @@ inSim <- SpaDES.project::setupProject(
                      .ELFind = "4.3",
                      .SSP = 370,
                      .GCM = "CNRM-ESM2-1", # "NRV"
-                     .samplingRange = 1990:2020, # vector
+                     .samplingRange = 1985:2024, # vector; NRV climate draws, the same years as the fits (Eliot 2026-10-07)
                      # Fire years for FITTING. 1985 is the first SCANFI V2 year; the end is
                      # the last year every input can supply, which is climate:
                      # climateData::latestHistoricalYear() is 2024 (NBAC reaches 2025, the
@@ -132,19 +132,19 @@ inSim <- SpaDES.project::setupProject(
   # into a directory name -- that is where
   # `outputs/if_exists(".studyAreaName")_.studyAreaName_.ELFind/...` came from.
   # Referring to `.ELFind` directly at each use site is the form that works.
-  # The study area here IS the ELF being fit, and the name must stay the bare ELF
-  # id: fireSense_spreadFit keys the shared cloud fit ledger on it, and
-  # fireSense_dataPrepFit matches those keys against the ids on rasterToMatchELF.
+  # (The fit ledgers key on `sim$.ELFind`, not on `.studyAreaName`.)
   # useGit = "eliotmcintire",
   # Restart = TRUE,
   overwrite = FALSE, #!SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
-  paths = list(outputPath = SpaDES.project::pathBuild(.ELFind, .samplingRange, .GCM, .SSP, .rep),
+  # The climate sampling years are not in the paths (Eliot 2026-10-07); climateYearRecord in each run's
+  # outputs records the years drawn.
+  paths = list(outputPath = SpaDES.project::pathBuild(.ELFind, .GCM, .SSP, .rep),
                # cachePath = "/mnt/shared_cache/cache",
                cachePath = "/mnt/fast/cache",
                scratchPath = "/mnt/fast/scratch",
                # use inputPath on the shared drive, so destinationPathShared works
                # inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .studyAreaName, .samplingRange, .GCM, .SSP, .rep)),
-               inputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/inputs", .ELFind, .samplingRange, .GCM, .SSP, .rep)),
+               inputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/inputs", .ELFind, .GCM, .SSP, .rep)),
   runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
     gsub(pattern = "outputs_", replacement = ""),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
