@@ -554,11 +554,11 @@ workers <- SpaDES.project::experimentTmux(
   n_workers           = .phaseSetup$n_workers,   # phase 1: memfrac = 0 keeps per-worker memory down; measured 90th-pct peak 37.7 GB
   queue_path          = queue_path,
   delay_before_source = 120,
-  statusCalculate = quote({dd <- dir(file.path("outputs", runName), recursive = TRUE, full.names = TRUE)
+  statusCalculate = quote({dd <- dir(file.path("/mnt/fast/outputs", runName), recursive = TRUE, full.names = TRUE)
                                   ee <- grep(value = TRUE, pattern = "objFun.*png$", dd)
                                   fi <- file.info(ee)
                                   tail(fi[order(fi$mtime),], 1) |> rownames() |> dirname()}),
-  folderWithIterInFilename = quote({dd <- dir(file.path("outputs", runName), recursive = TRUE, full.names = TRUE)
+  folderWithIterInFilename = quote({dd <- dir(file.path("/mnt/fast/outputs", runName), recursive = TRUE, full.names = TRUE)
                                    ee <- grep(value = TRUE, pattern = "hists", dd)
                                    fi <- file.info(ee)
                                    tail(fi[order(fi$mtime),], 1) |> rownames() |> dirname()}),

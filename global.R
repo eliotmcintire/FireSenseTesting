@@ -138,15 +138,16 @@ inSim <- SpaDES.project::setupProject(
   overwrite = FALSE, #!SpaDES.project::machine("A159568") && SpaDES.project::user("emcintir"), # redownload any updates
   # The climate sampling years are not in the paths (Eliot 2026-10-07); climateYearRecord in each run's
   # outputs records the years drawn.
-  paths = list(outputPath = SpaDES.project::pathBuild(.ELFind, .GCM, .SSP, .rep),
+  # Outputs on /mnt/fast, the disk of destinationPathShared (/mnt/fast/data), so prepInputs can hard-link shared
+  # files (e.g. Biomass_speciesFactorial's tables) into each run instead of copying them (Eliot 2026-10-07).
+  paths = list(outputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/outputs", .ELFind, .GCM, .SSP, .rep),
                # cachePath = "/mnt/shared_cache/cache",
                cachePath = "/mnt/fast/cache",
                scratchPath = "/mnt/fast/scratch",
                # use inputPath on the shared drive, so destinationPathShared works
                # inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .studyAreaName, .samplingRange, .GCM, .SSP, .rep)),
                inputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/inputs", .ELFind, .GCM, .SSP, .rep)),
-  runName = gsub("/", "_", fs::path_rel(paths$outputPath)) |>
-    gsub(pattern = "outputs_", replacement = ""),
+  runName = gsub("/", "_", fs::path_rel(paths$outputPath, "/mnt/fast/outputs")),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
