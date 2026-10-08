@@ -390,7 +390,10 @@ inSim <- SpaDES.project::setupProject(
     Biomass_speciesParameters = list(standAgesForFitting = c(0, 100), speciesFittingApproach = "focal",
                                      balanceGrowth = TRUE),
     fireSense_ignitionFit = list(
-      .useCache = c(".inputObjects", "init", "prepIgnitionFitData", "run")
+      .useCache = c(".inputObjects", "init", "prepIgnitionFitData", "run"),
+      ## a refit queue refits ignition and escape too, not only spread: without this, the NRV 2026-10-08a
+      ## refits reused the old reg:tweedie ignition/escape fits from the ledger (fireSense_ignitionFit#38)
+      refitExisting = .refitExisting
     ),
     ## Summarise every saved map, from start(sim) (year 0) to the end, every 100 years: the time series shows
     ## whether the landscape has stopped changing directionally (Eliot, 2026-10-01). The module default
