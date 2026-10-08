@@ -15,8 +15,9 @@
 ## The DEoptim generations cached since `since`, chained into fits.
 ## Returns list(fits = one row per fit, gens = one row per fit and generation (objective quantiles),
 ## params = one row per fit, generation and parameter (quantiles and the best member's value)).
+## `labelledOnly`: drop fits whose ELF is unknown (fits from earlier campaigns, whose panes are gone).
 fitProgress <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 2 * 86400,
-                        tmuxSession = NULL, runningWithin = 15 * 60, state = new.env()) {
+                        tmuxSession = NULL, runningWithin = 15 * 60, labelledOnly = TRUE, state = new.env()) {
   stopifnot(requireNamespace("data.table"), requireNamespace("qs2"), requireNamespace("reproducible"))
   dir <- file.path(cachePath, "cacheOutputs")
   db <- list.files(dir, pattern = "\\.dbFile\\.qs2$", full.names = TRUE)
@@ -58,26 +59,35 @@ fitProgress <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 2 * 
   chains <- chains[lengths(chains) > 1L]
   if (!length(chains)) return(list(fits = data.table::data.table(), gens = NULL, params = NULL))
 
+  ## a fit is named by its first entry, which does not change as it grows. Its ELF, once seen in a pane,
+  ## is kept in `state`: the pane's output scrolls past the fit once the pane moves on to predicting.
+  names(chains) <- vapply(chains, `[`, "", 1L)
   elfOf <- .fitElfFromTmux(tmuxSession, unlist(chains))
-  fits <- data.table::rbindlist(lapply(seq_along(chains), function(k) {
-    ch <- chains[[k]]; e <- ent[ch]
+  if (is.null(state$elf)) state$elf <- character()
+  for (k in names(chains)) {
+    elf <- unique(stats::na.omit(elfOf[chains[[k]]]))
+    if (length(elf)) state$elf[k] <- elf[1]
+  }
+  if (labelledOnly) chains <- chains[names(chains) %in% names(state$elf)]
+  if (!length(chains)) return(list(fits = data.table::data.table(), gens = NULL, params = NULL))
+  fits <- data.table::rbindlist(lapply(names(chains), function(k) {
+    e <- ent[chains[[k]]]
     last <- e[[length(e)]]
-    elf <- unique(stats::na.omit(elfOf[ch]))
     started <- e[[1]]$time
     data.table::data.table(
-      fit = paste0("fit", k), elf = if (length(elf)) elf[1] else NA_character_,
+      fit = k, elf = if (k %in% names(state$elf)) state$elf[[k]] else NA_character_,
       started = started, updated = last$time, firstGen = e[[1]]$gen, gen = last$gen,
       best = min(last$popval),
       status = if (difftime(Sys.time(), last$time, units = "secs") <= runningWithin) "RUNNING" else "STOPPED")
   }))
   fits[is.na(elf), elf := paste("fit started", format(started, "%m-%d %H:%M"))]
-  gens <- data.table::rbindlist(lapply(seq_along(chains), function(k) data.table::rbindlist(lapply(ent[chains[[k]]], function(x)
-    data.table::data.table(fit = paste0("fit", k), gen = x$gen, best = min(x$popval),
+  gens <- data.table::rbindlist(lapply(names(chains), function(k) data.table::rbindlist(lapply(ent[chains[[k]]], function(x)
+    data.table::data.table(fit = k, gen = x$gen, best = min(x$popval),
                            q10 = stats::quantile(x$popval, 0.1, names = FALSE),
                            med = stats::median(x$popval))))))
-  params <- data.table::rbindlist(lapply(seq_along(chains), function(k) data.table::rbindlist(lapply(ent[chains[[k]]], function(x) {
+  params <- data.table::rbindlist(lapply(names(chains), function(k) data.table::rbindlist(lapply(ent[chains[[k]]], function(x) {
     p <- x$pop; nm <- colnames(p) %||% x$names %||% paste0("par", seq_len(ncol(p)))
-    data.table::data.table(fit = paste0("fit", k), gen = x$gen, param = nm,
+    data.table::data.table(fit = k, gen = x$gen, param = nm,
                            best = p[which.min(x$popval), ],
                            q10 = apply(p, 2, stats::quantile, 0.1, names = FALSE),
                            med = apply(p, 2, stats::median),
@@ -97,7 +107,7 @@ fitProgress <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 2 * 
   for (pn in strsplit(panes, "\t")) {
     if (length(pn) < 2 || !grepl("-[0-9.]+$", pn[2])) next
     elf <- sub(".*-", "", pn[2])
-    txt <- suppressWarnings(system2("tmux", c("capture-pane", "-p", "-J", "-S", "-300", "-t", pn[1]), stdout = TRUE))
+    txt <- suppressWarnings(system2("tmux", c("capture-pane", "-p", "-J", "-S", "-", "-t", pn[1]), stdout = TRUE))
     ## "Saved! Cache file: <id>.qs2; fn: DEoptimForCache__<n>" or "Object to retrieve (fn: DEoptimForCache__<n>, <id>.qs2)"
     lns <- grep("DEoptimForCache__", txt, value = TRUE)
     seen <- unlist(regmatches(lns, gregexpr("[0-9a-f]{16}(?=\\.qs2)", lns, perl = TRUE)))
@@ -107,8 +117,8 @@ fitProgress <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 2 * 
   out
 }
 
-## The Shiny dashboard: a summary table, then the objective by generation for each fit and its
-## parameters by generation. `refreshMinutes`: how often it re-reads the cache.
+## The Shiny dashboard: a summary table, then a card per fit with its objective by generation and, under
+## a collapsed section, its parameters by generation. `refreshMinutes`: how often it re-reads the cache.
 fitDashboard <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 2 * 86400, tmuxSession = NULL,
                          refreshMinutes = 2, launch.browser = getOption("shiny.launch.browser", interactive())) {
   shiny::runApp(fitDashboardApp(cachePath, since, tmuxSession, refreshMinutes), launch.browser = launch.browser)
@@ -121,10 +131,9 @@ fitDashboardApp <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 
   state <- new.env()
   ui <- shiny::fluidPage(
     shiny::titlePanel("FireSense spread fits"),
-    shiny::fluidRow(shiny::column(4, shiny::uiOutput("pick")), shiny::column(8, shiny::textOutput("checked"))),
+    shiny::textOutput("checked"),
     shiny::tableOutput("fits"),
-    shiny::plotOutput("objective", height = "420px"),
-    shiny::plotOutput("params", height = "640px"))
+    shiny::uiOutput("cards"))
   server <- function(input, output, session) {
     data <- shiny::reactive({
       shiny::invalidateLater(refreshMinutes * 60 * 1000)
@@ -132,46 +141,58 @@ fitDashboardApp <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 
     })
     output$checked <- shiny::renderText(paste("read", format(Sys.time(), "%H:%M:%S"), "- refreshes every",
                                               refreshMinutes, "min"))
-    output$pick <- shiny::renderUI({
-      f <- data()$fits
-      shiny::selectInput("fit", "Fit", choices = stats::setNames(f$fit, paste(f$elf, f$status)),
-                         selected = shiny::isolate(input$fit))
-    })
     output$fits <- shiny::renderTable({
       f <- data.table::copy(data()$fits)
-      if (!nrow(f)) return(data.frame(note = "No DEoptim generations cached in this period."))
+      if (!nrow(f)) return(data.frame(note = "No DEoptim generations of a known ELF cached in this period."))
       f[, `:=`(started = format(started, "%m-%d %H:%M"), updated = format(updated, "%m-%d %H:%M"))]
       f[, .(ELF = elf, status, generation = gen, `best objective` = round(best, 1), started, updated)]
     })
-    output$objective <- shiny::renderPlot({
-      d <- data(); shiny::req(input$fit, d$gens)
-      g <- d$gens[fit == input$fit][order(gen)]
-      shiny::req(nrow(g))
-      ## the y range stops at the 90th percentile, so the first, very poor generations do not flatten it
-      yl <- c(min(g$best), stats::quantile(c(g$med, g$q10), 0.9))
-      graphics::matplot(g$gen, g[, .(best, q10, med)], type = "l", lty = c(1, 2, 1), lwd = c(2, 1.2, 1.6),
-                        col = c("#b5480e", "#1d6fa5", "grey20"), ylim = yl, xlab = "generation",
-                        ylab = "objective (lower is better)",
-                        main = paste(d$fits[fit == input$fit]$elf, "- objective by generation"))
-      graphics::legend("topright", c("best member", "10th percentile", "median"), lty = c(1, 2, 1),
-                       col = c("#b5480e", "#1d6fa5", "grey20"), bty = "n")
+    ## one card per fit; the parameter plot is drawn when its section is first opened (Shiny does not
+    ## draw hidden outputs; "shown" makes it check again)
+    output$cards <- shiny::renderUI({
+      f <- data()$fits
+      shiny::fluidRow(lapply(seq_len(nrow(f)), function(i) shiny::column(
+        4, shiny::tags$h4(paste(f$elf[i], "-", tolower(f$status[i]), "- generation", f$gen[i])),
+        shiny::plotOutput(paste0("obj_", f$fit[i]), height = "260px"),
+        shiny::tags$details(ontoggle = "$(this).trigger('shown')",
+                            shiny::tags$summary("parameters by generation"),
+                            shiny::plotOutput(paste0("par_", f$fit[i]), height = "520px")))))
     })
-    output$params <- shiny::renderPlot({
-      d <- data(); shiny::req(input$fit, d$params)
-      p <- d$params[fit == input$fit][order(gen)]
-      shiny::req(nrow(p))
-      nms <- unique(p$param)
-      graphics::par(mfrow = c(ceiling(length(nms) / 4), 4), mar = c(3, 3, 2, 1), mgp = c(1.8, 0.6, 0))
-      for (nm in nms) {
-        q <- p[param == nm]
-        graphics::plot(q$gen, q$med, type = "n", ylim = range(q$q10, q$q90, q$best), main = nm,
-                       xlab = "generation", ylab = "")
-        graphics::polygon(c(q$gen, rev(q$gen)), c(q$q10, rev(q$q90)), col = "#1d6fa533", border = NA)
-        graphics::lines(q$gen, q$med, col = "grey20", lwd = 1.4)
-        graphics::lines(q$gen, q$best, col = "#b5480e", lwd = 1.4)
-        if (min(q$q10) < 0 && max(q$q90) > 0) graphics::abline(h = 0, lty = 3, col = "grey50")
-      }
+    shiny::observe({
+      d <- data()
+      for (k in d$fits$fit) local({
+        k <- k
+        output[[paste0("obj_", k)]] <- shiny::renderPlot(.plotObjective(data()$gens[fit == k][order(gen)]))
+        output[[paste0("par_", k)]] <- shiny::renderPlot(.plotParams(data()$params[fit == k][order(gen)]))
+      })
     })
   }
   shiny::shinyApp(ui, server)
+}
+
+.plotObjective <- function(g) {
+  if (!nrow(g)) return(invisible())
+  ## the y range stops at the 90th percentile, so the first, very poor generations do not flatten it
+  yl <- c(min(g$best), stats::quantile(c(g$med, g$q10), 0.9))
+  graphics::par(mar = c(3, 3.2, 0.5, 0.5), mgp = c(1.9, 0.6, 0))
+  graphics::matplot(g$gen, g[, .(best, q10, med)], type = "l", lty = c(1, 2, 1), lwd = c(2, 1.2, 1.6),
+                    col = c("#b5480e", "#1d6fa5", "grey20"), ylim = yl, xlab = "generation",
+                    ylab = "objective (lower is better)")
+  graphics::legend("topright", c("best member", "10th percentile", "median"), lty = c(1, 2, 1),
+                   col = c("#b5480e", "#1d6fa5", "grey20"), bty = "n", cex = 0.8)
+}
+
+.plotParams <- function(p) {
+  if (!nrow(p)) return(invisible())
+  nms <- unique(p$param)
+  graphics::par(mfrow = c(ceiling(length(nms) / 2), 2), mar = c(3, 3, 2, 1), mgp = c(1.8, 0.6, 0))
+  for (nm in nms) {
+    q <- p[param == nm]
+    graphics::plot(q$gen, q$med, type = "n", ylim = range(q$q10, q$q90, q$best), main = nm,
+                   xlab = "generation", ylab = "")
+    graphics::polygon(c(q$gen, rev(q$gen)), c(q$q10, rev(q$q90)), col = "#1d6fa533", border = NA)
+    graphics::lines(q$gen, q$med, col = "grey20", lwd = 1.4)
+    graphics::lines(q$gen, q$best, col = "#b5480e", lwd = 1.4)
+    if (min(q$q10) < 0 && max(q$q90) > 0) graphics::abline(h = 0, lty = 3, col = "grey50")
+  }
 }
