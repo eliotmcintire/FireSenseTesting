@@ -78,7 +78,8 @@ fitProgress <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 2 * 
       fit = k, elf = if (k %in% names(state$elf)) state$elf[[k]] else NA_character_,
       started = started, updated = last$time, firstGen = e[[1]]$gen, gen = last$gen,
       best = min(last$popval),
-      status = if (difftime(Sys.time(), last$time, units = "secs") <= runningWithin) "RUNNING" else "STOPPED")
+      status = .fitStatus(last$time, runningWithin, if (k %in% names(state$elf)) state$elf[[k]] else NA,
+                          attr(elfOf, "fitting"), tmuxSeen = length(elfOf) > 0))
   }))
   fits[is.na(elf), elf := paste("fit started", format(started, "%m-%d %H:%M"))]
   gens <- data.table::rbindlist(lapply(names(chains), function(k) data.table::rbindlist(lapply(ent[chains[[k]]], function(x)
@@ -96,10 +97,20 @@ fitProgress <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 2 * 
   list(fits = fits[order(elf)], gens = gens, params = params)
 }
 
+## RUNNING: a generation in the last `runningWithin` seconds and its pane still fitting. FINISHED: its pane
+## has moved on to the simulation. STOPPED: neither (the pane is gone, or the fit ended without finishing).
+## The last generation of a finished fit is recent for a while, so the pane decides.
+.fitStatus <- function(lastTime, runningWithin, elf, fitting, tmuxSeen) {
+  recent <- difftime(Sys.time(), lastTime, units = "secs") <= runningWithin
+  if (!is.na(elf) && tmuxSeen && !elf %in% fitting) return("FINISHED")
+  if (recent) "RUNNING" else "STOPPED"
+}
+
 ## The ELF of each cache entry named in a tmux pane's recent output: the pane title ends in the ELF
 ## (experimentTmux names worker panes "<host>-<pid>-<ELF>"). NA for entries no pane names.
 .fitElfFromTmux <- function(tmuxSession, ids) {
   out <- stats::setNames(rep(NA_character_, length(ids)), ids)
+  attr(out, "fitting") <- character()     # ELFs whose pane is still fitting, not predicting
   if (!nzchar(Sys.which("tmux"))) return(out)
   args <- c("list-panes", if (is.null(tmuxSession)) "-a" else c("-s", "-t", tmuxSession), "-F", shQuote("#{pane_id}\t#{pane_title}"))
   panes <- suppressWarnings(system2("tmux", args, stdout = TRUE, stderr = FALSE))
@@ -113,6 +124,10 @@ fitProgress <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 2 * 
     seen <- unlist(regmatches(lns, gregexpr("[0-9a-f]{16}(?=\\.qs2)", lns, perl = TRUE)))
     hit <- intersect(seen, ids)
     out[hit] <- elf
+    ## the pane's last timestamped lines are DEoptim's while it fits; after the fit they are the simulation's
+    recent <- utils::tail(grep("^[A-Z][a-z]{2}[0-9]{2} ", txt, value = TRUE), 20)
+    if (any(grepl("DEoptim|evaluations:|Iteration [0-9]+ done|Re-scored", recent)))
+      attr(out, "fitting") <- c(attr(out, "fitting"), elf)
   }
   out
 }
@@ -126,11 +141,20 @@ fitDashboard <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 2 *
 
 ## The app fitDashboard() runs
 fitDashboardApp <- function(cachePath = "/mnt/fast/cache", since = Sys.time() - 2 * 86400, tmuxSession = NULL,
-                            refreshMinutes = 2) {
+                            refreshMinutes = 2, description = paste(
+                              "One card per spread fit (DEoptim): the objective of the best member, the 10th percentile",
+                              "and the median of the population at each generation; lower is better. The y axis stops at",
+                              "the 90th percentile, so the first, very poor generations do not flatten it. Open",
+                              "'parameters by generation' for each parameter's 10th-90th percentile band (blue), median",
+                              "(black) and best member (orange). Running: a generation in the last 15 min. Finished:",
+                              "the fit is done and its run has moved on to the simulation.")) {
   stopifnot(requireNamespace("shiny"))
   state <- new.env()
   ui <- shiny::fluidPage(
+    ## Bootstrap hides the disclosure triangle of <summary>
+    shiny::tags$style("details > summary { display: list-item; cursor: pointer; color: #5d655f; }"),
     shiny::titlePanel("FireSense spread fits"),
+    shiny::p(description),
     shiny::textOutput("checked"),
     shiny::tableOutput("fits"),
     shiny::uiOutput("cards"))
