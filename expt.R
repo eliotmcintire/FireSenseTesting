@@ -239,19 +239,24 @@ if (identical(Sys.getenv("FS_SET"), "heldout")) {
 if (identical(Sys.getenv("FS_SET"), "nrv")) {
   if (.phase1Only) stop("FS_SET=nrv has no phase-1 entry")
   .nrvWave <- Sys.getenv("FS_NRV_WAVE")
-  if (!.nrvWave %in% c("1", "2")) stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1) or 2 (reps 2-5)")
+  ## 2026-10-08 (Eliot): FS_NRV_WAVE=fit fits every named ELF (refit) and stops after the spread fit's `run`
+  ## (FS_PHASE2_ONLY, see global.R), 13 workers; FS_NRV_ELFS=all names every ELF in the map
+  if (!.nrvWave %in% c("1", "2", "fit"))
+    stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1), 2 (reps 2-5) or fit (fit only, then stop)")
   .nrvELFs <- strsplit(Sys.getenv("FS_NRV_ELFS", unset = "14.4,4.1,4.2.2"), ",")[[1]]
+  .nrvAll <- identical(.nrvELFs, "all")
   .nrvTag <- if (identical(.nrvELFs, c("14.4", "4.1", "4.2.2"))) "2026-10-01" else
-    paste0("2026-10-08c_", paste(.nrvELFs, collapse = "-"))  # 2026-10-08c: as 08b, all 14 wave-1 ELFs in one experiment, reproducible 3.2.1.9069 (CacheGeo lost-update fix, reproducible#641); 08b: as 08a, but ignition and escape are refitted too (refitExisting to fireSense_ignitionFit; 08a reused the old reg:tweedie fits); 08a: as 07a plus worker logs fall back to each host's own folder (clusters#44) and fuel classes missing from some years filled with 0 (fireSenseUtils#138); 07a: Poisson ignition/escape (fireSense_ignitionFit#38), NRV climate draws 1985-2024, no years in paths, outputs on /mnt/fast/outputs, BEC zones (localEcozones#1, no elevation bands) + Biomass_speciesFactorial#18 + Biomass_speciesParameters 40aa755 (balanceGrowth), fit ignores local ecoregions (fireSense_dataPrepFit#62), bufferToArea frontier (fireSenseUtils#136, 0.2.3.9087); n: as m, and fires whose 10x buffer cannot reach its target are kept with the space available (fireSenseUtils#135); m: 10x buffers + runaway scored as 2x its own buffer (fireSenseUtils#133, fireSense_spreadFit#69), fuel >= 0 (#68); l: as k plus fireSense_ELFs borderBuffer (5 km from the US land border; fireSense_ELFs#24); k: 4.3 and 14.4 without cache chaining (g1: inflectionPoint1 fixed at 1)
+    paste0("2026-10-08d_", if (.nrvAll) "allELFs" else paste(.nrvELFs, collapse = "-"))  # 2026-10-08c: as 08b, all 14 wave-1 ELFs in one experiment, reproducible 3.2.1.9069 (CacheGeo lost-update fix, reproducible#641); 08b: as 08a, but ignition and escape are refitted too (refitExisting to fireSense_ignitionFit; 08a reused the old reg:tweedie fits); 08a: as 07a plus worker logs fall back to each host's own folder (clusters#44) and fuel classes missing from some years filled with 0 (fireSenseUtils#138); 07a: Poisson ignition/escape (fireSense_ignitionFit#38), NRV climate draws 1985-2024, no years in paths, outputs on /mnt/fast/outputs, BEC zones (localEcozones#1, no elevation bands) + Biomass_speciesFactorial#18 + Biomass_speciesParameters 40aa755 (balanceGrowth), fit ignores local ecoregions (fireSense_dataPrepFit#62), bufferToArea frontier (fireSenseUtils#136, 0.2.3.9087); n: as m, and fires whose 10x buffer cannot reach its target are kept with the space available (fireSenseUtils#135); m: 10x buffers + runaway scored as 2x its own buffer (fireSenseUtils#133, fireSense_spreadFit#69), fuel >= 0 (#68); l: as k plus fireSense_ELFs borderBuffer (5 km from the US land border; fireSense_ELFs#24); k: 4.3 and 14.4 without cache chaining (g1: inflectionPoint1 fixed at 1)
   ## 2026-10-06 (Eliot): the 5.4 hindcast showed fits that match observed area inside the per-fire buffers run away on
   ## the whole ELF; NRV refits use buffers 10x larger, and the objective scores a runaway as 2x its own buffer area
   .areaMultiplierScale <- 10
   .phaseSetup <- list(queue = paste0("experiment_queue_nrv_", .nrvTag, "_wave", .nrvWave, ".rds"),
-                      onlyELFs = .nrvELFs, keepOrder = TRUE,
-                      reps = if (.nrvWave == "1") 1L else 2:5,
-                      n_workers = if (.nrvWave == "1") length(.nrvELFs) else min(12, 4 * length(.nrvELFs)),  # wave 1: each fit is a 40-worker cluster
-                      GCM = "NRV", predict = TRUE,
-                      refitFitted = .nrvWave == "1", predictFitted = .nrvWave == "2")
+                      onlyELFs = if (.nrvAll) NULL else .nrvELFs, keepOrder = !.nrvAll,
+                      reps = if (.nrvWave == "2") 2:5 else 1L,
+                      n_workers = switch(.nrvWave, "1" = length(.nrvELFs), "fit" = 13L,
+                                         "2" = min(12, 4 * length(.nrvELFs))),  # each fit is a 40-worker cluster
+                      GCM = "NRV", predict = .nrvWave != "fit",
+                      refitFitted = .nrvWave %in% c("1", "fit"), predictFitted = .nrvWave == "2")
   message("FS_SET=nrv wave ", .nrvWave, ": ", paste(.phaseSetup$onlyELFs, collapse = " "), ", reps ",
           paste(.phaseSetup$reps, collapse = ","), ", queue ", .phaseSetup$queue)
 }
