@@ -37,7 +37,7 @@ CACHE=${MODS_CACHE:-$HOME/GitHub/.modsForFireSense}
 TRAILERS=${MODS_COMMIT_TRAILERS:-}
 
 # repo                    base         exclude (PR numbers)  order (listed first, rest by number)
-# Automatic exclusions: head branch release/*, title containing "DO NOT MERGE" or
+# Automatic exclusions: draft PRs, head branch release/*, title containing "DO NOT MERGE" or
 # "diagnostic", and a PR whose base is neither the repo's base nor modsForFireSense.
 # Excluded by hand:
 #   burnSummaries#12 (against modsForFireSense) is the reqdPkgs change of #10 again, older;
@@ -222,19 +222,21 @@ update_repo() {
   fi
 
   # Our open PRs, ordered: listed numbers first, then the rest ascending.
-  local prs n head pbase title sha rank i o
+  local prs n head pbase title sha draft rank i o
   prs=$(gh pr list -R "$ORG/$repo" --author @me --state open --limit 100 \
-          --json number,headRefName,baseRefName,title,headRefOid \
-          --jq '.[] | [.number, .headRefName, .baseRefName, .headRefOid, .title] | @tsv')
-  prs=$(while IFS=$'\t' read -r n head pbase sha title; do
+          --json number,headRefName,baseRefName,title,headRefOid,isDraft \
+          --jq '.[] | [.number, .headRefName, .baseRefName, .headRefOid, .isDraft, .title] | @tsv')
+  prs=$(while IFS=$'\t' read -r n head pbase sha draft title; do
           [[ -z $n ]] && continue
           rank=1000; i=0
           for o in ${order//,/ }; do i=$((i + 1)); [[ $o == "$n" ]] && rank=$i; done
-          printf '%04d\t%05d\t%s\t%s\t%s\t%s\t%s\n' "$rank" "$n" "$n" "$head" "$pbase" "$sha" "$title"
+          printf '%04d\t%05d\t%s\t%s\t%s\t%s\t%s\t%s\n' "$rank" "$n" "$n" "$head" "$pbase" "$sha" "$draft" "$title"
         done <<<"$prs" | sort | cut -f3-)
 
-  while IFS=$'\t' read -r n head pbase sha title; do
+  while IFS=$'\t' read -r n head pbase sha draft title; do
     [[ -z $n ]] && continue
+    ## a draft is not ready for others' runs (2026-10-09: Biomass_core#124, a draft awaiting review, stopped every NRV job)
+    if [[ $draft == true ]]; then skipped+=("#$n(draft)"); continue; fi
     if [[ ",$exclude," == *",$n,"* ]]; then skipped+=("#$n(config)"); continue; fi
     if [[ $head == release/* ]]; then skipped+=("#$n(release)"); continue; fi
     if [[ ${title,,} == *"do not merge"* || ${title,,} == *diagnostic* ]]; then skipped+=("#$n(title)"); continue; fi
