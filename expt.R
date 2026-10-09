@@ -258,7 +258,7 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
                       onlyELFs = if (.nrvAll) NULL else .nrvELFs, keepOrder = !.nrvAll,
                       reps = if (.nrvWave == "2") 2:5 else 1L,
                       n_workers = if (.phase1Only) as.integer(Sys.getenv("FS_NRV_WORKERS", "12")) else
-                        switch(.nrvWave, "1" = length(.nrvELFs), "fit" = 13L,
+                        switch(.nrvWave, "1" = length(.nrvELFs), "fit" = as.integer(Sys.getenv("FS_NRV_WORKERS", "13")),
                                          "2" = min(12, 4 * length(.nrvELFs))),  # each fit is a 40-worker cluster
                       GCM = "NRV", predict = .nrvWave != "fit",
                       refitFitted = .nrvWave %in% c("1", "fit"), predictFitted = .nrvWave == "2")
