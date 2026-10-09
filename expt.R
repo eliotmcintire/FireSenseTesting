@@ -237,23 +237,28 @@ if (identical(Sys.getenv("FS_SET"), "heldout")) {
 ## 2026-10-03 (Eliot): 6.2.1 (western Ontario) the same way, for a meeting: FS_NRV_ELFS=6.2.1 (comma-separated);
 ## any ELF list other than the default gets its own queue names.
 if (identical(Sys.getenv("FS_SET"), "nrv")) {
-  if (.phase1Only) stop("FS_SET=nrv has no phase-1 entry")
   .nrvWave <- Sys.getenv("FS_NRV_WAVE")
+  ## 2026-10-08 (Eliot): phase 1 (caches, stop before the spread fit's run) for ELFs a fit-only wave has not
+  ## reached yet: FS_PHASE1_ONLY=TRUE FS_NRV_WAVE=fit FS_NRV_ELFS=<list, in the order to run> [FS_NRV_WORKERS=12]
+  if (.phase1Only && !identical(.nrvWave, "fit")) stop("FS_SET=nrv phase 1 is only for FS_NRV_WAVE=fit")
   ## 2026-10-08f: as e, reproducible 3.2.1.9071 (#643: old-form CacheGeo returns NULL on no match). 2026-10-08e: as d, LandR modsForFireSense f90c5c8 (SCANFI V3, LandR#250/#251). 2026-10-08 (Eliot): FS_NRV_WAVE=fit fits every named ELF (refit) and stops after the spread fit's `run`
   ## (FS_PHASE2_ONLY, see global.R), 13 workers; FS_NRV_ELFS=all names every ELF in the map
   if (!.nrvWave %in% c("1", "2", "fit"))
     stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1), 2 (reps 2-5) or fit (fit only, then stop)")
   .nrvELFs <- strsplit(Sys.getenv("FS_NRV_ELFS", unset = "14.4,4.1,4.2.2"), ",")[[1]]
   .nrvAll <- identical(.nrvELFs, "all")
-  .nrvTag <- if (identical(.nrvELFs, c("14.4", "4.1", "4.2.2"))) "2026-10-01" else
+  .nrvTag <- if (nzchar(Sys.getenv("FS_NRV_TAG"))) Sys.getenv("FS_NRV_TAG") else  # a short name for a long ELF list
+    if (identical(.nrvELFs, c("14.4", "4.1", "4.2.2"))) "2026-10-01" else
     paste0("2026-10-08f_", if (.nrvAll) "allELFs" else paste(.nrvELFs, collapse = "-"))  # 2026-10-08c: as 08b, all 14 wave-1 ELFs in one experiment, reproducible 3.2.1.9069 (CacheGeo lost-update fix, reproducible#641); 08b: as 08a, but ignition and escape are refitted too (refitExisting to fireSense_ignitionFit; 08a reused the old reg:tweedie fits); 08a: as 07a plus worker logs fall back to each host's own folder (clusters#44) and fuel classes missing from some years filled with 0 (fireSenseUtils#138); 07a: Poisson ignition/escape (fireSense_ignitionFit#38), NRV climate draws 1985-2024, no years in paths, outputs on /mnt/fast/outputs, BEC zones (localEcozones#1, no elevation bands) + Biomass_speciesFactorial#18 + Biomass_speciesParameters 40aa755 (balanceGrowth), fit ignores local ecoregions (fireSense_dataPrepFit#62), bufferToArea frontier (fireSenseUtils#136, 0.2.3.9087); n: as m, and fires whose 10x buffer cannot reach its target are kept with the space available (fireSenseUtils#135); m: 10x buffers + runaway scored as 2x its own buffer (fireSenseUtils#133, fireSense_spreadFit#69), fuel >= 0 (#68); l: as k plus fireSense_ELFs borderBuffer (5 km from the US land border; fireSense_ELFs#24); k: 4.3 and 14.4 without cache chaining (g1: inflectionPoint1 fixed at 1)
   ## 2026-10-06 (Eliot): the 5.4 hindcast showed fits that match observed area inside the per-fire buffers run away on
   ## the whole ELF; NRV refits use buffers 10x larger, and the objective scores a runaway as 2x its own buffer area
   .areaMultiplierScale <- 10
-  .phaseSetup <- list(queue = paste0("experiment_queue_nrv_", .nrvTag, "_wave", .nrvWave, ".rds"),
+  .phaseSetup <- list(queue = paste0("experiment_queue_nrv_", .nrvTag, "_wave", .nrvWave,
+                                      if (.phase1Only) "_phase1", ".rds"),
                       onlyELFs = if (.nrvAll) NULL else .nrvELFs, keepOrder = !.nrvAll,
                       reps = if (.nrvWave == "2") 2:5 else 1L,
-                      n_workers = switch(.nrvWave, "1" = length(.nrvELFs), "fit" = 13L,
+                      n_workers = if (.phase1Only) as.integer(Sys.getenv("FS_NRV_WORKERS", "12")) else
+                        switch(.nrvWave, "1" = length(.nrvELFs), "fit" = 13L,
                                          "2" = min(12, 4 * length(.nrvELFs))),  # each fit is a 40-worker cluster
                       GCM = "NRV", predict = .nrvWave != "fit",
                       refitFitted = .nrvWave %in% c("1", "fit"), predictFitted = .nrvWave == "2")
