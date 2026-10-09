@@ -105,14 +105,14 @@ inSim <- SpaDES.project::setupProject(
                      # .studyAreaName = "ELF", #{browser(); paste0("ELF", .ELFind)},
                      FRU = 25,
                      .times = list(start = 2020, end = 3020),
-                     .modules = c("PredictiveEcology/canClimateData@development"
+                     .modules = c("PredictiveEcology/canClimateData@modsForFireSense" # development + canClimateData#21 (projected years 2017-2100; awaiting achubaty)
                                   ,"PredictiveEcology/climateYear@modsForFireSense" # development/main + our open PRs; R/updateModsForFireSense.sh
                                   
                                   , "PredictiveEcology/fireSense@development" # parent: the 9 fireSense modules (ELFs, dataPrepFit, ignitionFit, spreadFit, dataPrepPredict, ignitionPredict, spreadPredict, burn, summary)
                                   
                                   # biomass modules
                                   , "PredictiveEcology/localEcozones@noElevationBands" # ecoregionLayer: BEC zones in BC, AB Natural Subregions, plain ecodistricts elsewhere (localEcozones#1)
-                                  , "PredictiveEcology/Biomass_borealDataPrep@modsForFireSense"
+                                  , "PredictiveEcology/Biomass_borealDataPrep@development" # all our PRs merged (2026-10-09)
                                   , "PredictiveEcology/Biomass_speciesFactorial@modsForFireSense" # #18: factorial tables written once to destinationPathShared, hard-linked into outputPath
                                   , "PredictiveEcology/Biomass_speciesParameters@development"
                                   , "PredictiveEcology/Biomass_speciesData@development"
@@ -306,23 +306,18 @@ inSim <- SpaDES.project::setupProject(
       , .plots = c("png")
       , .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData")),
     # fireSense_ELFs = list(queue_path = "experiment_queue_predict5.rds"),
-    # `fireYears` doubles as the on/off switch for the too-few-fires gate (fireSense_ELFs.R:237
-    # tests `!is.null(Par$fireYears)`), so leaving it unset silently skipped sibling merging
-    # altogether. Setting it enables fireSenseUtils::ELFmergePlan(): an ELF with too few fires is
-    # merged with the neighbour sharing its base (3.1.2 with 3.1.1), and if the pair is still too
-    # thin the base is left out of the queue. Merged ELFs are renamed (3.1.1 -> 3.1.1_2), so this
-    # needs a NEW queue file and produces new output paths and ledger keys.
-    # PINNED 2026-09-20 (Eliot): not for this wave. `fireYears` stays unset, so no ELF is merged or
-    # renamed. The ELFs with too few fires are left out of the queue by hand instead (expt.R,
-    # `skipELFs`): of the 54 fitted ELFs, 13.3 (40 fire polygons) and 5.4 (46 natural ignitions) fail
-    # ELFmergePlan()'s 50 / 50 rule over 1985-2024. To turn merging on, restore the second line:
-    #                       fireYears = .fireYearStart:.fireYearEnd),
+    # ELF merging (too few fires -> merged with a sibling in the same ecoprovince) is on by default since
+    # fireSense_ELFs#26: its `fireYears` defaults to fireSenseUtils::defaultFireYears(), the fit's years.
     fireSense_ELFs = list(.useCloud = FALSE), # cloud cache of the ELF maps off for now (2026-09-10)
-    canClimateData = list(
+    canClimateData = c(list(
       climateGCM =  ifelse(identical(.GCM, "NRV"), "CNRM-ESM2-1", .GCM) 
       ,climateSSP =  ifelse(identical(.SSP, ""), 370, .SSP) 
       # ,.useCache = ".inputObjects" # init is slow to cache
     ),
+    ## NRV samples observed climate only, so it asks for no projected years (fireSense_dataPrepFit#65
+    ## requests projected climate only for canClimateData's projectedClimateYears; a valid GCM is still
+    ## needed above). Other runs keep canClimateData's default.
+    if (identical(.GCM, "NRV")) list(projectedClimateYears = integer(0))),
     # A forecast uses each year's projected climate: with no samplingRange, climateYear takes the
     # simulation year whenever that year's climate exists. Only an NRV run samples historical years.
     climateYear = list(
