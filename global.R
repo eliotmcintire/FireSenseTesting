@@ -92,7 +92,7 @@ inSim <- SpaDES.project::setupProject(
                      .areaMultiplierScale = 1,
                      .cores = c("birds", # "biomass", # TEMPORARY 2026-09-29: Dominique is rerunning BiomeBGC on biomass; put it back when she is done
                                 "camas", "carbon", "caribou", "coco"
-                                , "dougfir", "fire" # "core": TEMPORARY 2026-10-09: hung (ssh timeout) ~04:53; put it back when it is up
+                                , "core", "dougfir", "fire"
                                 , "mpb", "sbw", "mega"
                                 , "acer"
                                 , "abies"
