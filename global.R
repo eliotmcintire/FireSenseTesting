@@ -143,7 +143,9 @@ inSim <- SpaDES.project::setupProject(
   paths = list(outputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/outputs", .ELFind, .GCM, .SSP, .rep),
                # cachePath = "/mnt/shared_cache/cache",
                cachePath = "/mnt/fast/cache",
-               scratchPath = "/mnt/fast/scratch",
+               # terra scratch on the second disk: /mnt/fast filled up with 13 fits + 18 phase-1 jobs (2026-10-08).
+               # paths are not in simList cache keys (SpaDES.core cache.R), so this changes no cache key.
+               scratchPath = "/mnt/fast1/scratch",
                # use inputPath on the shared drive, so destinationPathShared works
                # inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .studyAreaName, .samplingRange, .GCM, .SSP, .rep)),
                inputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/inputs", .ELFind, .GCM, .SSP, .rep)),
