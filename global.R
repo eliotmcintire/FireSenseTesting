@@ -527,7 +527,8 @@ if (!identical(.terraBefore, .terraAfter))
 # SAVE AFTERWARDS
 ## On from 2026-10-06 (Eliot): multi.R reads each rep's saved, tarred simList from Drive. Guarded so a save or
 ## upload failure only warns; it cannot turn a finished run into a failed job.
-if (exists("simOut", inherits = FALSE) && is(simOut, "simList")) {
+## Eliot 2026-10-09: only runs that predict (the 1000-year NRV runs) need it; phase 1 and fit-only runs skip it.
+if (!.phase1Only && !.phase2Only && exists("simOut", inherits = FALSE) && is(simOut, "simList")) {
   tryCatch(SpaDES.project::outSaveTarUpload(
     runName = inSim$runName,
     sim = simOut,
