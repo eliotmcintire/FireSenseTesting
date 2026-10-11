@@ -526,6 +526,7 @@ workers <- SpaDES.project::experimentTmux(
   global_path         = "global.R",
   n_workers           = .phaseSetup$n_workers,   # phase 1: memfrac = 0 keeps per-worker memory down; measured 90th-pct peak 37.7 GB
   queue_path          = queue_path,
+  on_error            = "continue",    # batch campaign: an errored job is marked ERROR and the worker takes the next one (SpaDES.project#197)
   delay_before_source = 120,
   statusCalculate = quote({dd <- dir(file.path("/mnt/fast/outputs", runName), recursive = TRUE, full.names = TRUE)
                                   ee <- grep(value = TRUE, pattern = "objFun.*png$", dd)
