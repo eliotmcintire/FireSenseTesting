@@ -243,8 +243,10 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
   if (.phase1Only && !identical(.nrvWave, "fit")) stop("FS_SET=nrv phase 1 is only for FS_NRV_WAVE=fit")
   ## 2026-10-08f: as e, reproducible 3.2.1.9071 (#643: old-form CacheGeo returns NULL on no match). 2026-10-08e: as d, LandR modsForFireSense f90c5c8 (SCANFI V3, LandR#250/#251). 2026-10-08 (Eliot): FS_NRV_WAVE=fit fits every named ELF (refit) and stops after the spread fit's `run`
   ## (FS_PHASE2_ONLY, see global.R), 13 workers; FS_NRV_ELFS=all names every ELF in the map
-  if (!.nrvWave %in% c("1", "2", "fit"))
-    stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1), 2 (reps 2-5) or fit (fit only, then stop)")
+  ## 2026-10-11 (Eliot): phase 3 after a fit-only wave: FS_NRV_WAVE=predict predicts reps 1-5 of each named ELF
+  ## from its ledger fit, never fitting. Name only ELFs whose fit is DONE: a predict run of an unfitted ELF would fit.
+  if (!.nrvWave %in% c("1", "2", "fit", "predict"))
+    stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1), 2 (reps 2-5), fit (fit only, then stop) or predict (reps 1-5, predict only)")
   .nrvELFs <- strsplit(Sys.getenv("FS_NRV_ELFS", unset = "14.4,4.1,4.2.2"), ",")[[1]]
   .nrvAll <- identical(.nrvELFs, "all")
   .nrvTag <- if (nzchar(Sys.getenv("FS_NRV_TAG"))) Sys.getenv("FS_NRV_TAG") else  # a short name for a long ELF list
@@ -256,12 +258,13 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
   .phaseSetup <- list(queue = paste0("experiment_queue_nrv_", .nrvTag, "_wave", .nrvWave,
                                       if (.phase1Only) "_phase1", ".rds"),
                       onlyELFs = if (.nrvAll) NULL else .nrvELFs, keepOrder = !.nrvAll,
-                      reps = if (.nrvWave == "2") 2:5 else 1L,
+                      reps = switch(.nrvWave, "2" = 2:5, "predict" = 1:5, 1L),
                       n_workers = if (.phase1Only) as.integer(Sys.getenv("FS_NRV_WORKERS", "12")) else
                         switch(.nrvWave, "1" = length(.nrvELFs), "fit" = as.integer(Sys.getenv("FS_NRV_WORKERS", "13")),
-                                         "2" = min(12, 4 * length(.nrvELFs))),  # each fit is a 40-worker cluster
+                                         "2" = min(12, 4 * length(.nrvELFs)),  # each fit is a 40-worker cluster
+                                         "predict" = as.integer(Sys.getenv("FS_NRV_WORKERS", "6"))),  # ~38 GB, ~1.2 cores per predict
                       GCM = "NRV", predict = .nrvWave != "fit",
-                      refitFitted = .nrvWave %in% c("1", "fit"), predictFitted = .nrvWave == "2")
+                      refitFitted = .nrvWave %in% c("1", "fit"), predictFitted = .nrvWave %in% c("2", "predict"))
   message("FS_SET=nrv wave ", .nrvWave, ": ", paste(.phaseSetup$onlyELFs, collapse = " "), ", reps ",
           paste(.phaseSetup$reps, collapse = ","), ", queue ", .phaseSetup$queue)
 }
