@@ -93,7 +93,7 @@ inSim <- SpaDES.project::setupProject(
                      .cores = c("birds", # "biomass", # TEMPORARY 2026-09-29: Dominique is rerunning BiomeBGC on biomass; put it back when she is done
                                 "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
-                                , "mpb", "sbw", "mega"
+                                , "mpb", "sbw" # "mega" out 2026-10-13 (Eliot): it runs the predictions and conducts
                                 , "acer"
                                 , "abies"
                                 , "pinus", "landr"
