@@ -147,7 +147,9 @@ inSim <- SpaDES.project::setupProject(
                # use inputPath on the shared drive, so destinationPathShared works
                # inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .studyAreaName, .samplingRange, .GCM, .SSP, .rep)),
                inputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/inputs", .ELFind, .GCM, .SSP, .rep)),
-  runName = gsub("/", "_", fs::path_rel(paths$outputPath, "/mnt/fast/outputs")),
+  # outputPath can arrive with /mnt/fast/outputs resolved to its symlink target (/home/emcintir/mntFast/outputs since the
+  # 2026-10-10 RAID move), so name the run by the part below ".../outputs/", not relative to one spelling of it
+  runName = gsub("/", "_", sub("^.*/outputs/", "", paths$outputPath)),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
   modules = unlist(.modules),
   packages = c(
