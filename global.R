@@ -542,9 +542,9 @@ if (FALSE) {
                destinationPath = "/home/emcintir/GitHub/FireSenseTesting/inputs",
                useCache = TRUE, purge = 7, overwrite = TRUE)
     SpaDES.core::Plots(inSim[grep("studyArea|rasterToMatch", names(inSim))],
-                       title = paste0("StudyArea ", inSim$.runName),
+                       title = paste0("StudyArea ", inSim$runName),
                        fn = plotSAs,
-                       filename = paste0("studyAreas", inSim$.runName),
+                       filename = paste0("studyAreas", inSim$runName),
                        path = inSim$paths$inputPath,
                        types = c("screen", "png")) |>
       reproducible::Cache(.functionName = "Plots_studyAreas",
