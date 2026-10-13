@@ -258,7 +258,9 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
   .phaseSetup <- list(queue = paste0("experiment_queue_nrv_", .nrvTag, "_wave", .nrvWave,
                                       if (.phase1Only) "_phase1", ".rds"),
                       onlyELFs = if (.nrvAll) NULL else .nrvELFs, keepOrder = !.nrvAll,
-                      reps = switch(.nrvWave, "2" = 2:5, "predict" = 1:5, 1L),
+                      ## FS_NRV_REPS=3,4,5 overrides the reps, e.g. to predict only the reps not yet done (2026-10-12)
+                      reps = if (nzchar(Sys.getenv("FS_NRV_REPS"))) as.integer(strsplit(Sys.getenv("FS_NRV_REPS"), ",")[[1]]) else
+                        switch(.nrvWave, "2" = 2:5, "predict" = 1:5, 1L),
                       n_workers = if (.phase1Only) as.integer(Sys.getenv("FS_NRV_WORKERS", "12")) else
                         switch(.nrvWave, "1" = length(.nrvELFs), "fit" = as.integer(Sys.getenv("FS_NRV_WORKERS", "13")),
                                          "2" = min(12, 4 * length(.nrvELFs)),  # each fit is a 40-worker cluster

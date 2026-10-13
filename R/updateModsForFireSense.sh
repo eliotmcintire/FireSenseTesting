@@ -37,6 +37,7 @@ CACHE=${MODS_CACHE:-$HOME/GitHub/.modsForFireSense}
 TRAILERS=${MODS_COMMIT_TRAILERS:-}
 
 # repo                    base         exclude (PR numbers)  order (listed first, rest by number)
+# A PR based on another of our open PRs (stacked, with a Depends-on line) is included after that PR.
 # Automatic exclusions: draft PRs, head branch release/*, title containing "DO NOT MERGE" or
 # "diagnostic", and a PR whose base is neither the repo's base nor modsForFireSense.
 # Excluded by hand:
@@ -223,6 +224,7 @@ update_repo() {
 
   # Our open PRs, ordered: listed numbers first, then the rest ascending.
   local prs n head pbase title sha draft rank i o
+  local -a mergedHeads=()
   prs=$(gh pr list -R "$ORG/$repo" --author @me --state open --limit 100 \
           --json number,headRefName,baseRefName,title,headRefOid,isDraft \
           --jq '.[] | [.number, .headRefName, .baseRefName, .headRefOid, .isDraft, .title] | @tsv')
@@ -240,11 +242,14 @@ update_repo() {
     if [[ ",$exclude," == *",$n,"* ]]; then skipped+=("#$n(config)"); continue; fi
     if [[ $head == release/* ]]; then skipped+=("#$n(release)"); continue; fi
     if [[ ${title,,} == *"do not merge"* || ${title,,} == *diagnostic* ]]; then skipped+=("#$n(title)"); continue; fi
-    if [[ $pbase != "$base" && $pbase != "$BRANCH" ]]; then skipped+=("#$n(base $pbase)"); continue; fi
+    ## a PR stacked on another of ours (Depends-on) is taken once the PR it is based on is in
+    if [[ $pbase != "$base" && $pbase != "$BRANCH" && " ${mergedHeads[*]} " != *" $pbase "* ]]; then
+      skipped+=("#$n(base $pbase)"); continue
+    fi
     git fetch -q "$remote" "refs/pull/$n/head" || { conflicts+=("#$n(fetch)"); continue; }
-    if git merge-base --is-ancestor "$sha" HEAD; then merged+=("#$n"); heads+=("$sha"); continue; fi
+    if git merge-base --is-ancestor "$sha" HEAD; then merged+=("#$n"); heads+=("$sha"); mergedHeads+=("$head"); continue; fi
     if merge_one "$sha" ours "Merge PR #$n ($head) into $BRANCH" "$title"; then
-      merged+=("#$n*"); heads+=("$sha"); log "merged #$n $head"
+      merged+=("#$n*"); heads+=("$sha"); mergedHeads+=("$head"); log "merged #$n $head"
     else
       conflicts+=("#$n"); log "CONFLICT #$n $head -- skipped"
     fi
