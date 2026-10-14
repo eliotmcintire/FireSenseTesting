@@ -510,6 +510,11 @@ if (!is.null(.phaseSetup$hindcastYears)) {
   expt <- expt[rep(seq_len(NROW(expt)), each = .ny), , drop = FALSE]
   expt$.hindcastYear <- rep(.phaseSetup$hindcastYears, times = NROW(expt) / .ny)
   expt$.times <- I(lapply(expt$.hindcastYear, function(y) list(start = y, end = y + 0.0095)))
+  ## FS_HC_INTERLEAVE=TRUE: one job of each ELF first, then the second of each, ... A first job builds its ELF's
+  ## caches (~1 h: the 8 vegetation years) and the ELF's other jobs wait on that cache lock, so ELF-major order
+  ## kept every worker on one ELF at a time (2026-10-14: 13.1 and 14.3 alone took the first 3 h)
+  if (isTRUE(as.logical(Sys.getenv("FS_HC_INTERLEAVE", "FALSE"))))
+    expt <- expt[order(ave(seq_len(NROW(expt)), expt$.ELFind, FUN = seq_along), match(expt$.ELFind, unique(expt$.ELFind))), , drop = FALSE]
 }
 if (!is.null(.phaseSetup$heldOutFolds)) {
   ## one row per ELF x fold, the folds of an ELF adjacent; global.R's `.heldOutFold` dot, read per job
