@@ -57,6 +57,8 @@ CBM_core                  development  -                     -
 CBM_dataPrep              development  -                     -
 LandRCBM_split3pools      main         -                     -
 fireSense_summary         development  -                     -
+fireSense_dataPrepPredict development  -                     -
+fireSense_burn            development  -                     -
 '
 
 DRYRUN=0
