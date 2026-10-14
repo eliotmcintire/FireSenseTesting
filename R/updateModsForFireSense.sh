@@ -61,6 +61,7 @@ fireSense_dataPrepPredict development  -                     -
 fireSense_burn            development  -                     -
 fireSense_ignitionPredict development  -                     -
 fireSense_spreadPredict   development  -                     -
+localEcozones             development  -                     -
 '
 
 DRYRUN=0
