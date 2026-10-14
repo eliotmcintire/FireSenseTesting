@@ -247,6 +247,9 @@ if (identical(Sys.getenv("FS_SET"), "hindcast")) {
   if (!nzchar(Sys.getenv("FS_HC_ELFS"))) stop("FS_SET=hindcast needs FS_HC_ELFS=<ELFs with a fit, comma-separated>")
   .hcSplit <- function(x) strsplit(x, ",")[[1]]
   .hcTag <- Sys.getenv("FS_HC_TAG", format(Sys.Date(), "%Y-%m-%d"))
+  ## the same fire buffers as the NRV fits (FS_SET=nrv): fireSense_dataPrepFit then rebuilds nothing it already has,
+  ## and does not stop on its "buffers >= 5x burned pixels" check with the 1x buffers (5.2.1, 2026-10-14)
+  .areaMultiplierScale <- 10
   .phaseSetup <- list(queue = paste0("experiment_queue_hindcast_", .hcTag, ".rds"),
                       onlyELFs = .hcSplit(Sys.getenv("FS_HC_ELFS")), keepOrder = TRUE,
                       reps = as.integer(.hcSplit(Sys.getenv("FS_HC_SETS", "1,2,3,4,5"))),
