@@ -90,6 +90,12 @@ inSim <- SpaDES.project::setupProject(
                      ## fireSenseUtils::multiplier); 1 = module default. 2026-10-06 test of whether buffer size caps
                      ## the fit's view of runaway fires (expt.R FS_SET=buffer2x).
                      .areaMultiplierScale = 1,
+                     ## HINDCAST TRIGGER (Eliot 2026-10-13): NA = every other run, unchanged. A year Y (a SCANFI vegetation
+                     ## year, 1985-2020 by 5) makes this job a hindcast: year Y's vegetation held static
+                     ## (fireSense_dataPrepPredict vegetationYear) and year Y's climate, 10 reps as decimal years
+                     ## Y, Y.001, ..., Y.009 (expt.R FS_SET=hindcast sets .times = Y to Y + 0.0095), no vegetation or NRV
+                     ## summary modules, .rep = the spread parameter set. Outputs in /mnt/fast/outputs/hindcast/<ELF>/<Y>/<set>.
+                     .hindcastYear = NA_integer_,
                      .cores = c("birds", # "biomass", # TEMPORARY 2026-09-29: Dominique is rerunning BiomeBGC on biomass; put it back when she is done
                                 "camas", "carbon", "caribou", "coco"
                                 , "core", "dougfir", "fire"
@@ -140,7 +146,8 @@ inSim <- SpaDES.project::setupProject(
   # outputs records the years drawn.
   # Outputs on /mnt/fast, the disk of destinationPathShared (/mnt/fast/data), so prepInputs can hard-link shared
   # files (e.g. Biomass_speciesFactorial's tables) into each run instead of copying them (Eliot 2026-10-07).
-  paths = list(outputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/outputs", .ELFind, .GCM, .SSP, .rep),
+  paths = list(outputPath = if (is.na(.hindcastYear)) SpaDES.project::pathBuild(pre = "/mnt/fast/outputs", .ELFind, .GCM, .SSP, .rep) else
+                 SpaDES.project::pathBuild(pre = "/mnt/fast/outputs/hindcast", .ELFind, .hindcastYear, .rep),
                # cachePath = "/mnt/shared_cache/cache",
                cachePath = "/mnt/fast/cache",
                scratchPath = "/mnt/fast/scratch",
@@ -151,7 +158,10 @@ inSim <- SpaDES.project::setupProject(
   # 2026-10-10 RAID move), so name the run by the part below ".../outputs/", not relative to one spelling of it
   runName = gsub("/", "_", sub("^.*/outputs/", "", paths$outputPath)),
   times = as.list(unlist(.times, recursive = T)), # may be coming in as a slightly deeper list
-  modules = unlist(.modules),
+  ## a hindcast holds vegetation static, so no Biomass_* (or localEcozones, which only they use) and none of the
+  ## summaries built on simulated vegetation or whole-year times (NRV_summary, Biomass_summary, burnSummaries)
+  modules = if (is.na(.hindcastYear)) unlist(.modules) else
+    grep("Biomass_|localEcozones|NRV_summary|burnSummaries", unlist(.modules), value = TRUE, invert = TRUE),
   packages = c(
     # "PrectiveEcology/reproducible@development (>=3.1.1.9020)"
     "SpaDES.core (>= 3.2.1.9002)" # the `events` barrier (stoppedAt) used below
@@ -305,7 +315,7 @@ inSim <- SpaDES.project::setupProject(
       , heldOutFold = as.integer(.heldOutFold)
       , .runName = runName
       , .plotInterval = saveAndPlotInterval
-      , .plots = c("png")
+      , .plots = if (is.na(.hindcastYear)) c("png") else NA # a hindcast plots nothing per job: burn would plot every 0.001 rep
       , .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData")),
     # fireSense_ELFs = list(queue_path = "experiment_queue_predict5.rds"),
     # ELF merging (too few fires -> merged with a sibling in the same ecoprovince) is on by default since
@@ -323,7 +333,7 @@ inSim <- SpaDES.project::setupProject(
     # A forecast uses each year's projected climate: with no samplingRange, climateYear takes the
     # simulation year whenever that year's climate exists. Only an NRV run samples historical years.
     climateYear = list(
-      samplingRange = if (identical(.GCM, "NRV")) .samplingRange else NA_real_
+      samplingRange = if (!is.na(.hindcastYear)) .hindcastYear else if (identical(.GCM, "NRV")) .samplingRange else NA_real_
     ),
     # fireSense_burn = list(.plots = c("screen", "png")),
     fireSense_spreadFit = c(list(
@@ -377,10 +387,13 @@ inSim <- SpaDES.project::setupProject(
                     "run")
     ),
       if (!isTRUE(all.equal(.areaMultiplierScale, 1)))
-        list(areaMultiplier = bquote(function(size) .(.areaMultiplierScale) * fireSenseUtils::multiplier(size)))),
+        list(areaMultiplier = bquote(function(size) .(.areaMultiplierScale) * fireSenseUtils::multiplier(size))),
+      ## a hindcast needs the vegetation of every SCANFI year it hindcasts, not only the fit's five
+      if (!is.na(.hindcastYear)) list(dataYears = seq(1985L, 2020L, 5L))),
     ## 2026-10-05 (Eliot): predict with the ELF's own fit only for now (fireSense_dataPrepPredict#26); blending with
     ## neighbouring ELFs (the module default) needs neighbour-labelled ELF rasters in single-ELF runs first
-    fireSense_dataPrepPredict = list(blendNeighbourELFs = FALSE),
+    fireSense_dataPrepPredict = c(list(blendNeighbourELFs = FALSE),
+                                  if (!is.na(.hindcastYear)) list(vegetationYear = as.integer(.hindcastYear), fireTimeStep = 0.001)),
     ## Dominique Caron's settings (2026-10-02), as ~/zonationDiag: build the species-trait factorial here rather
     ## than downloading the prebuilt one; balanceGrowth = Biomass_speciesParameters#70
     Biomass_speciesFactorial = list(.plots = NULL, runExperiment = TRUE, factorialSize = "medium"),
@@ -399,16 +412,22 @@ inSim <- SpaDES.project::setupProject(
                          summaryPeriod = as.integer(c(times$start, times$end)), summaryInterval = as.integer(saveAndPlotInterval)),
     NRV_summary = list(mode = "single", reps = .rep, #TODO: confirm if all prams okay
                        summaryPeriod = as.integer(c(times$start, times$end)), summaryInterval = as.integer(saveAndPlotInterval)),
-    fireSense_summary = list(mode = "single"), 
+    fireSense_summary = c(list(mode = "single"),
+                          if (!is.na(.hindcastYear)) list(hindcastYear = as.integer(.hindcastYear), hindcastInterval = 0.001)),
     Biomass_summary = list(years = c(times$start, times$end), 
                            studyAreaName  = .ELFind,
                            mode = "single"
                            #reps = .rep #only needed for multi, and would be the total reps
-    )
+    ),
+    ## hindcast reps are 0.001 apart (decimal years). 1 is these modules' own default, so other runs are unchanged.
+    ## Not through .globals: fireSense_ignitionFit also has a .runInterval (NA: fit once), which must stay NA.
+    fireSense_ignitionPredict = list(.runInterval = if (is.na(.hindcastYear)) 1 else 0.001),
+    fireSense_spreadPredict = list(.runInterval = if (is.na(.hindcastYear)) 1 else 0.001),
+    fireSense_burn = list(.runInterval = if (is.na(.hindcastYear)) 1 else 0.001)
   ), 
   # objectSynonyms = list(c("flammableRTM", "flammableMap")),
   outputs =  {
-    outputs <- rbind(
+    outputs <- if (!is.na(.hindcastYear)) data.table(objectName = "climateYearRecord", saveTime = times$end, fun = NA_character_) else rbind(
       data.table(objectName = "pixelGroupMap", saveTime = c(seq(times$start, times$end, saveAndPlotInterval)), 
                  exts = ".tif", fun = "writeRaster", package = "terra"), 
       data.table(objectName = "cohortData", saveTime = c(seq(times$start, times$end, saveAndPlotInterval))), 
@@ -442,6 +461,21 @@ inSim <- SpaDES.project::setupProject(
 message(inSim$runName)
 
 inSimCopy <- reproducible::Copy(inSim)
+## FS_SET=hindcast with FS_HC_WAIT_QUEUE (expt.R): wait until this ELF is DONE in that queue (the ignition refit
+## wave), so a hindcast never starts before its ELF's Poisson ignition fit is in the ledger
+.hcWaitQueue <- Sys.getenv("FS_HC_WAIT_QUEUE")
+if (!is.null(inSim$params$fireSense_summary$hindcastYear) && nzchar(.hcWaitQueue)) {
+  .hcELF <- inSim$params$.globals$.studyAreaName
+  repeat {
+    .st <- tryCatch({ .q <- as.data.frame(readRDS(.hcWaitQueue)); .q$status[.q$.ELFind == .hcELF] },
+                    error = function(e) NA_character_)   # the queue file may be mid-write
+    if ("DONE" %in% .st) break
+    if (!length(.st)) stop("Hindcast: ELF ", .hcELF, " is not in ", .hcWaitQueue)
+    if (all(.st %in% "ERROR")) stop("Hindcast: ELF ", .hcELF, " ERRORED in ", .hcWaitQueue, "; no ignition fit to use")
+    message(format(Sys.time(), "%H:%M"), " hindcast ", .hcELF, ": waiting for it to be DONE in ", basename(.hcWaitQueue))
+    Sys.sleep(120)
+  }
+}
 # inSimCopy$modules <- grep("ELFs", inSimCopy$modules, value = TRUE)
 ########################################
 # WHICH PHASE OF THE WORKFLOW THIS PASS RUNS
@@ -530,7 +564,9 @@ if (!identical(.terraBefore, .terraAfter))
 ## On from 2026-10-06 (Eliot): multi.R reads each rep's saved, tarred simList from Drive. Guarded so a save or
 ## upload failure only warns; it cannot turn a finished run into a failed job.
 ## Eliot 2026-10-09: only runs that predict (the 1000-year NRV runs) need it; phase 1 and fit-only runs skip it.
-if (!.phase1Only && !.phase2Only && exists("simOut", inherits = FALSE) && is(simOut, "simList")) {
+## hindcasts write their own small outputs (fireSense_summary hindcast files) and skip it too
+if (!.phase1Only && !.phase2Only && is.null(inSim$params$fireSense_summary$hindcastYear) &&
+    exists("simOut", inherits = FALSE) && is(simOut, "simList")) {
   tryCatch(SpaDES.project::outSaveTarUpload(
     runName = inSim$runName,
     sim = simOut,

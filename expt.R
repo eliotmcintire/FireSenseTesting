@@ -236,6 +236,27 @@ if (identical(Sys.getenv("FS_SET"), "heldout")) {
 ## Launching wave 2 earlier would start 4 more fits of each ELF at once.
 ## 2026-10-03 (Eliot): 6.2.1 (western Ontario) the same way, for a meeting: FS_NRV_ELFS=6.2.1 (comma-separated);
 ## any ELF list other than the default gets its own queue names.
+## 2026-10-13 (Eliot): PHASE 4 HINDCAST. Each ELF x SCANFI vegetation year (1985-2020 by 5) x spread parameter set
+## (.rep 1-5) is one job: global.R's .hindcastYear trigger holds that year's vegetation and climate and runs 10 reps
+## as decimal years Y .. Y + 0.009. Predict only, from the ledger fits (spread; Poisson ignition/escape).
+## FS_HC_ELFS (required, in order), FS_HC_YEARS, FS_HC_SETS, FS_HC_WORKERS, FS_HC_TAG.
+## FS_HC_WAIT_QUEUE=<queue .rds>: each job waits until its ELF is DONE there (e.g. the ignition refit wave), so
+## hindcasts start ELF by ELF as their ignition fits land instead of fitting ignition themselves.
+if (identical(Sys.getenv("FS_SET"), "hindcast")) {
+  if (.phase1Only) stop("FS_SET=hindcast has no phase-1 form")
+  if (!nzchar(Sys.getenv("FS_HC_ELFS"))) stop("FS_SET=hindcast needs FS_HC_ELFS=<ELFs with a fit, comma-separated>")
+  .hcSplit <- function(x) strsplit(x, ",")[[1]]
+  .hcTag <- Sys.getenv("FS_HC_TAG", format(Sys.Date(), "%Y-%m-%d"))
+  .phaseSetup <- list(queue = paste0("experiment_queue_hindcast_", .hcTag, ".rds"),
+                      onlyELFs = .hcSplit(Sys.getenv("FS_HC_ELFS")), keepOrder = TRUE,
+                      reps = as.integer(.hcSplit(Sys.getenv("FS_HC_SETS", "1,2,3,4,5"))),
+                      hindcastYears = as.integer(.hcSplit(Sys.getenv("FS_HC_YEARS", paste(seq(1985, 2020, 5), collapse = ",")))),
+                      n_workers = as.integer(Sys.getenv("FS_HC_WORKERS", "12")),
+                      GCM = "NRV", predict = TRUE, predictFitted = TRUE)
+  message("FS_SET=hindcast: ", paste(.phaseSetup$onlyELFs, collapse = " "), "; years ",
+          paste(.phaseSetup$hindcastYears, collapse = ","), "; sets ", paste(.phaseSetup$reps, collapse = ","),
+          "; queue ", .phaseSetup$queue)
+}
 if (identical(Sys.getenv("FS_SET"), "nrv")) {
   .nrvWave <- Sys.getenv("FS_NRV_WAVE")
   ## 2026-10-08 (Eliot): phase 1 (caches, stop before the spread fit's run) for ELFs a fit-only wave has not
@@ -482,6 +503,14 @@ if (!is.null(.phaseSetup$onlyELFs)) {
     expt <- expt[order(match(expt$.ELFind, .phaseSetup$onlyELFs)), , drop = FALSE]
   message("Restricting to ", NROW(expt), " named ELFs: ", paste(expt$.ELFind, collapse = " "))
 }
+if (!is.null(.phaseSetup$hindcastYears)) {
+  ## one row per ELF x set x year (FS_SET=hindcast): global.R's .hindcastYear dot, and .times = 10 decimal-year reps
+  ## (end Y + 0.0095, not Y + 0.009: nine additions of 0.001 land just below Y + 0.009)
+  .ny <- length(.phaseSetup$hindcastYears)
+  expt <- expt[rep(seq_len(NROW(expt)), each = .ny), , drop = FALSE]
+  expt$.hindcastYear <- rep(.phaseSetup$hindcastYears, times = NROW(expt) / .ny)
+  expt$.times <- I(lapply(expt$.hindcastYear, function(y) list(start = y, end = y + 0.0095)))
+}
 if (!is.null(.phaseSetup$heldOutFolds)) {
   ## one row per ELF x fold, the folds of an ELF adjacent; global.R's `.heldOutFold` dot, read per job
   .nf <- length(.phaseSetup$heldOutFolds)
@@ -521,6 +550,8 @@ if (nzchar(Sys.getenv("TMUX"))) {
   system2("tmux", c("set-environment", "FS_PHASE1_ONLY", if (.phase1Only) "TRUE" else "FALSE"))
   ## an expt.R fit queue is a strict phase-2 wave: fit, then stop (global.R otherwise goes on to predict)
   ## ... unless the queue predicts (FS_SET=nrv): fit if needed, then predict
+  ## FS_SET=hindcast: the queue each job waits on (see the FS_SET=hindcast block); empty = no waiting
+  system2("tmux", c("set-environment", "FS_HC_WAIT_QUEUE", Sys.getenv("FS_HC_WAIT_QUEUE")))
   system2("tmux", c("set-environment", "FS_PHASE2_ONLY",
                     if (.phase1Only || isTRUE(.phaseSetup$predict)) "FALSE" else "TRUE"))
 } else if (.phase1Only) {
