@@ -60,6 +60,7 @@ fireSense_summary         development  -                     -
 fireSense_dataPrepPredict development  -                     -
 fireSense_burn            development  -                     -
 fireSense_ignitionPredict development  -                     -
+fireSense_spreadPredict   development  -                     -
 '
 
 DRYRUN=0
