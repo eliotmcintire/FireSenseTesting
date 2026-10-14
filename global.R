@@ -461,12 +461,20 @@ inSim <- SpaDES.project::setupProject(
 message(inSim$runName)
 
 inSimCopy <- reproducible::Copy(inSim)
-## FS_SET=hindcast with FS_HC_WAIT_QUEUE (expt.R): wait until this ELF is DONE in that queue (the ignition refit
-## wave), so a hindcast never starts before its ELF's Poisson ignition fit is in the ledger
+## FS_SET=hindcast with FS_HC_WAIT_QUEUE (expt.R): wait until this ELF's Poisson ignition fit is in the ledger copy
+## that the ignition wave's job left in the ELF's rep-1 inputs (or the ELF is DONE in that queue), so a hindcast
+## never starts before its ignition fit exists and never fits ignition itself
 .hcWaitQueue <- Sys.getenv("FS_HC_WAIT_QUEUE")
 if (!is.null(inSim$params$fireSense_summary$hindcastYear) && nzchar(.hcWaitQueue)) {
   .hcELF <- inSim$params$.globals$.studyAreaName
+  .hcLedger <- file.path("/mnt/fast/inputs", .hcELF, "NRV", 370, 1,
+                         fireSenseUtils::ignitionFitFilenameFor(   # the fire years, from the spread ledger's name (the dots are gone here)
+                           as.integer(strsplit(regmatches(.sfn <- inSim$params$.globals$spreadFitFilename,
+                                                          regexpr("[0-9]{4}-[0-9]{4}", .sfn)), "-")[[1]])))
   repeat {
+    .hasRow <- tryCatch(.hcELF %in% as.character(as.data.frame(readRDS(.hcLedger))[[fireSenseUtils::polygonIDTxt]]),
+                        error = function(e) FALSE)       # missing, or mid-write
+    if (isTRUE(.hasRow)) break
     .st <- tryCatch({ .q <- as.data.frame(readRDS(.hcWaitQueue)); .q$status[.q$.ELFind == .hcELF] },
                     error = function(e) NA_character_)   # the queue file may be mid-write
     if ("DONE" %in% .st) break
@@ -529,8 +537,11 @@ if (.phase1Only) {
   ## (.spreadFitMode, .heldOutFold) are not variables here, after setupProject(): read the resolved params.
   .sfp <- inSimCopy$params$fireSense_spreadFit
   .heldOut <- inSimCopy$params$.globals$heldOutFold # set in .globals for all three fold-aware modules
+  ## .stopBefore too (2026-10-13): an ELF whose spread fit is already in the ledger has no `run`, so the .stopAfter
+  ## barrier never fires and the job went on to a 1000-year prediction (the ignition-only wave, FS_NRV_WAVE=ignition)
   inSimCopy$events <- list(.stopAfter = list(fireSense_spreadFit =
-    if ("validate" %in% .sfp$mode || isTRUE(!is.na(.heldOut))) "crossValidate" else "run"))
+    if ("validate" %in% .sfp$mode || isTRUE(!is.na(.heldOut))) "crossValidate" else "run"),
+    .stopBefore = list(fireSense_dataPrepPredict = "getClimateRasters"))
 }
 
 ########################################
