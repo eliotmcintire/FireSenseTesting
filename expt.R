@@ -239,7 +239,7 @@ if (identical(Sys.getenv("FS_SET"), "heldout")) {
 ## 2026-10-13 (Eliot): PHASE 4 HINDCAST. Each ELF x SCANFI vegetation year (1985-2020 by 5) x spread parameter set
 ## (.rep 1-5) is one job: global.R's .hindcastYear trigger holds that year's vegetation and climate and runs 10 reps
 ## as decimal years Y .. Y + 0.009. Predict only, from the ledger fits (spread; Poisson ignition/escape).
-## FS_HC_ELFS (required, in order), FS_HC_YEARS, FS_HC_SETS, FS_HC_WORKERS, FS_HC_TAG.
+## FS_HC_ELFS (required, in order), FS_HC_YEARS, FS_HC_SETS, FS_HC_JOBS, FS_HC_WORKERS, FS_HC_TAG.
 ## FS_HC_WAIT_QUEUE=<queue .rds>: each job waits until its ELF is DONE there (e.g. the ignition refit wave), so
 ## hindcasts start ELF by ELF as their ignition fits land instead of fitting ignition themselves.
 if (identical(Sys.getenv("FS_SET"), "hindcast")) {
@@ -513,6 +513,13 @@ if (!is.null(.phaseSetup$hindcastYears)) {
   expt <- expt[rep(seq_len(NROW(expt)), each = .ny), , drop = FALSE]
   expt$.hindcastYear <- rep(.phaseSetup$hindcastYears, times = NROW(expt) / .ny)
   expt$.times <- I(lapply(expt$.hindcastYear, function(y) list(start = y, end = y + 0.0095)))
+  ## FS_HC_JOBS=<ELF>/<year>/<set>,... keeps only those jobs, e.g. to rerun the ERROR rows of a queue without
+  ## rerunning (and overwriting) its DONE ones (2026-10-14)
+  if (nzchar(Sys.getenv("FS_HC_JOBS"))) {
+    expt <- expt[paste(expt$.ELFind, expt$.hindcastYear, expt$.rep, sep = "/") %in%
+                   .hcSplit(Sys.getenv("FS_HC_JOBS")), , drop = FALSE]
+    message("FS_HC_JOBS: ", NROW(expt), " jobs")
+  }
   ## FS_HC_INTERLEAVE=TRUE: one job of each ELF first, then the second of each, ... A first job builds its ELF's
   ## caches (~1 h: the 8 vegetation years) and the ELF's other jobs wait on that cache lock, so ELF-major order
   ## kept every worker on one ELF at a time (2026-10-14: 13.1 and 14.3 alone took the first 3 h)
