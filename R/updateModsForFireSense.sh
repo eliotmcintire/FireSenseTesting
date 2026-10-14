@@ -59,6 +59,7 @@ LandRCBM_split3pools      main         -                     -
 fireSense_summary         development  -                     -
 fireSense_dataPrepPredict development  -                     -
 fireSense_burn            development  -                     -
+fireSense_ignitionPredict development  -                     -
 '
 
 DRYRUN=0
