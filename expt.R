@@ -245,8 +245,10 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
   ## (FS_PHASE2_ONLY, see global.R), 13 workers; FS_NRV_ELFS=all names every ELF in the map
   ## 2026-10-11 (Eliot): phase 3 after a fit-only wave: FS_NRV_WAVE=predict predicts reps 1-5 of each named ELF
   ## from its ledger fit, never fitting. Name only ELFs whose fit is DONE: a predict run of an unfitted ELF would fit.
-  if (!.nrvWave %in% c("1", "2", "fit", "predict"))
-    stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1), 2 (reps 2-5), fit (fit only, then stop) or predict (reps 1-5, predict only)")
+  ## 2026-10-13 (Eliot): FS_NRV_WAVE=ignition refits only ignition and escape (Poisson, fireSense_ignitionFit#38, new
+  ## ledger tag fireSenseUtils#149): no refitExisting, so the spread fit reuses its ledger row and the job stops after it
+  if (!.nrvWave %in% c("1", "2", "fit", "predict", "ignition"))
+    stop("FS_SET=nrv needs FS_NRV_WAVE=1 (fit + rep 1), 2 (reps 2-5), fit (fit only, then stop), predict (reps 1-5, predict only) or ignition (ignition/escape fit only)")
   .nrvELFs <- strsplit(Sys.getenv("FS_NRV_ELFS", unset = "14.4,4.1,4.2.2"), ",")[[1]]
   .nrvAll <- identical(.nrvELFs, "all")
   .nrvTag <- if (nzchar(Sys.getenv("FS_NRV_TAG"))) Sys.getenv("FS_NRV_TAG") else  # a short name for a long ELF list
@@ -264,9 +266,10 @@ if (identical(Sys.getenv("FS_SET"), "nrv")) {
                       n_workers = if (.phase1Only) as.integer(Sys.getenv("FS_NRV_WORKERS", "12")) else
                         switch(.nrvWave, "1" = length(.nrvELFs), "fit" = as.integer(Sys.getenv("FS_NRV_WORKERS", "13")),
                                          "2" = min(12, 4 * length(.nrvELFs)),  # each fit is a 40-worker cluster
-                                         "predict" = as.integer(Sys.getenv("FS_NRV_WORKERS", "6"))),  # ~38 GB, ~1.2 cores per predict
-                      GCM = "NRV", predict = .nrvWave != "fit",
-                      refitFitted = .nrvWave %in% c("1", "fit"), predictFitted = .nrvWave %in% c("2", "predict"))
+                                         "predict" = as.integer(Sys.getenv("FS_NRV_WORKERS", "6")),  # ~38 GB, ~1.2 cores per predict
+                                         "ignition" = as.integer(Sys.getenv("FS_NRV_WORKERS", "10"))),
+                      GCM = "NRV", predict = !.nrvWave %in% c("fit", "ignition"),
+                      refitFitted = .nrvWave %in% c("1", "fit"), predictFitted = .nrvWave %in% c("2", "predict", "ignition"))
   message("FS_SET=nrv wave ", .nrvWave, ": ", paste(.phaseSetup$onlyELFs, collapse = " "), ", reps ",
           paste(.phaseSetup$reps, collapse = ","), ", queue ", .phaseSetup$queue)
 }
