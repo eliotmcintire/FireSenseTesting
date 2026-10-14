@@ -92,7 +92,7 @@ inSim <- SpaDES.project::setupProject(
                      .areaMultiplierScale = 1,
                      ## HINDCAST TRIGGER (Eliot 2026-10-13): NA = every other run, unchanged. A year Y (a SCANFI vegetation
                      ## year, 1985-2020 by 5) makes this job a hindcast: year Y's vegetation held static
-                     ## (fireSense_dataPrepPredict vegetationYear) and year Y's climate, 10 reps as decimal years
+                     ## (fireSense_dataPrepPredict takes the latest data year not after time(sim)) and year Y's climate, 10 reps as decimal years
                      ## Y, Y.001, ..., Y.009 (expt.R FS_SET=hindcast sets .times = Y to Y + 0.0095), no vegetation or NRV
                      ## summary modules, .rep = the spread parameter set. Outputs in /mnt/fast/outputs/hindcast/<ELF>/<Y>/<set>.
                      .hindcastYear = NA_integer_,
@@ -393,7 +393,7 @@ inSim <- SpaDES.project::setupProject(
     ## 2026-10-05 (Eliot): predict with the ELF's own fit only for now (fireSense_dataPrepPredict#26); blending with
     ## neighbouring ELFs (the module default) needs neighbour-labelled ELF rasters in single-ELF runs first
     fireSense_dataPrepPredict = c(list(blendNeighbourELFs = FALSE),
-                                  if (!is.na(.hindcastYear)) list(vegetationYear = as.integer(.hindcastYear), fireTimeStep = 0.001)),
+                                  if (!is.na(.hindcastYear)) list(fireTimeStep = 0.001)),
     ## Dominique Caron's settings (2026-10-02), as ~/zonationDiag: build the species-trait factorial here rather
     ## than downloading the prebuilt one; balanceGrowth = Biomass_speciesParameters#70
     Biomass_speciesFactorial = list(.plots = NULL, runExperiment = TRUE, factorialSize = "medium"),
