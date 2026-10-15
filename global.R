@@ -388,8 +388,10 @@ inSim <- SpaDES.project::setupProject(
     ),
       if (!isTRUE(all.equal(.areaMultiplierScale, 1)))
         list(areaMultiplier = bquote(function(size) .(.areaMultiplierScale) * fireSenseUtils::multiplier(size))),
-      ## a hindcast needs the vegetation of every SCANFI year it hindcasts, not only the fit's five
-      if (!is.na(.hindcastYear)) list(dataYears = seq(1985L, 2020L, 5L))),
+      ## every SCANFI year (Eliot 2026-10-15): with each fire year on the latest data year strictly before it
+      ## (fireSense_dataPrepFit), five-yearly data keep the vegetation at most 5 years older than the fires.
+      ## 2025 is left out: the fit's last fire year (2024) uses 2020, and SCANFI 2025 on disk is land cover only.
+      list(dataYears = seq(1985L, 2020L, 5L))),
     ## 2026-10-05 (Eliot): predict with the ELF's own fit only for now (fireSense_dataPrepPredict#26); blending with
     ## neighbouring ELFs (the module default) needs neighbour-labelled ELF rasters in single-ELF runs first
     fireSense_dataPrepPredict = c(list(blendNeighbourELFs = FALSE),
