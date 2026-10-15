@@ -403,6 +403,8 @@ if (identical(Sys.getenv("FS_SET"), "buffer2x")) {
 ## the runaway threshold of 8-neighbour spread (fireSense_spreadFit#69 lowers it to spreadProbFloor and scores a
 ## runaway as 2x its buffer). Refit the worst ELFs, fit only, as the NRV fits (10x buffers), into their own ledger
 ## (_boundfix_rep81); then hindcast them with FS_SET=hindcast FS_HC_LEDGER=_boundfix_rep81. FS_BF_ELFS overrides.
+## Hindcast years Y+1 (FS_HC_YEARS=1986,1991,...,2021, Eliot 2026-10-15): SCANFI year Y may already show year Y's
+## burns, so each hindcast uses SCANFI Y (the latest data year not after Y+1) with Y+1's climate and fires.
 if (identical(Sys.getenv("FS_SET"), "boundfix")) {
   if (.phase1Only) stop("FS_SET=boundfix has no phase-1 entry")
   .areaMultiplierScale <- 10
