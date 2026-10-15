@@ -255,7 +255,10 @@ if (identical(Sys.getenv("FS_SET"), "hindcast")) {
                       reps = as.integer(.hcSplit(Sys.getenv("FS_HC_SETS", "1,2,3,4,5"))),
                       hindcastYears = as.integer(.hcSplit(Sys.getenv("FS_HC_YEARS", paste(seq(1985, 2020, 5), collapse = ",")))),
                       n_workers = as.integer(Sys.getenv("FS_HC_WORKERS", "12")),
-                      GCM = "NRV", predict = TRUE, predictFitted = TRUE)
+                      GCM = "NRV", predict = TRUE, predictFitted = TRUE,
+                      ## FS_HC_LEDGER=<suffix>: predict from that test ledger (global.R .spreadFitFileSuffix, e.g.
+                      ## _boundfix_rep81 from FS_SET=boundfix); outputs go to /mnt/fast/outputs/hindcast<suffix>
+                      queueCols = if (nzchar(Sys.getenv("FS_HC_LEDGER"))) list(.spreadFitFileSuffix = Sys.getenv("FS_HC_LEDGER")))
   message("FS_SET=hindcast: ", paste(.phaseSetup$onlyELFs, collapse = " "), "; years ",
           paste(.phaseSetup$hindcastYears, collapse = ","), "; sets ", paste(.phaseSetup$reps, collapse = ","),
           "; queue ", .phaseSetup$queue)
@@ -395,6 +398,19 @@ if (identical(Sys.getenv("FS_SET"), "buffer2x")) {
                       onlyELFs = "5.4", keepOrder = TRUE, reps = 71L, GCM = "NRV",
                       predict = TRUE, refitFitted = TRUE, repLedger = "_buffer2x_rep")
   message("FS_SET=buffer2x: 5.4 rep 71, buffers x2, 2020-2320, queue ", .phaseSetup$queue)
+}
+## 2026-10-15 (Eliot): the hindcast's runaway fires came from spread fits pinned at maxAsymptote's lower bound 0.25,
+## the runaway threshold of 8-neighbour spread (fireSense_spreadFit#69 lowers it to spreadProbFloor and scores a
+## runaway as 2x its buffer). Refit the worst ELFs, fit only, as the NRV fits (10x buffers), into their own ledger
+## (_boundfix_rep81); then hindcast them with FS_SET=hindcast FS_HC_LEDGER=_boundfix_rep81. FS_BF_ELFS overrides.
+if (identical(Sys.getenv("FS_SET"), "boundfix")) {
+  if (.phase1Only) stop("FS_SET=boundfix has no phase-1 entry")
+  .areaMultiplierScale <- 10
+  .bfELFs <- strsplit(Sys.getenv("FS_BF_ELFS", "6.6.1,9.1.2,4.2.1,6.6.2"), ",")[[1]]
+  .phaseSetup <- list(queue = "experiment_queue_boundfix_2026-10-15.rds", n_workers = length(.bfELFs),  # each fit is a 40-worker cluster
+                      onlyELFs = .bfELFs, keepOrder = TRUE, reps = 81L, GCM = "NRV",
+                      refitFitted = TRUE, repLedger = "_boundfix_rep")
+  message("FS_SET=boundfix: ", paste(.bfELFs, collapse = " "), ", rep 81, fit only, queue ", .phaseSetup$queue)
 }
 if (identical(Sys.getenv("FS_SET"), "okanagan")) {
   .phaseSetup <- list(

@@ -147,7 +147,7 @@ inSim <- SpaDES.project::setupProject(
   # Outputs on /mnt/fast, the disk of destinationPathShared (/mnt/fast/data), so prepInputs can hard-link shared
   # files (e.g. Biomass_speciesFactorial's tables) into each run instead of copying them (Eliot 2026-10-07).
   paths = list(outputPath = if (is.na(.hindcastYear)) SpaDES.project::pathBuild(pre = "/mnt/fast/outputs", .ELFind, .GCM, .SSP, .rep) else
-                 SpaDES.project::pathBuild(pre = "/mnt/fast/outputs/hindcast", .ELFind, .hindcastYear, .rep),
+                 SpaDES.project::pathBuild(pre = paste0("/mnt/fast/outputs/hindcast", .spreadFitFileSuffix), .ELFind, .hindcastYear, .rep),
                # cachePath = "/mnt/shared_cache/cache",
                cachePath = "/mnt/fast/cache",
                scratchPath = "/mnt/fast/scratch",
