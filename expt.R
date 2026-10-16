@@ -80,7 +80,7 @@ options(spades.useRequire = FALSE)
 # (`.fireYearStart = .fireYearStart`) that resolved to NA in every worker on 2026-09-11.
 # The check below is what keeps the two in step: if the resolved end year ever moves away
 # from what global.R defaults to, this stops rather than fitting the wrong window.
-.fireYearStart <- 1985L                                  # first SCANFI V2 year
+.fireYearStart <- 1986L                                  # vegetation strictly before the fire year: 1985 (first SCANFI V2 year) feeds 1986
 .fireYearEnd <- as.integer(climateData::latestHistoricalYear())
 stopifnot(is.finite(.fireYearEnd), .fireYearEnd > .fireYearStart)
 

@@ -56,7 +56,7 @@ inSim <- SpaDES.project::setupProject(
                      # is what the `.studyAreaName` comment below warns about.
                      # expt.R still stops unless its resolved end year matches .fireYearEnd,
                      # so the campaign window cannot drift from this default silently.
-                     .fireYearStart = 1985L,
+                     .fireYearStart = 1986L,
                      .fireYearEnd = 2024L,
                      # TRUE fits every ELF again even when the ledger has its parameters (use when the
                      # inputs or the model changed, so the stored fit is stale); FALSE fits only ELFs
@@ -117,9 +117,9 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/fireSense@development" # parent: the 9 fireSense modules (ELFs, dataPrepFit, ignitionFit, spreadFit, dataPrepPredict, ignitionPredict, spreadPredict, burn, summary)
                                   
                                   # biomass modules
-                                  , "PredictiveEcology/localEcozones@noElevationBands" # ecoregionLayer: BEC zones in BC, AB Natural Subregions, plain ecodistricts elsewhere (localEcozones#1)
+                                  , "PredictiveEcology/localEcozones@development" # ecoregionLayer: BEC zones in BC, AB Natural Subregions, plain ecodistricts elsewhere (localEcozones#1)
                                   , "PredictiveEcology/Biomass_borealDataPrep@development" # all our PRs merged (2026-10-09)
-                                  , "PredictiveEcology/Biomass_speciesFactorial@modsForFireSense" # #18: factorial tables written once to destinationPathShared, hard-linked into outputPath
+                                  , "PredictiveEcology/Biomass_speciesFactorial@development" # #18 (merged): factorial tables written once to destinationPathShared, hard-linked into outputPath
                                   , "PredictiveEcology/Biomass_speciesParameters@development"
                                   , "PredictiveEcology/Biomass_speciesData@development"
                                   , "PredictiveEcology/Biomass_regeneration@development"
