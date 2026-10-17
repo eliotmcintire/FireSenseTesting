@@ -315,7 +315,9 @@ inSim <- SpaDES.project::setupProject(
       , heldOutFold = as.integer(.heldOutFold)
       , .runName = runName
       , .plotInterval = saveAndPlotInterval
-      , .plots = if (is.na(.hindcastYear)) c("png") else NA # a hindcast plots nothing per job: burn would plot every 0.001 rep
+      ## a hindcast keeps `.plots` here: it is in the cache keys, so the data modules reuse the fit's data prep;
+      ## the modules that run every 0.001-year rep turn it off below (2026-10-17)
+      , .plots = c("png")
       , .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData")),
     # fireSense_ELFs = list(queue_path = "experiment_queue_predict5.rds"),
     # ELF merging (too few fires -> merged with a sibling in the same ecoprovince) is on by default since
@@ -395,7 +397,7 @@ inSim <- SpaDES.project::setupProject(
     ## 2026-10-05 (Eliot): predict with the ELF's own fit only for now (fireSense_dataPrepPredict#26); blending with
     ## neighbouring ELFs (the module default) needs neighbour-labelled ELF rasters in single-ELF runs first
     fireSense_dataPrepPredict = c(list(blendNeighbourELFs = FALSE),
-                                  if (!is.na(.hindcastYear)) list(fireTimeStep = 0.001)),
+                                  if (!is.na(.hindcastYear)) list(fireTimeStep = 0.001, .plots = NA)),
     ## Dominique Caron's settings (2026-10-02), as ~/zonationDiag: build the species-trait factorial here rather
     ## than downloading the prebuilt one; balanceGrowth = Biomass_speciesParameters#70
     Biomass_speciesFactorial = list(.plots = NULL, runExperiment = TRUE, factorialSize = "medium"),
@@ -415,7 +417,8 @@ inSim <- SpaDES.project::setupProject(
     NRV_summary = list(mode = "single", reps = .rep, #TODO: confirm if all prams okay
                        summaryPeriod = as.integer(c(times$start, times$end)), summaryInterval = as.integer(saveAndPlotInterval)),
     fireSense_summary = c(list(mode = "single"),
-                          if (!is.na(.hindcastYear)) list(hindcastYear = as.integer(.hindcastYear), hindcastInterval = 0.001)),
+                          if (!is.na(.hindcastYear)) list(hindcastYear = as.integer(.hindcastYear), hindcastInterval = 0.001,
+                                                          .plots = NA)),
     Biomass_summary = list(years = c(times$start, times$end), 
                            studyAreaName  = .ELFind,
                            mode = "single"
@@ -423,9 +426,12 @@ inSim <- SpaDES.project::setupProject(
     ),
     ## hindcast reps are 0.001 apart (decimal years). 1 is these modules' own default, so other runs are unchanged.
     ## Not through .globals: fireSense_ignitionFit also has a .runInterval (NA: fit once), which must stay NA.
-    fireSense_ignitionPredict = list(.runInterval = if (is.na(.hindcastYear)) 1 else 0.001),
-    fireSense_spreadPredict = list(.runInterval = if (is.na(.hindcastYear)) 1 else 0.001),
-    fireSense_burn = list(.runInterval = if (is.na(.hindcastYear)) 1 else 0.001)
+    fireSense_ignitionPredict = c(list(.runInterval = if (is.na(.hindcastYear)) 1 else 0.001),
+                                  if (!is.na(.hindcastYear)) list(.plots = NA)),
+    fireSense_spreadPredict = c(list(.runInterval = if (is.na(.hindcastYear)) 1 else 0.001),
+                                if (!is.na(.hindcastYear)) list(.plots = NA)),
+    fireSense_burn = c(list(.runInterval = if (is.na(.hindcastYear)) 1 else 0.001),
+                       if (!is.na(.hindcastYear)) list(.plots = NA))
   ), 
   # objectSynonyms = list(c("flammableRTM", "flammableMap")),
   outputs =  {
