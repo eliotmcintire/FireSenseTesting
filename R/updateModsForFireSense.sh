@@ -48,8 +48,6 @@ LandR                     development  -                     248,250,251,255,256
 climateData               development  -                     -
 climateYear               development  -                     -
 canClimateData            development  -                     -
-Biomass_borealDataPrep    development  -                     -
-Biomass_core              development  -                     112,121
 Biomass_summary           development  -                     -
 NRV_summary               development  -                     -
 burnSummaries             development  12                    -

@@ -123,7 +123,7 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/Biomass_speciesParameters@development"
                                   , "PredictiveEcology/Biomass_speciesData@development"
                                   , "PredictiveEcology/Biomass_regeneration@development"
-                                  , "PredictiveEcology/Biomass_core@modsForFireSense" # development/main + our open PRs; R/updateModsForFireSense.sh
+                                  , "PredictiveEcology/Biomass_core@development" # all our PRs merged (2026-10-21)
                                   # summary modules 
                                   # , "FOR-CAST/NRV_summary@development"
                                   , "PredictiveEcology/NRV_summary@modsForFireSense"

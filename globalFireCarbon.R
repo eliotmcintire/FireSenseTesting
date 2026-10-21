@@ -87,11 +87,11 @@ inSim <- SpaDES.project::setupProject(
                                   , "PredictiveEcology/fireSense@development" # parent: the 9 fireSense modules (ELFs, dataPrepFit, ignitionFit, spreadFit, dataPrepPredict, ignitionPredict, spreadPredict, burn, summary)
                                   
                                   # biomass modules
-                                  , "PredictiveEcology/Biomass_borealDataPrep@modsForFireSense"
+                                  , "PredictiveEcology/Biomass_borealDataPrep@development"
                                   , "PredictiveEcology/Biomass_speciesParameters@development"
                                   , "PredictiveEcology/Biomass_speciesData@development"
                                   , "PredictiveEcology/Biomass_regeneration@development"
-                                  , "PredictiveEcology/Biomass_core@modsForFireSense" # development/main + our open PRs; R/updateModsForFireSense.sh
+                                  , "PredictiveEcology/Biomass_core@development"
                                   # summary modules 
                                   # , "FOR-CAST/NRV_summary@development"
                                   , "PredictiveEcology/NRV_summary@modsForFireSense"
