@@ -1,12 +1,26 @@
 ## Launches a FireSense campaign: installs packages once, builds the job queue, starts the tmux workers.
 ## Each worker sources global_draft.R per job. Run inside tmux:
 ##   FS_SET=nrv FS_NRV_WAVE=<fit|predict|ignition> [FS_NRV_ELFS=4.1,14.4|all] Rscript expt.R
-##   FS_SET=hindcast FS_HC_ELFS=4.1,14.4 [FS_HC_LEDGER=_boundfix_rep81] Rscript expt.R
-##   FS_SET=boundfix [FS_BF_ELFS=6.6.1,9.1.2] Rscript expt.R
+##   FS_SET=fit [FS_NRV_ELFS=...|all] [FS_AFTER_QUEUE=<phase-1 queue>] Rscript expt.R   (fit every ELF: phases 1 + 2)
+##   FS_SET=phase1 [FS_NRV_ELFS=...|all] [FS_FIT_QUEUE=<fit queue>] Rscript expt.R   (inputs and caches only, ahead of the fits:
+##     same order as the fits; skips any ELF the fit queue has claimed)
+##   FS_SET=hindcast FS_HC_ELFS=4.1,14.4 [FS_HC_LEDGER=_boundfix_rep81] [FS_HC_IGNITIONS=observedEscapes] Rscript expt.R
+##   FS_SET=refit FS_RF_ELFS=6.6.1,9.1.2 Rscript expt.R   (same rep and ledger as production, so caches are shared)
 
-repos <- c("https://predictiveecology.r-universe.dev", getOption("repos"))
-source("https://raw.githubusercontent.com/PredictiveEcology/pemisc/refs/heads/development/R/getOrUpdatePkg.R")
-getOrUpdatePkg(c("Require", "remotes"), c("1.0.1.9013", "0.0.0"))
+## GPSC (user elm001): no /mnt/fast and no writable site library; both live on GPFS, which the compute nodes see
+.onGPSC <- Sys.info()[["user"]] == "elm001"
+## inputs, outputs, cache, scratch and shared data: overrides global_draft.R's .basePath here (preRunSetupProject)
+## and, as a queue column, in the workers
+.basePath <- if (.onGPSC) "/gpfs/fs7/nrcan/nrcan_forsite/elm001/firesense/fast" else "/mnt/fast"
+if (.onGPSC) {
+  .lib <- file.path("/gpfs/fs7/nrcan/nrcan_forsite/elm001/R/library", format(getRversion()[, 1:2]))
+  dir.create(.lib, recursive = TRUE, showWarnings = FALSE)
+  .libPaths(c(.lib, .libPaths()))
+}
+## no CRAN mirror set (GPSC): install.packages() stops when not interactive. Same repos as the local R; the GPSC is
+## Ubuntu 24.04 (noble) too, so the P3M binaries fit its system GDAL
+if ("@CRAN@" %in% getOption("repos"))
+  options(repos = c(P3M = "https://packagemanager.posit.co/cran/__linux__/noble/latest", CRAN = "https://cloud.r-project.org"))
 
 suppressWarnings(rm(.ELFind)) # a leftover from an earlier run in this session would override global_draft.R's default
 
@@ -32,8 +46,8 @@ if (!isTRUE(as.logical(Sys.getenv("FS_NO_INSTALL", "FALSE")))) {
   pak::pkg_install("PredictiveEcology/fireSenseUtils@development", dependencies = FALSE, ask = FALSE)
 }
 
+options(spades.useRequire = FALSE) # nothing installs from here on: pak above did it, so setupProject() must not run Require
 outs <- SpaDES.project::preRunSetupProject(file = "global_draft.R", upTo = "params")
-options(spades.useRequire = FALSE) # nothing installs from here on
 
 ####################
 # Fitting years: the end is the last year of historical climate. Workers take the window from
@@ -52,6 +66,11 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
 .split <- function(x) strsplit(x, ",")[[1]]
 .phase1Only <- isTRUE(as.logical(Sys.getenv("FS_PHASE1_ONLY", "FALSE")))
 .set <- Sys.getenv("FS_SET")
+## FS_SET=fit and FS_SET=phase1: the nrv fit wave (phases 1 + 2) and its phase 1 alone, under their own labels
+.setLabel <- .set
+if (.set %in% c("fit", "phase1")) {
+  .phase1Only <- identical(.set, "phase1"); .set <- "nrv"; Sys.setenv(FS_NRV_WAVE = "fit")
+}
 
 if (identical(.set, "nrv")) {
   ## fit:      fit every named ELF (refit), then stop. With FS_PHASE1_ONLY=TRUE: build caches only.
@@ -63,7 +82,8 @@ if (identical(.set, "nrv")) {
   if (.phase1Only && .wave != "fit") stop("FS_SET=nrv phase 1 is only for FS_NRV_WAVE=fit")
   .ELFs <- .split(Sys.getenv("FS_NRV_ELFS", "14.4,4.1,4.2.2"))
   .tag <- Sys.getenv("FS_NRV_TAG", paste0("2026-10-08f_", paste(.ELFs, collapse = "-")))
-  .phaseSetup <- list(queue = paste0("experiment_queue_nrv_", .tag, "_wave", .wave, if (.phase1Only) "_phase1", ".rds"),
+  .phaseSetup <- list(queue = if (.setLabel %in% c("fit", "phase1")) paste0("experiment_queue_", .setLabel, "_", .tag, ".rds")
+                              else paste0("experiment_queue_nrv_", .tag, "_wave", .wave, if (.phase1Only) "_phase1", ".rds"),
                       onlyELFs = if (!identical(.ELFs, "all")) .ELFs,
                       reps = if (nzchar(Sys.getenv("FS_NRV_REPS"))) as.integer(.split(Sys.getenv("FS_NRV_REPS")))
                              else if (.wave == "predict") 1:5 else 1L,
@@ -82,37 +102,48 @@ if (identical(.set, "nrv")) {
                       ## Y+1: SCANFI year Y may already show year Y's burns, so year Y+1 uses SCANFI Y (pre-burn vegetation)
                       hindcastYears = as.integer(.split(Sys.getenv("FS_HC_YEARS", "1986,1991,1996,2001,2006,2011,2016,2021"))),
                       ledgerSuffix = Sys.getenv("FS_HC_LEDGER"), # "" = production ledger
+                      hcIgnitions = if (nzchar(Sys.getenv("FS_HC_IGNITIONS"))) Sys.getenv("FS_HC_IGNITIONS"), # unset: drawn ("predicted"); "observedEscapes": spread the observed escapes
                       n_workers = as.integer(Sys.getenv("FS_HC_WORKERS", "12")),
                       refit = FALSE,
                       predict = TRUE)
-} else if (identical(.set, "boundfix")) {
-  ## refit the ELFs whose spread fits sat on the old maxAsymptote bound, fit only, into their own ledger
-  ## (_boundfix_rep81); hindcast them after with FS_SET=hindcast FS_HC_LEDGER=_boundfix_rep81
-  if (.phase1Only) stop("FS_SET=boundfix has no phase-1 form")
-  .phaseSetup <- list(queue = paste0("experiment_queue_boundfix_", Sys.getenv("FS_BF_TAG", format(Sys.Date(), "%Y-%m-%d")), ".rds"),
-                      onlyELFs = .split(Sys.getenv("FS_BF_ELFS", "6.6.1,9.1.2,4.2.1,6.6.2")),
-                      reps = 81L,
-                      ledgerSuffix = "_boundfix_rep81",
-                      n_workers = length(.split(Sys.getenv("FS_BF_ELFS", "6.6.1,9.1.2,4.2.1,6.6.2"))), # each fit is a cluster
+} else if (identical(.set, "refit")) {
+  ## refit the named ELFs, fit only. Same rep (1) and ledger suffix ("") as production by default: a separate rep or
+  ## suffix puts different labels in the cache keys and redoes data preparation (2026-10-19)
+  if (.phase1Only) stop("FS_SET=refit has no phase-1 form")
+  if (!nzchar(Sys.getenv("FS_RF_ELFS"))) stop("FS_SET=refit needs FS_RF_ELFS")
+  .phaseSetup <- list(queue = paste0("experiment_queue_refit_", Sys.getenv("FS_RF_TAG", format(Sys.Date(), "%Y-%m-%d")), ".rds"),
+                      onlyELFs = .split(Sys.getenv("FS_RF_ELFS")),
+                      reps = as.integer(Sys.getenv("FS_RF_REP", "1")),
+                      ledgerSuffix = Sys.getenv("FS_RF_SUFFIX", ""),
+                      spreadLink = if (nzchar(Sys.getenv("FS_SPREAD_LINK"))) Sys.getenv("FS_SPREAD_LINK"), # unset: the module default
+                      spreadWeighted = if (nzchar(Sys.getenv("FS_SPREAD_WEIGHTED"))) Sys.getenv("FS_SPREAD_WEIGHTED"), # unset: the module default (FALSE)
+                      spreadTests = if (nzchar(Sys.getenv("FS_SPREAD_TESTS"))) Sys.getenv("FS_SPREAD_TESTS"), # unset: the module default DEoptimTests
+                      spreadInitialPop = if (nzchar(Sys.getenv("FS_SPREAD_INITIALPOP"))) Sys.getenv("FS_SPREAD_INITIALPOP"), # unset: the module default start
+                      n_workers = length(.split(Sys.getenv("FS_RF_ELFS"))), # each fit is a cluster
                       refit = TRUE,
                       predict = FALSE)
 } else {
-  stop("Set FS_SET=nrv, hindcast or boundfix")
+  stop("Set FS_SET=nrv, phase1, hindcast or refit")
 }
-message("FS_SET=", .set, ": queue ", .phaseSetup$queue)
+message("FS_SET=", .setLabel, ": queue ", .phaseSetup$queue)
 
 ####################
 # Build the queue
 ####################
 queue_path <- .phaseSetup$queue
-outs$params$fireSense_ELFs$queue_path <- queue_path
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
 
 expt <- expand.grid(.ELFind = .ELFinds, .rep = .phaseSetup$reps, stringsAsFactors = FALSE)
 expt$.GCM <- "NRV"
+expt$.basePath <- .basePath
 if (.phaseSetup$refit) expt$.doFit <- TRUE
 if (nzchar(.phaseSetup$ledgerSuffix %||% "")) expt$.spreadFitFileSuffix <- .phaseSetup$ledgerSuffix
+if (!is.null(.phaseSetup$spreadLink)) expt$.spreadLink <- .phaseSetup$spreadLink
+if (!is.null(.phaseSetup$spreadWeighted)) expt$.spreadWeighted <- .phaseSetup$spreadWeighted
+if (!is.null(.phaseSetup$spreadTests)) expt$.spreadTests <- .phaseSetup$spreadTests
+if (!is.null(.phaseSetup$spreadInitialPop)) expt$.spreadInitialPop <- .phaseSetup$spreadInitialPop
+if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
 
 if (is.null(.phaseSetup$onlyELFs)) {
   ## every ELF, by ecozone priority
@@ -145,6 +176,9 @@ message("Queueing ", NROW(expt), " jobs, fire years ", .fireYearStart, ":", .fir
 if (!nzchar(Sys.getenv("TMUX"))) stop("Run expt.R inside tmux")
 system2("tmux", c("set-environment", "FS_PHASE1_ONLY", if (.phase1Only) "TRUE" else "FALSE"))
 system2("tmux", c("set-environment", "FS_PHASE2_ONLY", if (.phase1Only || .phaseSetup$predict) "FALSE" else "TRUE"))
+## workers read these in global_draft.R; tmux panes do not inherit the launcher's environment
+for (.v in c("FS_NO_CACHECHAINING", "FS_RPROF", "FS_DIAG_FILE", "FS_AFTER_QUEUE", "FS_FIT_QUEUE"))
+  system2("tmux", if (nzchar(Sys.getenv(.v))) c("set-environment", .v, Sys.getenv(.v)) else c("set-environment", "-u", .v))
 
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,
