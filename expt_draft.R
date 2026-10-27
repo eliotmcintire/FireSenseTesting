@@ -165,7 +165,24 @@ message("Queueing ", NROW(expt), " jobs, fire years ", .fireYearStart, ":", .fir
 
 ####################
 # Run. Worker panes take the tmux session's environment, not this process's.
+# With Slurm (the GPSC), each worker is a one-node job; it takes this process's environment.
 ####################
+if (nzchar(Sys.which("sbatch"))) {
+  Sys.setenv(FS_PHASE1_ONLY = .phase1Only, FS_PHASE2_ONLY = !(.phase1Only || .phaseSetup$predict))
+  expt$.cores <- 64L # spread fits on the job's own node, not on .cores's machines
+  workers <- SpaDES.project::experimentSBATCH(
+    df          = expt,
+    global_path = "global_draft.R",
+    n_workers   = .phaseSetup$n_workers,
+    queue_path  = queue_path,
+    log_dir     = file.path("logs", sub("\\.rds$", "", basename(queue_path))),
+    ## the account's allocation is on gpsc8 (64 CPUs, ~486 GB per standard node); its "low" QoS allows 0 CPUs
+    sbatch_opts = list(clusters = "gpsc8", account = "nrcan_forsite", partition = "standard",
+                       qos = "nrcan__standard_gpsc8_allocation", nodes = 1, ntasks = 1, cpus_per_task = 64, mem = 0),
+    ss_id       = NULL # compute nodes have no internet: the local queue only
+  )
+  q(save = "no")
+}
 if (!nzchar(Sys.getenv("TMUX"))) stop("Run expt.R inside tmux")
 system2("tmux", c("set-environment", "FS_PHASE1_ONLY", if (.phase1Only) "TRUE" else "FALSE"))
 system2("tmux", c("set-environment", "FS_PHASE2_ONLY", if (.phase1Only || .phaseSetup$predict) "FALSE" else "TRUE"))
