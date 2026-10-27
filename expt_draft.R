@@ -7,16 +7,9 @@
 ##   FS_SET=hindcast FS_HC_ELFS=4.1,14.4 [FS_HC_LEDGER=_boundfix_rep81] [FS_HC_IGNITIONS=observedEscapes] Rscript expt.R
 ##   FS_SET=refit FS_RF_ELFS=6.6.1,9.1.2 Rscript expt.R   (same rep and ledger as production, so caches are shared)
 
-## GPSC (user elm001): no /mnt/fast and no writable site library; both live on GPFS, which the compute nodes see
-.onGPSC <- Sys.info()[["user"]] == "elm001"
 ## inputs, outputs, cache, scratch and shared data: overrides global_draft.R's .basePath here (preRunSetupProject)
-## and, as a queue column, in the workers
-.basePath <- if (.onGPSC) "/gpfs/fs7/nrcan/nrcan_forsite/elm001/firesense/fast" else "/mnt/fast"
-if (.onGPSC) {
-  .lib <- file.path("/gpfs/fs7/nrcan/nrcan_forsite/elm001/R/library", format(getRversion()[, 1:2]))
-  dir.create(.lib, recursive = TRUE, showWarnings = FALSE)
-  .libPaths(c(.lib, .libPaths()))
-}
+## and, as a queue column, in the workers. GPSC (user elm001): no /mnt/fast; GPFS, which the compute nodes see
+.basePath <- if (Sys.info()[["user"]] == "elm001") "/gpfs/fs7/nrcan/nrcan_forsite/elm001/firesense/fast" else "/mnt/fast"
 ## no CRAN mirror set (GPSC): install.packages() stops when not interactive. Same repos as the local R; the GPSC is
 ## Ubuntu 24.04 (noble) too, so the P3M binaries fit its system GDAL
 if ("@CRAN@" %in% getOption("repos"))
