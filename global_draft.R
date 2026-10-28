@@ -30,6 +30,7 @@ inSim <- SpaDES.project::setupProject(
                      .spreadTests = NA_character_,    # NA: the module default DEoptimTests; or e.g. "SNLL_FS,pitAD" (comma-separated)
                      .spreadInitialPop = NA_character_, # NA: the module default (DEoptim draws, or calibration passing sets); or an .rds matrix, NP x names(lower)
                      .hindcastYear = NA_integer_,     # a SCANFI year makes this job a hindcast
+                     .hcAllSets = FALSE,              # TRUE: one hindcast job runs every fitted spread parameter set, 20 reps (5 sets x 4; fireSense_spreadPredict paramSetByReplicate)
                      .hcIgnitions = NA_character_,    # NA: the module default ("predicted"); "observedEscapes": a hindcast spreads each year's observed escapes (spread alone)
                      .cores = c("birds", "camas", "caribou", "coco", "core", "dougfir",
                                 "fire", "mpb", "sbw", "acer", "abies", "pinus", "landr", "kodama", "mega"), # mega added 2026-10-20 as phase 1 empties; biomass stays out; carbon (lent 2026-10-23) returned 2026-10-25
@@ -63,7 +64,7 @@ inSim <- SpaDES.project::setupProject(
   # the outputs folder may arrive as its symlink target, so name the run by what is below ".../outputs/"
   runName = gsub("/", "_", sub("^.*/outputs/", "", paths$outputPath)),
   # a hindcast's 10 reps: end at 9.5 steps, as nine additions of .hcStep land just below 9 steps
-  times = if (.hc) list(start = .hindcastYear, end = .hindcastYear + 9.5 * .hcStep) else .times,
+  times = if (.hc) list(start = .hindcastYear, end = .hindcastYear + (if (isTRUE(.hcAllSets)) 19.5 else 9.5) * .hcStep) else .times,
   # a hindcast cannot use the parent: it would bring the vegetation modules
   modules = if (.hc) c("PredictiveEcology/canClimateData@modsForFireSense",
                        "PredictiveEcology/climateYear@modsForFireSense",
@@ -143,7 +144,8 @@ inSim <- SpaDES.project::setupProject(
       climateYear = list(samplingRange = .hindcastYear),
       fireSense_dataPrepPredict = list(fireTimeStep = .hcStep, .plots = NA),
       fireSense_ignitionPredict = list(.runInterval = .hcStep, .plots = NA),
-      fireSense_spreadPredict = list(.runInterval = .hcStep, .plots = NA),
+      fireSense_spreadPredict = c(list(.runInterval = .hcStep, .plots = NA),
+                                  if (isTRUE(.hcAllSets)) list(paramSetByReplicate = TRUE)), # fireSense_spreadPredict >= 1.2.0.9004
       fireSense_burn = c(list(.runInterval = .hcStep, .plots = NA),
                          if (!is.na(.hcIgnitions)) list(ignitionSource = .hcIgnitions)),
       fireSense_summary = list(hindcastYear = .hindcastYear, hindcastInterval = .hcStep, .plots = NA)))

@@ -1,10 +1,10 @@
 ## Launches a FireSense campaign: installs packages once, builds the job queue, starts the tmux workers.
 ## Each worker sources global_draft.R per job. Run inside tmux:
-##   FS_SET=nrv FS_NRV_WAVE=<fit|predict|ignition> [FS_NRV_ELFS=4.1,14.4|all] Rscript expt.R
+##   FS_SET=nrv FS_NRV_WAVE=<fit|predict|ignition> [FS_NRV_ELFS=4.1,14.4|all] [FS_NRV_LEDGER=_burnEmu_20261027] Rscript expt.R
 ##   FS_SET=fit [FS_NRV_ELFS=...|all] [FS_AFTER_QUEUE=<phase-1 queue>] Rscript expt.R   (fit every ELF: phases 1 + 2)
 ##   FS_SET=phase1 [FS_NRV_ELFS=...|all] [FS_FIT_QUEUE=<fit queue>] Rscript expt.R   (inputs and caches only, ahead of the fits:
 ##     same order as the fits; skips any ELF the fit queue has claimed)
-##   FS_SET=hindcast FS_HC_ELFS=4.1,14.4 [FS_HC_LEDGER=_boundfix_rep81] [FS_HC_IGNITIONS=observedEscapes] Rscript expt.R
+##   FS_SET=hindcast FS_HC_ELFS=4.1,14.4 [FS_HC_LEDGER=_boundfix_rep81] [FS_HC_IGNITIONS=observedEscapes] [FS_HC_ALLSETS=TRUE] Rscript expt.R
 ##   FS_SET=refit FS_RF_ELFS=6.6.1,9.1.2 Rscript expt.R   (same rep and ledger as production, so caches are shared)
 
 ## inputs, outputs, cache, scratch and shared data: overrides global_draft.R's .basePath here (preRunSetupProject)
@@ -81,6 +81,7 @@ if (identical(.set, "nrv")) {
                       reps = if (nzchar(Sys.getenv("FS_NRV_REPS"))) as.integer(.split(Sys.getenv("FS_NRV_REPS")))
                              else if (.wave == "predict") 1:5 else 1L,
                       n_workers = as.integer(Sys.getenv("FS_NRV_WORKERS", if (.phase1Only) 12L else .waves[[.wave]])),
+                      ledgerSuffix = Sys.getenv("FS_NRV_LEDGER"), # "" = global_draft.R's .spreadFitFileSuffix
                       refit = .wave == "fit",
                       predict = .wave == "predict")
 } else if (identical(.set, "hindcast")) {
@@ -91,7 +92,9 @@ if (identical(.set, "nrv")) {
   if (!nzchar(Sys.getenv("FS_HC_ELFS"))) stop("FS_SET=hindcast needs FS_HC_ELFS=<ELFs with a fit, comma-separated>")
   .phaseSetup <- list(queue = paste0("experiment_queue_hindcast_", Sys.getenv("FS_HC_TAG", format(Sys.Date(), "%Y-%m-%d")), ".rds"),
                       onlyELFs = .split(Sys.getenv("FS_HC_ELFS")),
-                      reps = as.integer(.split(Sys.getenv("FS_HC_SETS", "1,2,3,4,5"))),
+                      ## FS_HC_ALLSETS=TRUE: one job per ELF x year runs all sets (20 reps, 5 x 4), so one .rep
+                      hcAllSets = isTRUE(as.logical(Sys.getenv("FS_HC_ALLSETS", "FALSE"))),
+                      reps = as.integer(.split(Sys.getenv("FS_HC_SETS", if (isTRUE(as.logical(Sys.getenv("FS_HC_ALLSETS", "FALSE")))) "1" else "1,2,3,4,5"))),
                       ## Y+1: SCANFI year Y may already show year Y's burns, so year Y+1 uses SCANFI Y (pre-burn vegetation)
                       hindcastYears = as.integer(.split(Sys.getenv("FS_HC_YEARS", "1986,1991,1996,2001,2006,2011,2016,2021"))),
                       ledgerSuffix = Sys.getenv("FS_HC_LEDGER"), # "" = production ledger
@@ -137,6 +140,7 @@ if (!is.null(.phaseSetup$spreadWeighted)) expt$.spreadWeighted <- .phaseSetup$sp
 if (!is.null(.phaseSetup$spreadTests)) expt$.spreadTests <- .phaseSetup$spreadTests
 if (!is.null(.phaseSetup$spreadInitialPop)) expt$.spreadInitialPop <- .phaseSetup$spreadInitialPop
 if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
+if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
 
 if (is.null(.phaseSetup$onlyELFs)) {
   ## every ELF, by ecozone priority
