@@ -6,6 +6,7 @@
 ##     same order as the fits; skips any ELF the fit queue has claimed)
 ##   FS_SET=hindcast FS_HC_ELFS=4.1,14.4 [FS_HC_LEDGER=_boundfix_rep81] [FS_HC_IGNITIONS=observedEscapes] [FS_HC_ALLSETS=TRUE] Rscript expt.R
 ##   FS_SET=refit FS_RF_ELFS=6.6.1,9.1.2 Rscript expt.R   (same rep and ledger as production, so caches are shared)
+##   FS_SET=refit FS_PHASE1_ONLY=TRUE FS_RF_ELFS=... Rscript expt.R   (caches only: here, ahead of the same refit on the GPSC)
 
 ## inputs, outputs, cache, scratch and shared data: overrides global_draft.R's .basePath here (preRunSetupProject)
 ## and, as a queue column, in the workers. GPSC (user elm001): no /mnt/fast; GPFS, which the compute nodes see
@@ -99,15 +100,17 @@ if (identical(.set, "nrv")) {
                       hindcastYears = as.integer(.split(Sys.getenv("FS_HC_YEARS", "1986,1991,1996,2001,2006,2011,2016,2021"))),
                       ledgerSuffix = Sys.getenv("FS_HC_LEDGER"), # "" = production ledger
                       hcIgnitions = if (nzchar(Sys.getenv("FS_HC_IGNITIONS"))) Sys.getenv("FS_HC_IGNITIONS"), # unset: drawn ("predicted"); "observedEscapes": spread the observed escapes
+                      fireCauses = if (nzchar(Sys.getenv("FS_FIRE_CAUSES"))) Sys.getenv("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (same value as the fit's)
                       n_workers = as.integer(Sys.getenv("FS_HC_WORKERS", "12")),
                       refit = FALSE,
                       predict = TRUE)
 } else if (identical(.set, "refit")) {
   ## refit the named ELFs, fit only. Same rep (1) and ledger suffix ("") as production by default: a separate rep or
   ## suffix puts different labels in the cache keys and redoes data preparation (2026-10-19)
-  if (.phase1Only) stop("FS_SET=refit has no phase-1 form")
+  ## With FS_PHASE1_ONLY=TRUE: build caches only, from the same rows, so a fit elsewhere (the GPSC) finds them
   if (!nzchar(Sys.getenv("FS_RF_ELFS"))) stop("FS_SET=refit needs FS_RF_ELFS")
-  .phaseSetup <- list(queue = paste0("experiment_queue_refit_", Sys.getenv("FS_RF_TAG", format(Sys.Date(), "%Y-%m-%d")), ".rds"),
+  .phaseSetup <- list(queue = paste0("experiment_queue_refit_", Sys.getenv("FS_RF_TAG", format(Sys.Date(), "%Y-%m-%d")),
+                                     if (.phase1Only) "_phase1", ".rds"),
                       onlyELFs = .split(Sys.getenv("FS_RF_ELFS")),
                       reps = as.integer(Sys.getenv("FS_RF_REP", "1")),
                       ledgerSuffix = Sys.getenv("FS_RF_SUFFIX", ""),
@@ -115,7 +118,9 @@ if (identical(.set, "nrv")) {
                       spreadWeighted = if (nzchar(Sys.getenv("FS_SPREAD_WEIGHTED"))) Sys.getenv("FS_SPREAD_WEIGHTED"), # unset: the module default (FALSE)
                       spreadTests = if (nzchar(Sys.getenv("FS_SPREAD_TESTS"))) Sys.getenv("FS_SPREAD_TESTS"), # unset: the module default DEoptimTests
                       spreadInitialPop = if (nzchar(Sys.getenv("FS_SPREAD_INITIALPOP"))) Sys.getenv("FS_SPREAD_INITIALPOP"), # unset: the module default start
-                      n_workers = length(.split(Sys.getenv("FS_RF_ELFS"))), # each fit is a cluster
+                      spreadInitialPopMethod = if (nzchar(Sys.getenv("FS_SPREAD_INITPOP_METHOD"))) Sys.getenv("FS_SPREAD_INITPOP_METHOD"), # unset: the module default ("calibration")
+                      fireCauses = if (nzchar(Sys.getenv("FS_FIRE_CAUSES"))) Sys.getenv("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (ignition, escape and spread fits)
+                      n_workers = as.integer(Sys.getenv("FS_RF_WORKERS", length(.split(Sys.getenv("FS_RF_ELFS"))))), # each fit is a cluster; FS_RF_WORKERS caps fits at once
                       refit = TRUE,
                       predict = FALSE)
 } else {
@@ -139,8 +144,20 @@ if (!is.null(.phaseSetup$spreadLink)) expt$.spreadLink <- .phaseSetup$spreadLink
 if (!is.null(.phaseSetup$spreadWeighted)) expt$.spreadWeighted <- .phaseSetup$spreadWeighted
 if (!is.null(.phaseSetup$spreadTests)) expt$.spreadTests <- .phaseSetup$spreadTests
 if (!is.null(.phaseSetup$spreadInitialPop)) expt$.spreadInitialPop <- .phaseSetup$spreadInitialPop
+if (!is.null(.phaseSetup$spreadInitialPopMethod)) expt$.spreadInitialPopMethod <- .phaseSetup$spreadInitialPopMethod
 if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
 if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
+if (!is.null(.phaseSetup$fireCauses)) expt$.fireCauses <- .phaseSetup$fireCauses
+## the phase and the run's diagnostics are columns, so a worker reads them as global_draft.R's defaultDots
+expt$.phase1Only <- .phase1Only
+expt$.phase2Only <- !(.phase1Only || .phaseSetup$predict)
+.optionalColumn <- function(col, env, f = identity) if (nzchar(Sys.getenv(env))) expt[[col]] <<- f(Sys.getenv(env))
+.optionalColumn(".workerMemoryGB", "FS_WORKER_MEM_GB", as.numeric)
+.optionalColumn(".cacheChaining", "FS_NO_CACHECHAINING", function(x) !isTRUE(as.logical(x)))
+.optionalColumn(".fitQueue", "FS_FIT_QUEUE")
+.optionalColumn(".afterQueue", "FS_AFTER_QUEUE")
+.optionalColumn(".diagFile", "FS_DIAG_FILE")
+.optionalColumn(".rprofPrefix", "FS_RPROF")
 
 if (is.null(.phaseSetup$onlyELFs)) {
   ## every ELF, by ecozone priority
@@ -172,8 +189,13 @@ message("Queueing ", NROW(expt), " jobs, fire years ", .fireYearStart, ":", .fir
 # With Slurm (the GPSC), each worker is a one-node job; it takes this process's environment.
 ####################
 if (nzchar(Sys.which("sbatch"))) {
-  Sys.setenv(FS_PHASE1_ONLY = .phase1Only, FS_PHASE2_ONLY = !(.phase1Only || .phaseSetup$predict))
-  expt$.cores <- 64L # spread fits on the job's own node, not on .cores's machines
+  ## compute nodes reach the internet only through the science proxy; workers and the cluster stay direct
+  if (!nzchar(Sys.getenv("https_proxy")))
+    Sys.setenv(https_proxy = "http://webproxy.science.gc.ca:8888", http_proxy = "http://webproxy.science.gc.ca:8888",
+               no_proxy = "localhost,127.0.0.1,science.gc.ca")
+  expt$.cores <- 40L # spread fits on the job's own node, not on .cores's machines; 40 at 10 GB (global_draft.R)
+  .slurmTmp <- file.path(.basePath, "scratch", "tmp") # TMPDIR of the jobs (see sbatch_opts)
+  dir.create(.slurmTmp, recursive = TRUE, showWarnings = FALSE)
   workers <- SpaDES.project::experimentSBATCH(
     df          = expt,
     global_path = "global_draft.R",
@@ -181,18 +203,27 @@ if (nzchar(Sys.which("sbatch"))) {
     queue_path  = queue_path,
     log_dir     = file.path("logs", sub("\\.rds$", "", basename(queue_path))),
     ## the account's allocation is on gpsc8 (64 CPUs, ~486 GB per standard node); its "low" QoS allows 0 CPUs
-    sbatch_opts = list(clusters = "gpsc8", account = "nrcan_forsite", partition = "standard",
-                       qos = "nrcan__standard_gpsc8_allocation", nodes = 1, ntasks = 1, cpus_per_task = 64, mem = 0),
+    ## phase 1 is one core (the forking threshold calibration is in phase 2, global_draft.R); FS_SBATCH_AFTER=<job ids>
+    ## starts these jobs only after those succeed (a fit after its phase 1)
+    ## a compute node's /tmp is a 500 MB tmpfs: R's tempdir() there (reproducible.tempPath, where downloads and
+    ## postProcess land first) cut every file at ~500 MB (SCANFI landcover, crop "too few values", 2026-10-29)
+    sbatch_opts = c(list(clusters = "gpsc8", account = "nrcan_forsite", partition = "standard",
+                         qos = "nrcan__standard_gpsc8_allocation", nodes = 1, ntasks = 1,
+                         export = paste0("ALL,TMPDIR=", .slurmTmp)),
+                    if (.phase1Only) list(cpus_per_task = 1, mem = "96G", time = "1-00:00:00") # 32G was OOM-killed (12.1_2, prepSpreadFitData); to be set from measured peaks
+                    else if (identical(.set, "hindcast")) # one core per ELF x year job; FS_SBATCH_MEM until the MaxRSS of the first jobs is known
+                      list(cpus_per_task = 1, mem = Sys.getenv("FS_SBATCH_MEM", "64G"), time = "2-00:00:00")
+                    else list(cpus_per_task = 42, # 40 workers + 2 kept free; 7.1 GB/CPU is the partition's limit
+                              ## per ELF (FS_SBATCH_MEM): 40 x the worker peak clusters records in fitMemory.rds, / 0.9 headroom,
+                              ## + the master. 13.1 and 6.6.1 need ~1-2 GB per worker (294G); 12.1_2 needs 8.5 (420G)
+                              mem = Sys.getenv("FS_SBATCH_MEM", "294G"),
+                              time = "7-00:00:00"), # required by gpsc8, though the partition has no limit
+                    if (nzchar(Sys.getenv("FS_SBATCH_AFTER"))) list(dependency = paste0("afterok:", gsub(",", ":", Sys.getenv("FS_SBATCH_AFTER"))))),
     ss_id       = NULL # compute nodes have no internet: the local queue only
   )
   q(save = "no")
 }
 if (!nzchar(Sys.getenv("TMUX"))) stop("Run expt.R inside tmux")
-system2("tmux", c("set-environment", "FS_PHASE1_ONLY", if (.phase1Only) "TRUE" else "FALSE"))
-system2("tmux", c("set-environment", "FS_PHASE2_ONLY", if (.phase1Only || .phaseSetup$predict) "FALSE" else "TRUE"))
-## workers read these in global_draft.R; tmux panes do not inherit the launcher's environment
-for (.v in c("FS_NO_CACHECHAINING", "FS_RPROF", "FS_DIAG_FILE", "FS_AFTER_QUEUE", "FS_FIT_QUEUE"))
-  system2("tmux", if (nzchar(Sys.getenv(.v))) c("set-environment", .v, Sys.getenv(.v)) else c("set-environment", "-u", .v))
 
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,

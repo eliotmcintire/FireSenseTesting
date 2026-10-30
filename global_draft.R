@@ -29,9 +29,19 @@ inSim <- SpaDES.project::setupProject(
                      .spreadWeighted = NA_character_, # NA: the module default (FALSE, every fire weighs 1); or "log", "sqrt" (fireSenseUtils sizeWeight())
                      .spreadTests = NA_character_,    # NA: the module default DEoptimTests; or e.g. "SNLL_FS,pitAD" (comma-separated)
                      .spreadInitialPop = NA_character_, # NA: the module default (DEoptim draws, or calibration passing sets); or an .rds matrix, NP x names(lower)
+                     .spreadInitialPopMethod = NA_character_, # NA: the module default ("calibration"); or "emulator" (fireSense_spreadFit#98)
+                     .fireCauses = NA_character_,     # NA: the module defaults; e.g. "natural,unknown": fireSenseUtils::fireCauseCodes() groups for the fits (dataPrepFit) and the hindcast's observed fires (fireSense_summary)
                      .hindcastYear = NA_integer_,     # a SCANFI year makes this job a hindcast
                      .hcAllSets = FALSE,              # TRUE: one hindcast job runs every fitted spread parameter set, 20 reps (5 sets x 4; fireSense_spreadPredict paramSetByReplicate)
                      .hcIgnitions = NA_character_,    # NA: the module default ("predicted"); "observedEscapes": a hindcast spreads each year's observed escapes (spread alone)
+                     .phase1Only = FALSE,             # TRUE: build every input and cache, then stop before the spread threshold calibration (a 1-CPU Slurm job)
+                     .phase2Only = FALSE,             # TRUE: fit if this ELF has no fit, then stop; neither phase: fit if needed, then predict
+                     .workerMemoryGB = NA_real_,      # NA: 10 under Slurm, else clusters' own default; the ELF's mean worker GB, so a run name with no fit record is budgeted as its Slurm request was
+                     .cacheChaining = TRUE,           # FALSE: spades.cacheChaining off
+                     .fitQueue = NA_character_,       # phase 1: a fit queue .rds; skip an ELF the fits have claimed or the idle fit workers will claim next
+                     .afterQueue = NA_character_,     # phase 2: a phase-1 queue .rds; wait while phase 1 is building this ELF (RUNNING)
+                     .diagFile = NA_character_,       # diagnostic: an R file to source, e.g. trace() calls
+                     .rprofPrefix = NA_character_,    # diagnostic: profile the run to <prefix>_<ELF>_<pid>.out
                      .cores = c("birds", "camas", "caribou", "coco", "core", "dougfir",
                                 "fire", "mpb", "sbw", "acer", "abies", "pinus", "landr", "kodama", "mega"), # mega added 2026-10-20 as phase 1 empties; biomass stays out; carbon (lent 2026-10-23) returned 2026-10-25
                      .times = list(start = 2020, end = 3020),
@@ -71,10 +81,10 @@ inSim <- SpaDES.project::setupProject(
                        "PredictiveEcology/fireSense@development")
             else .modules,
   # only what this file itself calls or configures; modules list their own in reqdPkgs
-  packages = c("PredictiveEcology/SpaDES.core@development (>= 3.2.1.9049)",      # event hits keep duplicate events (#505); spades.cacheKeyReachable (#500), cacheKey = FALSE (#503); module version out of event cache keys (#501); module globalVariables() (#496) without the self-referencing simList (#498), cache hit restores own outputs only (#495), chain jump restores changed objects (#497)
-               "PredictiveEcology/reproducible@development (>= 3.2.1.9079)",     # offline-safe prepInputs (#657-#659); Copy(), the reproducible.* options and their defaults
+  packages = c("PredictiveEcology/SpaDES.core@development (>= 3.2.1.9055)",      # a chain hit counts as newly computed only when Cache says so (#513); a chain jump restores only what an untagged entry changed (#512); event hits keep duplicate events (#505); spades.cacheKeyReachable (#500), cacheKey = FALSE (#503); module version out of event cache keys (#501); module globalVariables() (#496) without the self-referencing simList (#498), cache hit restores own outputs only (#495), chain jump restores changed objects (#497)
+               "PredictiveEcology/reproducible@development (>= 3.2.1.9084)",     # a short download is never kept, downloads staged in destinationPath (#668); clearCache(cacheId) lists only those ids (#666); offline-safe prepInputs (#657-#659) and CacheGeo with no Google credentials (#664); Copy(), the reproducible.* options and their defaults
                "PredictiveEcology/SpaDES.project@development (>= 1.2.0.9020)",   # workers start from a launcher file (#202); params merge, .rep from the caller, per-worker terra/GDAL defaults
-               "PredictiveEcology/clusters@development (>= 0.0.84)",          # clusters.maxWorkersPerHost (#58), across all fits on a host (#59)
+               "PredictiveEcology/clusters@development (>= 0.0.88)",          # clusters.maxWorkersPerHost (#58), across all fits on a host (#59); Slurm nodes sharing a home do not count each other's bookings (#63)
                "PredictiveEcology/fireSenseUtils@development (>= 0.2.3.9118)",   # makeFireSenseLCC() CWIM destinationPath (#178); ELFsNotFitted(): Prairie grassland 10.2 left out like the Arctic (#177); yearEffectMultiplier()/yearEffectSD() (#171), fuelCovsToCoarse() (#172) with fuel in the stackAndExtract cache key (#173); ledger suffix, xgbObjective(), hindcastObserved()$points, powerLaw link + calibratePowerLaw() (#167, #168), ELFmetricsFilename() (#170)
                "qs2"),                                                           # reproducible.cacheSaveFormat
   require = c("reproducible", "terra"),
@@ -97,14 +107,24 @@ inSim <- SpaDES.project::setupProject(
     clusters.deoptimConvergenceWindow = 400L, # DEoptim early stop: judge over 400 generations ...
     clusters.deoptimMinGenerations = 600L,    # ... and never before 600 (350 always stopped too early)
     clusters.maxWorkersPerHost = c(mega = 55), # mega is also the master; 55 (2026-10-21: stays at 55 until hindcast validations need room)
+    # a GPSC node (Slurm) holds 40 workers only at 10 GB each (the fireSenseUtils default, 14, gives 29); p90 is ~6.5 GB
+    ## .workerMemoryGB: a fit's own record replaces it
+    clusters.workerMemoryGB = if (!is.na(.workerMemoryGB)) .workerMemoryGB else
+      if (nzchar(Sys.getenv("SLURM_JOB_ID"))) 10,
     mc.cores = 8, # per-process cap on climate mosaics, fire buffers and threshold forks; otherwise each takes the whole machine
     spades.recoveryMode = userInteractive + 0,
-    spades.cacheChaining = !isTRUE(as.logical(Sys.getenv("FS_NO_CACHECHAINING", "FALSE"))),
+    spades.cacheChaining = .cacheChaining,
     spades.cacheKeyReachable = TRUE, # trial from 2026-10-20 (prodJ): event keys hold only the params/functions the event reaches
     spades.allowInitDuringSimInit = TRUE,
     warnPartialMatchArgs = TRUE, # fireSense has objects partial matching would confuse (rstLCC, rstLCCs)
     warnPartialMatchAttr = TRUE,
     warnPartialMatchDollar = TRUE),
+  ## as global.R (see its comments): terra's default todisk = FALSE kept every raster result in RAM
+  ## (25 rasters, 6.1 GB, in 12.1_2's phase 1, 2026-10-28)
+  sideEffects = list(
+    terra::gdalCache(size = 2048),
+    terra::projNetwork(FALSE),
+    terra::terraOptions(memmax = 16, todisk = TRUE, memfrac = 0.5)),
   params = Require::modifyList2(
     list(
       .globals = list(
@@ -123,12 +143,14 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.spreadLink)) list(spreadLink = .spreadLink),
         if (!is.na(.spreadWeighted)) list(weighted = .spreadWeighted),
         if (!is.na(.spreadTests)) list(DEoptimTests = strsplit(.spreadTests, ",")[[1]]),
-        if (!is.na(.spreadInitialPop)) list(initialpop = readRDS(.spreadInitialPop))),
-      fireSense_dataPrepFit = list(
+        if (!is.na(.spreadInitialPop)) list(initialpop = readRDS(.spreadInitialPop)),
+        if (!is.na(.spreadInitialPopMethod)) list(initialPopMethod = .spreadInitialPopMethod)),
+      fireSense_dataPrepFit = c(list(
         doFit = .doFit, # a refit chooses its spread climate variable afresh (fireSense_dataPrepFit#81)
         dataYears = seq(1985L, 2020L, 5L), # every SCANFI year
         .useCache = c(".inputObjects", "dataPrepBuild", "prepEscapeFitData", "prepSpreadFitData",
                       "prepIgnitionFitData")),
+        if (!is.na(.fireCauses)) list(fireCauses = strsplit(.fireCauses, ",")[[1]])),
       Biomass_speciesFactorial = list(.plots = NULL),
       Biomass_speciesParameters = list(standAgesForFitting = c(0, 100), balanceGrowth = TRUE),
       fireSense_ignitionFit = list(.useCache = TRUE, doFit = .doFit),
@@ -148,19 +170,19 @@ inSim <- SpaDES.project::setupProject(
                                   if (isTRUE(.hcAllSets)) list(paramSetByReplicate = TRUE)), # fireSense_spreadPredict >= 1.2.0.9004
       fireSense_burn = c(list(.runInterval = .hcStep, .plots = NA),
                          if (!is.na(.hcIgnitions)) list(ignitionSource = .hcIgnitions)),
-      fireSense_summary = list(hindcastYear = .hindcastYear, hindcastInterval = .hcStep, .plots = NA)))
+      fireSense_summary = c(list(hindcastYear = .hindcastYear, hindcastInterval = .hcStep, .plots = NA),
+                            if (!is.na(.fireCauses)) list(fireCauses = strsplit(.fireCauses, ",")[[1]]))))
 )
 message(inSim$runName)
 inSimCopy <- reproducible::Copy(inSim)
 
-## Phase 1 (FS_PHASE1_ONLY): build every input and cache, stop before the fit.
-## Phase 2 (FS_PHASE2_ONLY): fit if this ELF has no fit, then stop.
+## Phase 1 (.phase1Only): build every input and cache, stop before the threshold calibration, which forks and
+##   so runs in phase 2 on the fit's cores (a 1-CPU phase-1 Slurm job then needs no more).
+## Phase 2 (.phase2Only): fit if this ELF has no fit, then stop.
 ## Neither: fit if this ELF has no fit, then predict.
-.phase1Only <- isTRUE(as.logical(Sys.getenv("FS_PHASE1_ONLY", "FALSE")))
-.phase2Only <- isTRUE(as.logical(Sys.getenv("FS_PHASE2_ONLY", "FALSE")))
 stopifnot(!(.phase1Only && .phase2Only))
 if (.phase1Only) {
-  inSimCopy$events <- list(.stopBefore = list(fireSense_spreadFit = "run",
+  inSimCopy$events <- list(.stopBefore = list(fireSense_spreadFit = "estimateThreshold",
                                               fireSense_dataPrepPredict = "getClimateRasters"))
 } else if (.phase2Only) {
   .validates <- "validate" %in% inSimCopy$params$fireSense_spreadFit$mode ||
@@ -170,9 +192,9 @@ if (.phase1Only) {
 }
 
 ## The fit queue and a phase-1 queue run side by side; each reads the other's queue file (its workers keep it current).
-## FS_AFTER_QUEUE=<phase-1 queue .rds>: a fit job waits only while phase 1 is building its ELF right now (RUNNING),
+## .afterQueue = <phase-1 queue .rds>: a fit job waits only while phase 1 is building its ELF right now (RUNNING),
 ## then reuses that work; it never waits for a phase-1 job that has not started.
-## FS_FIT_QUEUE=<fit queue .rds>: a phase-1 job skips an ELF the fits have claimed (RUNNING or DONE), and an ELF
+## .fitQueue = <fit queue .rds>: a phase-1 job skips an ELF the fits have claimed (RUNNING or DONE), and an ELF
 ## the idle fit workers will claim next: the fit queue takes its topmost pending rows, so with k fit workers not
 ## running a job (the fit workers start 2 min apart), its first k pending rows are left to the fits.
 ## The queue's Google Sheet is its record; the local .rds can lag (a lost lock skips the claim write, a resumed launch
@@ -194,7 +216,7 @@ if (.phase1Only) {
   if (is.null(q)) NA_character_ else q$status[q$ELF == elf][1]
 }
 .skipJob <- FALSE
-if (.phase1Only && nzchar(.fitQ <- Sys.getenv("FS_FIT_QUEUE")) && !is.null(.fq <- .queueRows(.fitQ))) {
+if (.phase1Only && !is.na(.fitQ <- .fitQueue) && !is.null(.fq <- .queueRows(.fitQ))) {
   ## one worker_launch_<n>.sh per fit worker, in the fit queue's log folder
   .nFitWorkers <- length(dir(file.path(dirname(.fitQ), "logs", basename(.fitQ)), "^worker_launch_[0-9]+\\.sh$"))
   .idleFit <- max(0L, .nFitWorkers - sum(.fq$status == "RUNNING"))
@@ -205,7 +227,7 @@ if (.phase1Only && nzchar(.fitQ <- Sys.getenv("FS_FIT_QUEUE")) && !is.null(.fq <
                         if (.ELFind %in% .nextFit) paste0("one of the next ", .idleFit, " ELFs the idle fit workers will claim")
                         else "the fit queue has claimed it")
 }
-if (.phase2Only && nzchar(.afterQ <- Sys.getenv("FS_AFTER_QUEUE"))) {
+if (.phase2Only && !is.na(.afterQ <- .afterQueue)) {
   repeat {
     .st <- .queueStatus(.afterQ, .ELFind)
     if (!identical(.st, "RUNNING")) break
@@ -213,9 +235,9 @@ if (.phase2Only && nzchar(.afterQ <- Sys.getenv("FS_AFTER_QUEUE"))) {
     Sys.sleep(300)
   }
 }
-if (nzchar(Sys.getenv("FS_DIAG_FILE"))) source(Sys.getenv("FS_DIAG_FILE")) # diagnostic: e.g. trace() calls
-if (nzchar(Sys.getenv("FS_RPROF"))) # diagnostic: profile the run to <FS_RPROF>_<ELF>_<pid>.out
-  Rprof(paste0(Sys.getenv("FS_RPROF"), "_", .ELFind, "_", Sys.getpid(), ".out"), interval = 0.5, line.profiling = TRUE)
+if (!is.na(.diagFile)) source(.diagFile)
+if (!is.na(.rprofPrefix))
+  Rprof(paste0(.rprofPrefix, "_", .ELFind, "_", Sys.getpid(), ".out"), interval = 0.5, line.profiling = TRUE)
 if (!.skipJob) simOut <- SpaDES.core::simInitAndSpades2(inSimCopy)
 
 ## Runs that predict save their simList to Drive for multi.R; an upload failure only warns
