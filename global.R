@@ -10,6 +10,26 @@ setwd(projectDir)
 # tmux panes report interactive() == TRUE; batch workers run inside tmux
 userInteractive <- interactive() && !nzchar(Sys.getenv("TMUX"))
 
+## Phase 4 (a queue row with .score = TRUE, from expt.R's FS_SET=score): score the hindcasts of every ELF that has finished
+## years, pooled, with fireSimulator_validation (modules/). The ledger suffix and the base path come from the row.
+if (isTRUE(get0(".score"))) {
+  .base <- get0(".basePath", ifnotfound = "/mnt/fast"); .suffix <- get0(".spreadFitFileSuffix", ifnotfound = "")
+  for (.f in list.files("modules/fireSimulator_validation/R", "\\.R$", full.names = TRUE)) source(.f)
+  .hcDir <- file.path(.base, "outputs", paste0("hindcast", .suffix))
+  .elfs <- lapply(list.files(.hcDir), function(e)
+    readFireSenseHindcast(e, .hcDir, years = seq(1986L, 2021L, 5L), sets = 1L, inputsDir = file.path(.base, "inputs"),
+                          ledgerFile = Sys.glob(file.path(.base, "inputs", e, paste0("fireSenseParams_*", .suffix, ".rds")))[1],
+                          nfdbPath = file.path(.base, "data/NFDB_point_shp/NFDB_point_20250519.shp"),
+                          nbacPath = file.path(.base, "data/NBAC_1972to2025_20260513_shp/NBAC_merged_1972_to_2025_20260513.shp"),
+                          obsCacheDir = {d <- file.path(.base, "outputs", paste0("score", .suffix), "obs"); dir.create(d, recursive = TRUE, showWarnings = FALSE); d}))
+  .elfs <- Filter(Negate(is.null), .elfs)
+  message("scoring ", length(.elfs), " ELFs")
+  .res <- runWave1(.elfs)
+  saveRDS(.res, file.path(.base, "outputs", paste0("score", .suffix), "wave1.rds"))
+  write.csv(.res$results, file.path(.base, "outputs", paste0("score", .suffix), "wave1_results.csv"), row.names = FALSE)
+  stop("scoring done", call. = FALSE) # ends the job; the queue marks a stop as an ERROR row, the outputs are what count
+}
+
 inSim <- SpaDES.project::setupProject(
   defaultDots = list(.basePath = "/mnt/fast", # inputs, outputs, cache, scratch and shared data live here
                      .rep = 1,
@@ -19,7 +39,7 @@ inSim <- SpaDES.project::setupProject(
                      .samplingRange = 1985:2024, # NRV climate years
                      # fitting window: vegetation is strictly before the fire year, so the first SCANFI V2 year
                      # (1985) feeds 1986; the end is the last year of historical climate.
-                     # expt_draft.R checks this line against climateData::latestHistoricalYear().
+                     # expt.R checks this line against climateData::latestHistoricalYear().
                      .fireYears = c(1986L, 2024L),
                      .doFit = NA,                     # NA: fit only if no ledger fit; TRUE: always refit; FALSE: never fit
                      .spreadFitMode = "fit",          # or "fit,validate"
@@ -62,6 +82,9 @@ inSim <- SpaDES.project::setupProject(
   .NRV = identical(.GCM, "NRV"),
   .ELFind = .ELFind,
   .rep = .rep, # without it, a .rep from the queue does not reach params$.globals
+  # only dots written here are returned in inSim: a defaultDots value the queue did not set is not a variable after setupProject
+  .phase1Only = .phase1Only, .phase2Only = .phase2Only, .fitQueue = .fitQueue, .afterQueue = .afterQueue,
+  .diagFile = .diagFile, .rprofPrefix = .rprofPrefix,
   .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
   paths = list(outputPath = if (.hc) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", paste0("hindcast", .spreadFitFileSuffix, if (identical(.hcIgnitions, "observedEscapes")) "_obsEsc")), .ELFind, .hindcastYear, .rep)
                             ## a fit's outputs (DEoptim progress, figures) are per ledger: fits of one ELF under different
@@ -175,6 +198,9 @@ inSim <- SpaDES.project::setupProject(
 )
 message(inSim$runName)
 inSimCopy <- reproducible::Copy(inSim)
+.phase1Only <- inSim$.phase1Only; .phase2Only <- inSim$.phase2Only; .ELFind <- inSim$.ELFind
+.fitQueue <- inSim$.fitQueue; .afterQueue <- inSim$.afterQueue
+.diagFile <- inSim$.diagFile; .rprofPrefix <- inSim$.rprofPrefix
 
 ## Phase 1 (.phase1Only): build every input and cache, stop before the threshold calibration, which forks and
 ##   so runs in phase 2 on the fit's cores (a 1-CPU phase-1 Slurm job then needs no more).

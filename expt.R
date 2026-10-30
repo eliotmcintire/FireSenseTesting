@@ -1,5 +1,5 @@
 ## Launches a FireSense campaign: installs packages once, builds the job queue, starts the tmux workers.
-## Each worker sources global_draft.R per job. Run inside tmux:
+## Each worker sources global.R per job. Run inside tmux:
 ##   FS_SET=nrv FS_NRV_WAVE=<fit|predict|ignition> [FS_NRV_ELFS=4.1,14.4|all] [FS_NRV_LEDGER=_burnEmu_20261027] Rscript expt.R
 ##   FS_SET=fit [FS_NRV_ELFS=...|all] [FS_AFTER_QUEUE=<phase-1 queue>] Rscript expt.R   (fit every ELF: phases 1 + 2)
 ##   FS_SET=phase1 [FS_NRV_ELFS=...|all] [FS_FIT_QUEUE=<fit queue>] Rscript expt.R   (inputs and caches only, ahead of the fits:
@@ -8,7 +8,7 @@
 ##   FS_SET=refit FS_RF_ELFS=6.6.1,9.1.2 Rscript expt.R   (same rep and ledger as production, so caches are shared)
 ##   FS_SET=refit FS_PHASE1_ONLY=TRUE FS_RF_ELFS=... Rscript expt.R   (caches only: here, ahead of the same refit on the GPSC)
 
-## inputs, outputs, cache, scratch and shared data: overrides global_draft.R's .basePath here (preRunSetupProject)
+## inputs, outputs, cache, scratch and shared data: overrides global.R's .basePath here (preRunSetupProject)
 ## and, as a queue column, in the workers. GPSC (user elm001): no /mnt/fast; GPFS, which the compute nodes see
 .basePath <- if (Sys.info()[["user"]] == "elm001") "/gpfs/fs7/nrcan/nrcan_forsite/elm001/firesense/fast" else "/mnt/fast"
 ## no CRAN mirror set (GPSC): install.packages() stops when not interactive. Same repos as the local R; the GPSC is
@@ -16,7 +16,7 @@
 if ("@CRAN@" %in% getOption("repos"))
   options(repos = c(P3M = "https://packagemanager.posit.co/cran/__linux__/noble/latest", CRAN = "https://cloud.r-project.org"))
 
-suppressWarnings(rm(.ELFind)) # a leftover from an earlier run in this session would override global_draft.R's default
+suppressWarnings(rm(.ELFind)) # a leftover from an earlier run in this session would override global.R's default
 
 ####################
 # Install packages once, before any worker exists; workers only read the library.
@@ -41,18 +41,18 @@ if (!isTRUE(as.logical(Sys.getenv("FS_NO_INSTALL", "FALSE")))) {
 }
 
 options(spades.useRequire = FALSE) # nothing installs from here on: pak above did it, so setupProject() must not run Require
-outs <- SpaDES.project::preRunSetupProject(file = "global_draft.R", upTo = "params")
+outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 
 ####################
 # Fitting years: the end is the last year of historical climate. Workers take the window from
-# global_draft.R's defaultDots, so stop if that has drifted.
+# global.R's defaultDots, so stop if that has drifted.
 ####################
 .fireYearStart <- 1986L # vegetation strictly before the fire year: SCANFI 1985 feeds 1986
 .fireYearEnd <- as.integer(climateData::latestHistoricalYear())
-.globalYears <- as.integer(regmatches(.l <- grep("^\\s*\\.fireYears = c\\(", readLines("global_draft.R"), value = TRUE)[1],
+.globalYears <- as.integer(regmatches(.l <- grep("^\\s*\\.fireYears = c\\(", readLines("global.R"), value = TRUE)[1],
                                       gregexpr("[0-9]{4}", .l))[[1]])
 if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
-  stop("global_draft.R's .fireYears do not match ", .fireYearStart, ":", .fireYearEnd, "; edit global_draft.R")
+  stop("global.R's .fireYears do not match ", .fireYearStart, ":", .fireYearEnd, "; edit global.R")
 
 ####################
 # Campaign settings. A queue name is resumed, never extended: relaunching changed settings needs a new tag.
@@ -82,7 +82,7 @@ if (identical(.set, "nrv")) {
                       reps = if (nzchar(Sys.getenv("FS_NRV_REPS"))) as.integer(.split(Sys.getenv("FS_NRV_REPS")))
                              else if (.wave == "predict") 1:5 else 1L,
                       n_workers = as.integer(Sys.getenv("FS_NRV_WORKERS", if (.phase1Only) 12L else .waves[[.wave]])),
-                      ledgerSuffix = Sys.getenv("FS_NRV_LEDGER"), # "" = global_draft.R's .spreadFitFileSuffix
+                      ledgerSuffix = Sys.getenv("FS_NRV_LEDGER"), # "" = global.R's .spreadFitFileSuffix
                       refit = .wave == "fit",
                       predict = .wave == "predict")
 } else if (identical(.set, "hindcast")) {
@@ -123,8 +123,19 @@ if (identical(.set, "nrv")) {
                       n_workers = as.integer(Sys.getenv("FS_RF_WORKERS", length(.split(Sys.getenv("FS_RF_ELFS"))))), # each fit is a cluster; FS_RF_WORKERS caps fits at once
                       refit = TRUE,
                       predict = FALSE)
+} else if (identical(.set, "score")) {
+  ## Phase 4: one job scores the hindcasts of every ELF (global.R's .score branch). FS_HC_TAG and FS_HC_LEDGER name the
+  ## hindcast to score; on Slurm it starts after every job of that hindcast has ended (afterany, even if some failed)
+  .phaseSetup <- list(queue = paste0("experiment_queue_score_", Sys.getenv("FS_HC_TAG", format(Sys.Date(), "%Y-%m-%d")), ".rds"),
+                      onlyELFs = .split(Sys.getenv("FS_HC_ELFS", "4.1")), # a single row; the job reads every ELF found
+                      reps = 1L,
+                      ledgerSuffix = Sys.getenv("FS_HC_LEDGER"),
+                      n_workers = 1L,
+                      refit = FALSE,
+                      predict = FALSE,
+                      score = TRUE)
 } else {
-  stop("Set FS_SET=nrv, phase1, hindcast or refit")
+  stop("Set FS_SET=nrv, phase1, hindcast, refit or score")
 }
 message("FS_SET=", .setLabel, ": queue ", .phaseSetup$queue)
 
@@ -148,7 +159,8 @@ if (!is.null(.phaseSetup$spreadInitialPopMethod)) expt$.spreadInitialPopMethod <
 if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
 if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
 if (!is.null(.phaseSetup$fireCauses)) expt$.fireCauses <- .phaseSetup$fireCauses
-## the phase and the run's diagnostics are columns, so a worker reads them as global_draft.R's defaultDots
+## the phase and the run's diagnostics are columns, so a worker reads them as global.R's defaultDots
+if (isTRUE(.phaseSetup$score)) expt$.score <- TRUE
 expt$.phase1Only <- .phase1Only
 expt$.phase2Only <- !(.phase1Only || .phaseSetup$predict)
 .optionalColumn <- function(col, env, f = identity) if (nzchar(Sys.getenv(env))) expt[[col]] <<- f(Sys.getenv(env))
@@ -193,41 +205,57 @@ if (nzchar(Sys.which("sbatch"))) {
   if (!nzchar(Sys.getenv("https_proxy")))
     Sys.setenv(https_proxy = "http://webproxy.science.gc.ca:8888", http_proxy = "http://webproxy.science.gc.ca:8888",
                no_proxy = "localhost,127.0.0.1,science.gc.ca")
-  expt$.cores <- 40L # spread fits on the job's own node, not on .cores's machines; 40 at 10 GB (global_draft.R)
+  .oneCore <- identical(.set, "hindcast") || identical(.set, "score") || (identical(.set, "nrv") && .phaseSetup$predict)
+  expt$.cores <- 40L # spread fits on the job's own node, not on .cores's machines; 40 at 10 GB (global.R)
   .slurmTmp <- file.path(.basePath, "scratch", "tmp") # TMPDIR of the jobs (see sbatch_opts)
   dir.create(.slurmTmp, recursive = TRUE, showWarnings = FALSE)
-  workers <- SpaDES.project::experimentSBATCH(
-    df          = expt,
-    global_path = "global_draft.R",
+  .submit <- function(df, queue_path, after) SpaDES.project::experimentSBATCH(
+    df          = df,
+    global_path = "global.R",
     n_workers   = .phaseSetup$n_workers,
     queue_path  = queue_path,
     log_dir     = file.path("logs", sub("\\.rds$", "", basename(queue_path))),
     ## the account's allocation is on gpsc8 (64 CPUs, ~486 GB per standard node); its "low" QoS allows 0 CPUs
-    ## phase 1 is one core (the forking threshold calibration is in phase 2, global_draft.R); FS_SBATCH_AFTER=<job ids>
-    ## starts these jobs only after those succeed (a fit after its phase 1)
+    ## phase 1 is one core (the forking threshold calibration is in phase 2, global.R); FS_SBATCH_AFTER=<job ids>
+    ## starts these jobs only after those succeed (a fit after its phase 1); FS_HC_AFTER_FITS=TRUE: each ELF's hindcast
+    ## after its own fit job, if one is queued or running (found by its log folder; none: it starts now and stops if the ledger has no fit)
     ## a compute node's /tmp is a 500 MB tmpfs: R's tempdir() there (reproducible.tempPath, where downloads and
     ## postProcess land first) cut every file at ~500 MB (SCANFI landcover, crop "too few values", 2026-10-29)
     sbatch_opts = c(list(clusters = "gpsc8", account = "nrcan_forsite", partition = "standard",
                          qos = "nrcan__standard_gpsc8_allocation", nodes = 1, ntasks = 1,
                          export = paste0("ALL,TMPDIR=", .slurmTmp)),
                     if (.phase1Only) list(cpus_per_task = 1, mem = "96G", time = "1-00:00:00") # 32G was OOM-killed (12.1_2, prepSpreadFitData); to be set from measured peaks
-                    else if (identical(.set, "hindcast")) # one core per ELF x year job; FS_SBATCH_MEM until the MaxRSS of the first jobs is known
-                      list(cpus_per_task = 1, mem = Sys.getenv("FS_SBATCH_MEM", "64G"), time = "2-00:00:00")
+                    else if (.oneCore) # one core per ELF x year (hindcast) or ELF x set (NRV) job; FS_SBATCH_MEM until the MaxRSS of the first jobs is known
+                      list(cpus_per_task = 1, mem = Sys.getenv("FS_SBATCH_MEM", "64G"), time = if (identical(.set, "nrv")) "7-00:00:00" else "2-00:00:00")
                     else list(cpus_per_task = 42, # 40 workers + 2 kept free; 7.1 GB/CPU is the partition's limit
                               ## per ELF (FS_SBATCH_MEM): 40 x the worker peak clusters records in fitMemory.rds, / 0.9 headroom,
                               ## + the master. 13.1 and 6.6.1 need ~1-2 GB per worker (294G); 12.1_2 needs 8.5 (420G)
                               mem = Sys.getenv("FS_SBATCH_MEM", "294G"),
                               time = "7-00:00:00"), # required by gpsc8, though the partition has no limit
-                    if (nzchar(Sys.getenv("FS_SBATCH_AFTER"))) list(dependency = paste0("afterok:", gsub(",", ":", Sys.getenv("FS_SBATCH_AFTER"))))),
+                    if (length(after)) list(dependency = paste0(if (identical(.set, "score")) "afterany:" else "afterok:", paste(after, collapse = ":")))),
     ss_id       = NULL # compute nodes have no internet: the local queue only
   )
+
+  .after <- strsplit(Sys.getenv("FS_SBATCH_AFTER"), ",")[[1]]
+  if (identical(.set, "score")) # every job of the hindcast being scored
+    .after <- c(.after, vapply(Filter(function(j) length(j) == 3 && grepl(paste0("experiment_queue_hindcast_", Sys.getenv("FS_HC_TAG"), "(_|/)"), j[3]),
+                                      strsplit(system2("squeue", c("-M", "gpsc8", "-u", Sys.info()[["user"]], "-h", "-o", "'%i|%T|%o'"), stdout = TRUE), "\\|")),
+                               `[`, "", 1))
+  if (.oneCore && !identical(.set, "score") && isTRUE(as.logical(Sys.getenv("FS_HC_AFTER_FITS", "FALSE")))) {
+    .jobs <- strsplit(system2("squeue", c("-M", "gpsc8", "-u", Sys.info()[["user"]], "-h", "-o", "'%i|%T|%o'"), stdout = TRUE), "\\|")
+    .jobs <- Filter(function(j) length(j) == 3 && j[2] %in% c("RUNNING", "PENDING"), .jobs)
+    for (.elf in unique(expt$.ELFind)) {
+      .fit <- vapply(Filter(function(j) grepl(paste0("experiment_queue_refit_pile[A-Za-z0-9]*_", gsub("\\.", "_", .elf), "/"), j[3]), .jobs), `[`, "", 1)
+      .submit(expt[expt$.ELFind == .elf, , drop = FALSE], sub("\\.rds$", paste0("_", .elf, ".rds"), queue_path), c(.after, .fit))
+    }
+  } else .submit(expt, queue_path, .after)
   q(save = "no")
 }
 if (!nzchar(Sys.getenv("TMUX"))) stop("Run expt.R inside tmux")
 
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,
-  global_path         = "global_draft.R",
+  global_path         = "global.R",
   n_workers           = .phaseSetup$n_workers,
   queue_path          = queue_path,
   on_error            = "continue",
