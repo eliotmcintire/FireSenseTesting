@@ -19,8 +19,8 @@ if (isTRUE(get0(".score"))) {
   .elfs <- lapply(list.files(.hcDir), function(e)
     readFireSenseHindcast(e, .hcDir, years = seq(1986L, 2021L, 5L), sets = 1L, inputsDir = file.path(.base, "inputs"),
                           ledgerFile = Sys.glob(file.path(.base, "inputs", e, paste0("fireSenseParams_*", .suffix, ".rds")))[1],
-                          nfdbPath = file.path(.base, "data/NFDB_point_shp/NFDB_point_20250519.shp"),
-                          nbacPath = file.path(.base, "data/NBAC_1972to2025_20260513_shp/NBAC_merged_1972_to_2025_20260513.shp"),
+                          nfdbPath = tail(Sys.glob(file.path(.base, "inputs", e, "NFDB_point_*.shp")), 1),
+                          nbacPath = tail(Sys.glob(file.path(.base, "inputs", e, "NBAC_merged_*.shp")), 1),
                           obsCacheDir = {d <- file.path(.base, "outputs", paste0("score", .suffix), "obs"); dir.create(d, recursive = TRUE, showWarnings = FALSE); d}))
   .elfs <- Filter(Negate(is.null), .elfs)
   message("scoring ", length(.elfs), " ELFs")

@@ -237,7 +237,8 @@ if (nzchar(Sys.which("sbatch"))) {
   )
 
   .after <- strsplit(Sys.getenv("FS_SBATCH_AFTER"), ",")[[1]]
-  if (identical(.set, "score")) # every job of the hindcast being scored
+  ## FS_SCORE_NOW=TRUE: score what has finished now, without waiting for the jobs still queued (rerun later for the rest)
+  if (identical(.set, "score") && !isTRUE(as.logical(Sys.getenv("FS_SCORE_NOW", "FALSE")))) # every job of the hindcast being scored
     .after <- c(.after, vapply(Filter(function(j) length(j) == 3 && grepl(paste0("experiment_queue_hindcast_", Sys.getenv("FS_HC_TAG"), "(_|/)"), j[3]),
                                       strsplit(system2("squeue", c("-M", "gpsc8", "-u", Sys.info()[["user"]], "-h", "-o", "'%i|%T|%o'"), stdout = TRUE), "\\|")),
                                `[`, "", 1))
