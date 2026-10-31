@@ -31,7 +31,7 @@ if (isTRUE(get0(".score"))) {
   saveRDS(.res, file.path(.base, "outputs", paste0("score", .suffix), "wave1.rds"))
   write.csv(.res$results, file.path(.base, "outputs", paste0("score", .suffix), "wave1_results.csv"), row.names = FALSE)
   buildValidationPage(.elfs, .res$gates, file.path(.base, "outputs", paste0("score", .suffix), "validation.html"),
-                      template = "modules/fireSimulator_validation/pageTemplate.html", dpi = 50,
+                      template = "modules/fireSimulator_validation/pageTemplate.html", dpi = 50, title = "Hindcast validation, GPSC fits",
                       subtitle = paste0("Spread fits ", sub("^_", "", .suffix), " &middot; hindcasts ", paste(range(.hcYears), collapse = "&ndash;"),
                                         " every 5 years, 20 runs per ELF"))
   stop("scoring done", call. = FALSE) # ends the job; the queue marks a stop as an ERROR row, the outputs are what count

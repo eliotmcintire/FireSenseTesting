@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # updateModsForFireSense.sh -- bring the `modsForFireSense` integration branches up to date.
 #
-# Some PredictiveEcology PRs from the FireSense work stay open, unmerged, while other
-# maintainers review them. The runs still need those changes, so each such repo carries a
-# `modsForFireSense` branch = its base branch (development, or main where there is no
-# development) + every open PR branch of ours, merged in with merge commits. Runs pin
-# `<repo>@modsForFireSense`. Once a PR merges upstream its commits arrive with the base.
+# Repos that are not Eliot's carry a `modsForFireSense` branch = its base branch (development,
+# or main where there is no development) + the FireSense fixes. Since 2026-10-21 a fix is a PR
+# INTO modsForFireSense (branched from development), with CI there, merged by us when green; one
+# standing PR modsForFireSense -> development per repo shows upstream what we carry. This script
+# merges the base forward and still merges any older open PR branches of ours (against the base)
+# with merge commits. Runs pin `<repo>@modsForFireSense`.
 #
 # History is never rewritten: an existing modsForFireSense branch is merged FORWARD (base
 # first, then each PR branch) and pushed without force, because other people pin it too
@@ -37,6 +38,9 @@ CACHE=${MODS_CACHE:-$HOME/GitHub/.modsForFireSense}
 TRAILERS=${MODS_COMMIT_TRAILERS:-}
 
 # repo                    base         exclude (PR numbers)  order (listed first, rest by number)
+# base is a branch of the PredictiveEcology repo, or `OWNER:branch` for a branch of another
+# owner's repo of the same name (the real upstream of a fork): that remote is added to the git
+# store and fetched, and modsForFireSense is merged forward from it.
 # A PR based on another of our open PRs (stacked, with a Depends-on line) is included after that PR.
 # Automatic exclusions: draft PRs, head branch release/*, title containing "DO NOT MERGE" or
 # "diagnostic", and a PR whose base is neither the repo's base nor modsForFireSense.
@@ -49,7 +53,7 @@ climateData               development  -                     -
 climateYear               development  -                     -
 canClimateData            development  -                     -
 Biomass_summary           development  -                     -
-NRV_summary               development  -                     -
+NRV_summary               FOR-CAST:development  -            -
 burnSummaries             development  12                    -
 CBM_core                  development  -                     -
 CBM_dataPrep              development  -                     -
@@ -201,10 +205,25 @@ update_repo() {
   read -r gitdir remote <<<"$store"
   git -C "$gitdir" fetch -q --prune "$remote" || { SUMMARY+=("$repo|$base|-|fetch failed|-"); return; }
 
+  ## the base: a branch of the PredictiveEcology repo, or OWNER:branch of another owner's repo
+  local baseRemote=$remote baseBranch=$base owner r url
+  if [[ $base == *:* ]]; then
+    owner=${base%%:*}; baseBranch=${base#*:}; baseRemote=
+    for r in $(git -C "$gitdir" remote); do
+      url=$(git -C "$gitdir" remote get-url "$r")
+      if [[ $url =~ [/:]$owner/$repo(\.git)?/?$ ]]; then baseRemote=$r; break; fi
+    done
+    if [[ -z $baseRemote ]]; then
+      baseRemote=$owner
+      git -C "$gitdir" remote add "$baseRemote" "https://github.com/$owner/$repo.git"
+    fi
+    git -C "$gitdir" fetch -q --prune "$baseRemote" || { SUMMARY+=("$repo|$base|-|fetch failed|-"); return; }
+  fi
+
   if git -C "$gitdir" rev-parse -q --verify "refs/remotes/$remote/$BRANCH" >/dev/null; then
     existed=1; start=$remote/$BRANCH
   else
-    start=$remote/$base
+    start=$baseRemote/$baseBranch
   fi
   wt=$CACHE/worktrees/$repo
   git -C "$gitdir" worktree remove --force "$wt" >/dev/null 2>&1
@@ -213,7 +232,7 @@ update_repo() {
   cd "$wt" || return
 
   if (( existed )); then
-    if ! merge_one "$remote/$base" theirs "Merge $base into $BRANCH" "Brings $BRANCH up to date with $base."; then
+    if ! merge_one "$baseRemote/$baseBranch" theirs "Merge $base into $BRANCH" "Brings $BRANCH up to date with $base."; then
       conflicts+=("$base")
       log "CONFLICT merging $base forward; nothing else done for $repo"
       SUMMARY+=("$repo|$base|-|${conflicts[*]}|-"); cd - >/dev/null; return
@@ -241,7 +260,7 @@ update_repo() {
     if [[ $head == release/* ]]; then skipped+=("#$n(release)"); continue; fi
     if [[ ${title,,} == *"do not merge"* || ${title,,} == *diagnostic* ]]; then skipped+=("#$n(title)"); continue; fi
     ## a PR stacked on another of ours (Depends-on) is taken once the PR it is based on is in
-    if [[ $pbase != "$base" && $pbase != "$BRANCH" && " ${mergedHeads[*]} " != *" $pbase "* ]]; then
+    if [[ $pbase != "$baseBranch" && $pbase != "$BRANCH" && " ${mergedHeads[*]} " != *" $pbase "* ]]; then
       skipped+=("#$n(base $pbase)"); continue
     fi
     git fetch -q "$remote" "refs/pull/$n/head" || { conflicts+=("#$n(fetch)"); continue; }
@@ -253,7 +272,7 @@ update_repo() {
     fi
   done <<<"$prs"
 
-  max_version "$remote/$base" "${heads[@]}"
+  max_version "$baseRemote/$baseBranch" "${heads[@]}"
 
   if ! parse_check; then
     conflicts+=("parse-check"); log "R parse check FAILED; not pushing"

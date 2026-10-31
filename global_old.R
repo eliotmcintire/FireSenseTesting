@@ -153,7 +153,7 @@ inSim <- SpaDES.project::setupProject(
                scratchPath = "/mnt/fast/scratch",
                # use inputPath on the shared drive, so destinationPathShared works
                # inputPath = SpaDES.project::pathBuild(pre = "/mnt/shared_cache/inputs", .studyAreaName, .samplingRange, .GCM, .SSP, .rep)),
-               inputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/inputs", .ELFind, .GCM, .SSP, .rep)),
+               inputPath = SpaDES.project::pathBuild(pre = "/mnt/fast/inputs", .ELFind)), # inputs vary by ELF only (not rep, GCM or SSP)
   # outputPath can arrive with /mnt/fast/outputs resolved to its symlink target (/home/emcintir/mntFast/outputs since the
   # 2026-10-10 RAID move), so name the run by the part below ".../outputs/", not relative to one spelling of it
   runName = gsub("/", "_", sub("^.*/outputs/", "", paths$outputPath)),
