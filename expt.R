@@ -225,6 +225,8 @@ if (nzchar(Sys.which("sbatch"))) {
                          qos = "nrcan__standard_gpsc8_allocation", nodes = 1, ntasks = 1,
                          export = paste0("ALL,TMPDIR=", .slurmTmp)),
                     if (.phase1Only) list(cpus_per_task = 1, mem = "96G", time = "1-00:00:00") # 32G was OOM-killed (12.1_2, prepSpreadFitData); to be set from measured peaks
+                    else if (identical(.set, "score")) # the scoring job reads 12 ELFs at once (global.R); ~8 GB each
+                      list(cpus_per_task = 12, mem = Sys.getenv("FS_SBATCH_MEM", "160G"), time = "2-00:00:00")
                     else if (.oneCore) # one core per ELF x year (hindcast) or ELF x set (NRV) job; FS_SBATCH_MEM until the MaxRSS of the first jobs is known
                       list(cpus_per_task = 1, mem = Sys.getenv("FS_SBATCH_MEM", "64G"), time = if (identical(.set, "nrv")) "7-00:00:00" else "2-00:00:00")
                     else list(cpus_per_task = 42, # 40 workers + 2 kept free; 7.1 GB/CPU is the partition's limit

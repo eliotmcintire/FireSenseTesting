@@ -11,13 +11,16 @@ setwd(projectDir)
 userInteractive <- interactive() && !nzchar(Sys.getenv("TMUX"))
 
 ## Phase 4 (a queue row with .score = TRUE, from expt.R's FS_SET=score): score the hindcasts of every ELF that has finished
-## years, pooled, with fireSimulator_validation (modules/). The ledger suffix and the base path come from the row.
+## all its years, pooled, with fireSimulator_validation (modules/), and write its validation page (validation.html).
+## The ledger suffix and the base path come from the row; ELFs are read in parallel on the job's CPUs.
 if (isTRUE(get0(".score"))) {
   .base <- get0(".basePath", ifnotfound = "/mnt/fast"); .suffix <- get0(".spreadFitFileSuffix", ifnotfound = "")
   for (.f in list.files("modules/fireSimulator_validation/R", "\\.R$", full.names = TRUE)) source(.f)
   .hcDir <- file.path(.base, "outputs", paste0("hindcast", .suffix))
-  .elfs <- lapply(list.files(.hcDir), function(e)
-    readFireSenseHindcast(e, .hcDir, years = seq(1986L, 2021L, 5L), sets = 1L, inputsDir = file.path(.base, "inputs"),
+  .hcYears <- seq(1986L, 2021L, 5L)
+  .done <- Filter(function(e) length(hindcastFinishedYears(.hcDir, e, .hcYears, 1L)) == length(.hcYears), list.files(.hcDir))
+  .elfs <- parallel::mclapply(.done, mc.cores = as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", "1")), mc.preschedule = FALSE, function(e)
+    readFireSenseHindcast(e, .hcDir, years = .hcYears, sets = 1L, inputsDir = file.path(.base, "inputs"),
                           ledgerFile = Sys.glob(file.path(.base, "inputs", e, paste0("fireSenseParams_*", .suffix, ".rds")))[1],
                           nfdbPath = tail(Sys.glob(file.path(.base, "inputs", e, "NFDB_point_*.shp")), 1),
                           nbacPath = tail(Sys.glob(file.path(.base, "inputs", e, "NBAC_merged_*.shp")), 1),
@@ -27,6 +30,10 @@ if (isTRUE(get0(".score"))) {
   .res <- runWave1(.elfs)
   saveRDS(.res, file.path(.base, "outputs", paste0("score", .suffix), "wave1.rds"))
   write.csv(.res$results, file.path(.base, "outputs", paste0("score", .suffix), "wave1_results.csv"), row.names = FALSE)
+  buildValidationPage(.elfs, .res$gates, file.path(.base, "outputs", paste0("score", .suffix), "validation.html"),
+                      template = "modules/fireSimulator_validation/pageTemplate.html", dpi = 50,
+                      subtitle = paste0("Spread fits ", sub("^_", "", .suffix), " &middot; hindcasts ", paste(range(.hcYears), collapse = "&ndash;"),
+                                        " every 5 years, 20 runs per ELF"))
   stop("scoring done", call. = FALSE) # ends the job; the queue marks a stop as an ERROR row, the outputs are what count
 }
 
