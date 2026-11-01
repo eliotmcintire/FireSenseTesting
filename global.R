@@ -18,7 +18,8 @@ if (isTRUE(get0(".score"))) {
   for (.f in list.files("modules/fireSimulator_validation/R", "\\.R$", full.names = TRUE)) source(.f)
   .hcDir <- file.path(.base, "outputs", paste0("hindcast", .suffix))
   .hcYears <- seq(1986L, 2021L, 5L)
-  .done <- Filter(function(e) length(hindcastFinishedYears(.hcDir, e, .hcYears, 1L)) == length(.hcYears), list.files(.hcDir))
+  .done <- Filter(function(e) length(hindcastFinishedYears(.hcDir, e, .hcYears, 1L)) == length(.hcYears),
+                  setdiff(list.files(.hcDir), strsplit(get0(".scoreSkip", ifnotfound = ""), ",")[[1]]))
   .elfs <- parallel::mclapply(.done, mc.cores = as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", "1")), mc.preschedule = FALSE, function(e)
     readFireSenseHindcast(e, .hcDir, years = .hcYears, sets = 1L, inputsDir = file.path(.base, "inputs"),
                           ledgerFile = Sys.glob(file.path(.base, "inputs", e, paste0("fireSenseParams_*", .suffix, ".rds")))[1],

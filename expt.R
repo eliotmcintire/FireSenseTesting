@@ -170,6 +170,7 @@ expt$.phase2Only <- !(.phase1Only || .phaseSetup$predict)
 .optionalColumn(".afterQueue", "FS_AFTER_QUEUE")
 .optionalColumn(".diagFile", "FS_DIAG_FILE")
 .optionalColumn(".rprofPrefix", "FS_RPROF")
+.optionalColumn(".scoreSkip", "FS_SCORE_SKIP") # FS_SET=score: ELFs left out of the scoring, comma-separated
 
 if (is.null(.phaseSetup$onlyELFs)) {
   ## every ELF, by ecozone priority
