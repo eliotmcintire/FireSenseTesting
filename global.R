@@ -16,6 +16,7 @@ userInteractive <- interactive() && !nzchar(Sys.getenv("TMUX"))
 if (isTRUE(get0(".score"))) {
   .base <- get0(".basePath", ifnotfound = "/mnt/fast"); .suffix <- get0(".spreadFitFileSuffix", ifnotfound = "")
   for (.f in list.files("modules/fireSimulator_validation/R", "\\.R$", full.names = TRUE)) source(.f)
+  suppressMessages({library(ggplot2); library(patchwork)}) # the page's figures; attached as the module's test helper does
   .hcDir <- file.path(.base, "outputs", paste0("hindcast", .suffix))
   .hcYears <- seq(1986L, 2021L, 5L)
   .done <- Filter(function(e) length(hindcastFinishedYears(.hcDir, e, .hcYears, 1L)) == length(.hcYears),
