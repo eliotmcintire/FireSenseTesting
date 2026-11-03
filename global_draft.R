@@ -260,7 +260,8 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
       NRV_summary = c(.common, list(postprocessEvents = c("lm", "pm", "st"), plotWorkers = min(.nCores, 4L),
                                     summaryPeriod = as.integer(unlist(.times)), summaryInterval = 100L, nrvWindow = 0.3)),
       burnSummaries = c(.common, list(historicYears = c(1985L, 2024L))), # observed record: NBAC, 1985-2024
-      fireSense_summary = c(.common, list(simOutputPath = .work, climateScenario = "historical"))),
+      fireSense_summary = c(.common, list(simOutputPath = .work, climateScenario = "historical",
+                                           historicYears = c(1985L, 2024L)))), # observed fires: the same record as burnSummaries
     objects = list(outputsDF = .odf, reportingPolygons = list(ELF = .rp), studyAreaReporting = .sar,
                    sppEquiv = .obj("sppEquiv"), sppColorVect = .obj("sppColorVect"), rasterToMatch = .obj("rasterToMatch")),
     paths = list(modulePath = get0(".nrvReportModules", ifnotfound = "modules"), outputPath = file.path(.work, "mainSim"),
