@@ -253,12 +253,16 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
   .times <- list(start = as.numeric(SpaDES.core::start(.sim1)), end = as.numeric(SpaDES.core::end(.sim1))) # years
   rm(.sim1)
   .common <- list(mode = "multi", reps = .reps, .studyAreaName = .ELFind, .plots = "png", .useCache = FALSE)
-  SpaDES.core::simInitAndSpades(
+  .simOut <- SpaDES.core::simInitAndSpades(
     times = .times,
     modules = c("NRV_summary", "burnSummaries", "fireSense_summary"),
     params = list(
       NRV_summary = c(.common, list(postprocessEvents = c("lm", "pm", "st"), plotWorkers = min(.nCores, 4L),
-                                    summaryPeriod = as.integer(unlist(.times)), summaryInterval = 100L, nrvWindow = 0.3)),
+                                    summaryPeriod = as.integer(unlist(.times)), summaryInterval = 100L, nrvWindow = 0.3,
+                                    ## northern ELFs (ecozones 2, 3, 4, 5, 15): age-class cutoffs at 80% of the module
+                                    ## default (Young/Immature/Mature/Old from 0/32/64/96 instead of 0/40/80/120; Eliot 2026-11-03)
+                                    ageClassCutOffs = if (sub("\\..*", "", .ELFind) %in% c("2", "3", "4", "5", "15"))
+                                      as.integer(round(0.8 * LandWebUtils:::.ageClassCutOffs)) else LandWebUtils:::.ageClassCutOffs)),
       burnSummaries = c(.common, list(historicYears = c(1985L, 2024L))), # observed record: NBAC, 1985-2024
       fireSense_summary = c(.common, list(simOutputPath = .work, climateScenario = "historical",
                                            historicYears = c(1985L, 2024L)))), # observed fires: the same record as burnSummaries
@@ -281,6 +285,7 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
     file.copy(file.path(.work, .f), file.path(.out, .f))
   }
   writeLines(c(paste("ELF", .ELFind), paste("reps", paste(.reps, collapse = ",")),
+               paste("ageClassCutOffs", paste(.simOut@params$NRV_summary$ageClassCutOffs, collapse = ",")), # the page states them
                paste("minutes", round(as.numeric(difftime(Sys.time(), .t0, units = "mins")), 1)),
                paste("finished", format(Sys.time()))), file.path(.out, "DONE.txt"))
   stop("nrvreport done", call. = FALSE) # ends the job; the queue marks a stop as an ERROR row, the outputs are what count
