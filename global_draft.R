@@ -270,9 +270,10 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
   ## the page's tables and figures
   .keep <- list.files(.work, recursive = TRUE, pattern = paste0(
     "(lm|st)_nrvComparison\\.csv$|st(_CC)?\\.csv$|stability\\.csv$|burnSummaries_fire(Regime|Blocks)\\.csv$|",
-    "current_condition_overview\\.png$|_ribbon\\.png$|stand_(age|leading|biomass)\\.png$|",
+    "current_condition_(overview|all.*)\\.png$|_ribbon\\.png$|stand_(age|leading|biomass)\\.png$|",
     "cumulative_burn_maps\\.png$|fire_per_block\\.png$|cumulBurnMap_.*\\.png$|",
-    "burnSummary_.*\\.png$|simulated_(number_size_fires|burnArea_.*|Escapes_.*|Ignitions_.*)\\.png$|stability_.*\\.png$"))
+    "burnSummary_.*\\.png$|simulated_(number_size_fires|burnArea_.*|Escapes_.*|Ignitions_.*)\\.png$|stability_.*\\.png$|",
+    "/species/lead_.*\\.png$"))
   .keep <- .keep[!grepl("^rep[0-9]+/|/per-metric/", .keep)]
   unlink(.out, recursive = TRUE); dir.create(.out, recursive = TRUE)
   for (.f in .keep) {
