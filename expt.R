@@ -7,6 +7,9 @@
 ##   FS_SET=hindcast FS_HC_ELFS=4.1,14.4 [FS_HC_LEDGER=_boundfix_rep81] [FS_HC_IGNITIONS=observedEscapes] [FS_HC_ALLSETS=TRUE] Rscript expt.R
 ##   FS_SET=refit FS_RF_ELFS=6.6.1,9.1.2 Rscript expt.R   (same rep and ledger as production, so caches are shared)
 ##   FS_SET=refit FS_PHASE1_ONLY=TRUE FS_RF_ELFS=... Rscript expt.R   (caches only: here, ahead of the same refit on the GPSC)
+##   FS_SET=nrvreport FS_NRVR_ELFS=6.4,9.3 [FS_NRVR_TAG=phase5] [FS_NRVR_MODULES=modules] Rscript expt.R   (the NRV page's
+##     tables and figures, one job per ELF whose 5 NRV runs are DONE)
+##   FS_SET=nrvreport FS_NRVR_MAP=TRUE [FS_NRVR_TAG=phase5] Rscript expt.R   (the page's map of the ELFs reported so far)
 
 ## inputs, outputs, cache, scratch and shared data: overrides global.R's .basePath here (preRunSetupProject)
 ## and, as a queue column, in the workers. GPSC (user elm001): no /mnt/fast; GPFS, which the compute nodes see
@@ -134,8 +137,29 @@ if (identical(.set, "nrv")) {
                       refit = FALSE,
                       predict = FALSE,
                       score = TRUE)
+} else if (identical(.set, "nrvreport")) {
+  ## The NRV page: one job per ELF summarises that ELF's 5 finished NRV runs with the summary modules in mode = "multi"
+  ## (global.R's .nrvReport branch) and keeps the page's tables and figures in outputs/nrvreport_<FS_NRVR_TAG>/<ELF>/.
+  ## FS_NRVR_MODULES=<folder>: the summary modules from that folder instead of modules/ (a test of changed copies)
+  ## FS_NRVR_MAP=TRUE: one light job redraws the map of the ELFs reported so far (outputs/nrvreport_<tag>/ELFmap.png),
+  ## from the saved NRV run of the first reported ELF
+  .map <- isTRUE(as.logical(Sys.getenv("FS_NRVR_MAP", "FALSE")))
+  .ELFs <- if (.map) basename(dirname(Sys.glob(file.path(.basePath, "outputs", paste0("nrvreport_", Sys.getenv("FS_NRVR_TAG", "phase5")),
+                                                          "*", "DONE.txt"))))[1]
+           else .split(Sys.getenv("FS_NRVR_ELFS"))
+  if (!length(.ELFs) || anyNA(.ELFs) || !all(nzchar(.ELFs)))
+    stop("FS_SET=nrvreport needs FS_NRVR_ELFS=<ELFs whose 5 NRV runs are DONE>, or FS_NRVR_MAP=TRUE once one ELF is reported")
+  .phaseSetup <- list(queue = paste0("experiment_queue_nrvreport_", Sys.getenv("FS_NRVR_TAG", "phase5"), if (.map) "_map", "_",
+                                     format(Sys.time(), "%Y%m%d-%H%M"), ".rds"),
+                      onlyELFs = .ELFs,
+                      reps = 1L,
+                      n_workers = length(.ELFs), # one job per ELF
+                      refit = FALSE,
+                      predict = FALSE,
+                      nrvReport = Sys.getenv("FS_NRVR_TAG", "phase5"),
+                      nrvReportMap = .map)
 } else {
-  stop("Set FS_SET=nrv, phase1, hindcast, refit or score")
+  stop("Set FS_SET=nrv, phase1, hindcast, refit, score or nrvreport")
 }
 message("FS_SET=", .setLabel, ": queue ", .phaseSetup$queue)
 
@@ -161,6 +185,8 @@ if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
 if (!is.null(.phaseSetup$fireCauses)) expt$.fireCauses <- .phaseSetup$fireCauses
 ## the phase and the run's diagnostics are columns, so a worker reads them as global.R's defaultDots
 if (isTRUE(.phaseSetup$score)) expt$.score <- TRUE
+if (!is.null(.phaseSetup$nrvReport)) expt$.nrvReport <- .phaseSetup$nrvReport
+if (isTRUE(.phaseSetup$nrvReportMap)) expt$.nrvReportMap <- TRUE
 expt$.phase1Only <- .phase1Only
 expt$.phase2Only <- !(.phase1Only || .phaseSetup$predict)
 .optionalColumn <- function(col, env, f = identity) if (nzchar(Sys.getenv(env))) expt[[col]] <<- f(Sys.getenv(env))
@@ -171,6 +197,7 @@ expt$.phase2Only <- !(.phase1Only || .phaseSetup$predict)
 .optionalColumn(".diagFile", "FS_DIAG_FILE")
 .optionalColumn(".rprofPrefix", "FS_RPROF")
 .optionalColumn(".scoreSkip", "FS_SCORE_SKIP") # FS_SET=score: ELFs left out of the scoring, comma-separated
+.optionalColumn(".nrvReportModules", "FS_NRVR_MODULES") # FS_SET=nrvreport: the folder of the summary modules
 
 if (is.null(.phaseSetup$onlyELFs)) {
   ## every ELF, by ecozone priority
@@ -226,6 +253,10 @@ if (nzchar(Sys.which("sbatch"))) {
                          qos = "nrcan__standard_gpsc8_allocation", nodes = 1, ntasks = 1,
                          export = paste0("ALL,TMPDIR=", .slurmTmp)),
                     if (.phase1Only) list(cpus_per_task = 1, mem = "96G", time = "1-00:00:00") # 32G was OOM-killed (12.1_2, prepSpreadFitData); to be set from measured peaks
+                    else if (identical(.set, "nrvreport") && isTRUE(.phaseSetup$nrvReportMap)) # the ELF map only
+                      list(cpus_per_task = 1, mem = "4G", time = "01:00:00") # 2.5 min, MaxRSS 1.7 GB
+                    else if (identical(.set, "nrvreport")) # one ELF's 5 runs; the landscape metrics and figures use the CPUs
+                      list(cpus_per_task = 4, mem = Sys.getenv("FS_SBATCH_MEM", "24G"), time = "1-00:00:00") # 6.4: 42 min, MaxRSS 13 GB
                     else if (identical(.set, "score")) # the scoring job reads 12 ELFs at once (global.R); ~8 GB each
                       list(cpus_per_task = 12, mem = Sys.getenv("FS_SBATCH_MEM", "160G"), time = "2-00:00:00")
                     else if (.oneCore) # one core per ELF x year (hindcast) or ELF x set (NRV) job; FS_SBATCH_MEM until the MaxRSS of the first jobs is known

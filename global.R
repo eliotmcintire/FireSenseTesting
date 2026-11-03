@@ -206,6 +206,92 @@ inSim <- SpaDES.project::setupProject(
                             if (!is.na(.fireCauses)) list(fireCauses = strsplit(.fireCauses, ",")[[1]]))))
 )
 message(inSim$runName)
+## The NRV page (a queue row with .nrvReport = <tag>, from expt.R's FS_SET=nrvreport): the summary modules in mode = "multi"
+## over the ELF's 5 finished NRV runs (NRV_summary with its stand-level "st" event, burnSummaries, fireSense_summary), then
+## the tables and figures the page shows are copied to outputs/nrvreport_<tag>/<ELF>/. Work files: scratch/nrvreport_<tag>/<ELF>/.
+## After setupProject(), so the job has the same options and sideEffects (terra todisk, PROJ network off) as every run.
+if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
+  Sys.setenv(OPENBLAS_NUM_THREADS = 1, OMP_NUM_THREADS = 1); data.table::setDTthreads(1)
+  .base <- get0(".basePath", ifnotfound = "/mnt/fast"); .reps <- 1:5
+  .nCores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", "1"))
+  options(mc.cores = .nCores, reproducible.cacheSaveFormat = "qs2")
+  .runDir <- function(r) file.path(.base, "outputs", .ELFind, "NRV", 370, r) # an NRV run's outputPath (.GCM "NRV", .SSP 370)
+  .simFile <- function(r) file.path(.runDir(r), sprintf("%s_NRV_370_%d_%d.rds", .ELFind, r, 3020L))
+  .work <- file.path(.base, "scratch", paste0("nrvreport_", .nrvReport), .ELFind)
+  .out <- file.path(.base, "outputs", paste0("nrvreport_", .nrvReport), .ELFind)
+  .t0 <- Sys.time()
+  ## inputs the runs made, from rep 1's saved simList
+  .lazy <- file.path(.runDir(1), sprintf("%s_NRV_370_1_3020_lazy", .ELFind))
+  .man <- readRDS(file.path(.lazy, "_manifest.rds"))
+  ## filebackedPath = NULL: a saved run's rasters are its own files, not Cache entries (with the cachePath option that
+  ## setupProject() sets, .unwrap() would look for them in the cache)
+  .obj <- function(n) reproducible::.unwrap(readRDS(file.path(.lazy, .man$file[.man$name == n & .man$where == ""][1])),
+                                            filebackedPath = NULL)
+  ## .nrvReportMap (FS_NRVR_MAP=TRUE): only the map of Canada's ELFs with those reported so far (a DONE.txt in
+  ## outputs/nrvreport_<tag>/<ELF>/) filled green, by fireSense_summary (mode "ELFmap"), to outputs/nrvreport_<tag>/ELFmap.png
+  if (isTRUE(get0(".nrvReportMap"))) {
+    .reported <- basename(dirname(Sys.glob(file.path(dirname(.out), "*", "DONE.txt"))))
+    .ELFs <- .obj("ELFs") # the national ELFs, merges applied; their rasters come back packed
+    .ELFs$rasWhole <- lapply(.ELFs$rasWhole, terra::unwrap)
+    .ELFs$rasCentered <- lapply(.ELFs$rasCentered, terra::unwrap)
+    .ELFs$poly <- reproducible::.unwrap(.ELFs$poly)
+    SpaDES.core::simInitAndSpades(
+      times = list(start = 0, end = 1), modules = "fireSense_summary",
+      params = list(fireSense_summary = list(mode = "ELFmap", reportedELFs = .reported, simOutputPath = dirname(.out),
+                                             .plots = "png")),
+      objects = list(ELFs = .ELFs),
+      paths = list(modulePath = get0(".nrvReportModules", ifnotfound = "modules"), outputPath = dirname(.out),
+                   cachePath = file.path(.work, "cache"), scratchPath = file.path(.work, "scratch")))
+    stop("nrvreport map done: ", length(.reported), " ELFs filled", call. = FALSE)
+  }
+  ## the summary modules find replicates as rep<N> folders (SpaDES.core::dirnamesFromSet()): each run's files are
+  ## linked into <work>/rep<N>, and its registered outputs (outputsDF) are pointed at the links
+  .odf <- data.table::rbindlist(lapply(.reps, function(r) {
+    d <- file.path(.work, paste0("rep", r)); dir.create(d, recursive = TRUE, showWarnings = FALSE)
+    for (f in list.files(.runDir(r), full.names = TRUE))
+      if (!file.exists(l <- file.path(d, basename(f)))) file.symlink(f, l)
+    o <- data.table::as.data.table(SpaDES.core::outputs(readRDS(.simFile(r))))
+    o <- o[startsWith(o$file, paste0(.runDir(r), "/")), ]
+    o$file <- file.path(d, substring(o$file, nchar(.runDir(r)) + 2L))
+    o[dirname(o$file) == d, ]
+  }))
+  ## the ELF is the one reporting polygon (as multi.R)
+  .sar <- .obj("studyAreaReporting")
+  .rp <- sf::st_as_sf(.sar); .rp$Name <- .ELFind; .rp <- .rp[, "Name"]; attr(.rp, "field") <- "Name"
+  .sim1 <- readRDS(.simFile(1))
+  .times <- list(start = as.numeric(SpaDES.core::start(.sim1)), end = as.numeric(SpaDES.core::end(.sim1))) # years
+  rm(.sim1)
+  .common <- list(mode = "multi", reps = .reps, .studyAreaName = .ELFind, .plots = "png", .useCache = FALSE)
+  SpaDES.core::simInitAndSpades(
+    times = .times,
+    modules = c("NRV_summary", "burnSummaries", "fireSense_summary"),
+    params = list(
+      NRV_summary = c(.common, list(postprocessEvents = c("lm", "pm", "st"), plotWorkers = min(.nCores, 4L),
+                                    summaryPeriod = as.integer(unlist(.times)), summaryInterval = 100L, nrvWindow = 0.3)),
+      burnSummaries = c(.common, list(historicYears = c(1985L, 2024L))), # observed record: NBAC, 1985-2024
+      fireSense_summary = c(.common, list(simOutputPath = .work, climateScenario = "historical"))),
+    objects = list(outputsDF = .odf, reportingPolygons = list(ELF = .rp), studyAreaReporting = .sar,
+                   sppEquiv = .obj("sppEquiv"), sppColorVect = .obj("sppColorVect"), rasterToMatch = .obj("rasterToMatch")),
+    paths = list(modulePath = get0(".nrvReportModules", ifnotfound = "modules"), outputPath = file.path(.work, "mainSim"),
+                 inputPath = file.path(.base, "inputs", .ELFind), # the fire records already there (no download)
+                 cachePath = file.path(.work, "cache"), scratchPath = file.path(.work, "scratch")))
+  ## the page's tables and figures
+  .keep <- list.files(.work, recursive = TRUE, pattern = paste0(
+    "(lm|st)_nrvComparison\\.csv$|st(_CC)?\\.csv$|stability\\.csv$|burnSummaries_fire(Regime|Blocks)\\.csv$|",
+    "current_condition_overview\\.png$|_ribbon\\.png$|stand_(age|leading|biomass)\\.png$|",
+    "cumulative_burn_maps\\.png$|fire_per_block\\.png$|cumulBurnMap_.*\\.png$"))
+  .keep <- .keep[!grepl("^rep[0-9]+/|/per-metric/", .keep)]
+  unlink(.out, recursive = TRUE); dir.create(.out, recursive = TRUE)
+  for (.f in .keep) {
+    dir.create(dirname(file.path(.out, .f)), recursive = TRUE, showWarnings = FALSE)
+    file.copy(file.path(.work, .f), file.path(.out, .f))
+  }
+  writeLines(c(paste("ELF", .ELFind), paste("reps", paste(.reps, collapse = ",")),
+               paste("minutes", round(as.numeric(difftime(Sys.time(), .t0, units = "mins")), 1)),
+               paste("finished", format(Sys.time()))), file.path(.out, "DONE.txt"))
+  stop("nrvreport done", call. = FALSE) # ends the job; the queue marks a stop as an ERROR row, the outputs are what count
+}
+
 inSimCopy <- reproducible::Copy(inSim)
 .phase1Only <- inSim$.phase1Only; .phase2Only <- inSim$.phase2Only; .ELFind <- inSim$.ELFind
 .fitQueue <- inSim$.fitQueue; .afterQueue <- inSim$.afterQueue
