@@ -277,7 +277,7 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
     "current_condition_(overview|all.*)\\.png$|_ribbon\\.png$|stand_(age|leading|biomass)\\.png$|",
     "cumulative_burn_maps\\.png$|fire_per_block\\.png$|cumulBurnMap_.*\\.png$|",
     "burnSummary_.*\\.png$|simulated_(number_size_fires|burnArea_.*|Escapes_.*|Ignitions_.*)\\.png$|stability_.*\\.png$|",
-    "/species/lead_.*\\.png$"))
+    "^lead_.*\\.png$")) # list.files() matches the pattern against file names only; lead_<species>.png are the st species figures
   .keep <- .keep[!grepl("^rep[0-9]+/|/per-metric/", .keep)]
   unlink(.out, recursive = TRUE); dir.create(.out, recursive = TRUE)
   for (.f in .keep) {
