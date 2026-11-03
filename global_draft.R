@@ -125,6 +125,7 @@ inSim <- SpaDES.project::setupProject(
     SpaDES.project::optionsCache(),
     SpaDES.project::optionsBatch(),
     list(
+      SpaDES.project.strict = TRUE, # stop on any error setupProject would otherwise tolerate and skip (Eliot 2026-11-03)
       LandR.assertions = FALSE,
       reproducible.destinationPathShared = file.path(.basePath, "data"),
       reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9",

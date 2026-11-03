@@ -240,6 +240,14 @@ if (!is.null(.phaseSetup$hindcastYears)) {
     expt <- expt[order(ave(seq_len(NROW(expt)), expt$.ELFind, FUN = seq_along), match(expt$.ELFind, unique(expt$.ELFind))), , drop = FALSE]
 }
 rownames(expt) <- NULL
+## every queue column must be a name global_draft.R uses (a defaultDots entry, a setupProject dot or a get0() name):
+## a worker silently ignores a column the script never reads, e.g. a misspelled setting
+.globalNames <- local({
+  pd <- utils::getParseData(parse("global_draft.R", keep.source = TRUE))
+  unique(gsub("^[\"']|[\"']$", "", pd$text[pd$token %in% c("SYMBOL", "SYMBOL_SUB", "STR_CONST")]))
+})
+if (length(.unread <- setdiff(names(expt), .globalNames)))
+  stop("queue column(s) that global_draft.R never reads: ", paste(.unread, collapse = ", "))
 message("Queueing ", NROW(expt), " jobs, fire years ", .fireYearStart, ":", .fireYearEnd)
 
 ####################
