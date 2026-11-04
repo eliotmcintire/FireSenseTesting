@@ -279,6 +279,9 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
     "burnSummary_.*\\.png$|simulated_(number_size_fires|burnArea_.*|Escapes_.*|Ignitions_.*)\\.png$|stability_.*\\.png$|",
     "^lead_.*\\.png$")) # list.files() matches the pattern against file names only; lead_<species>.png are the st species figures
   .keep <- .keep[!grepl("^rep[0-9]+/|/per-metric/", .keep)]
+  ## only what this run wrote: <work> is reused across runs, so a file a module no longer writes would otherwise
+  ## reach the page from an earlier run
+  .keep <- .keep[file.mtime(file.path(.work, .keep)) >= .t0]
   unlink(.out, recursive = TRUE); dir.create(.out, recursive = TRUE)
   for (.f in .keep) {
     dir.create(dirname(file.path(.out, .f)), recursive = TRUE, showWarnings = FALSE)
