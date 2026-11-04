@@ -1,6 +1,7 @@
 ## Launches a FireSense campaign: installs packages once, builds the job queue, starts the tmux workers.
 ## Each worker sources global_draft.R per job. Run inside tmux:
 ##   FS_SET=nrv FS_NRV_WAVE=<fit|predict|ignition> [FS_NRV_ELFS=4.1,14.4|all] [FS_NRV_LEDGER=_burnEmu_20261027] Rscript expt_draft.R
+##     predict also needs FS_ARCHIVE_DIR=<this campaign's own Drive folder URL> FS_ARCHIVE_LEDGER=nrvRuns_<campaign>.rds
 ##   FS_SET=fit [FS_NRV_ELFS=...|all] [FS_AFTER_QUEUE=<phase-1 queue>] Rscript expt_draft.R   (fit every ELF: phases 1 + 2)
 ##   FS_SET=phase1 [FS_NRV_ELFS=...|all] [FS_FIT_QUEUE=<fit queue>] Rscript expt_draft.R   (inputs and caches only, ahead of the fits:
 ##     same order as the fits; skips any ELF the fit queue has claimed)
@@ -211,6 +212,11 @@ expt$.phase2Only <- !(.phase1Only || .phaseSetup$predict)
 .optionalColumn(".workerMemoryGB", "FS_WORKER_MEM_GB", as.numeric)
 .optionalColumn(".cacheChaining", "FS_NO_CACHECHAINING", function(x) !isTRUE(as.logical(x)))
 .optionalColumn(".fitQueue", "FS_FIT_QUEUE")
+## NRV archive: a predict wave uploads into its own campaign folder, so it never overwrites the runs users read now
+if (isTRUE(.phaseSetup$predict) && !(nzchar(Sys.getenv("FS_ARCHIVE_DIR")) && nzchar(Sys.getenv("FS_ARCHIVE_LEDGER"))))
+  stop("FS_NRV_WAVE=predict needs FS_ARCHIVE_DIR (the campaign's own Drive folder) and FS_ARCHIVE_LEDGER (its ledger file name)")
+.optionalColumn(".uploadGSdir", "FS_ARCHIVE_DIR")
+.optionalColumn(".archiveLedger", "FS_ARCHIVE_LEDGER")
 .optionalColumn(".afterQueue", "FS_AFTER_QUEUE")
 .optionalColumn(".diagFile", "FS_DIAG_FILE")
 .optionalColumn(".rprofPrefix", "FS_RPROF")

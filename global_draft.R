@@ -42,6 +42,10 @@ inSim <- SpaDES.project::setupProject(
                      .SSP = 370,
                      .GCM = "CNRM-ESM2-1", # or "NRV"
                      .samplingRange = 1985:2024, # NRV climate years
+                     # NRV run archive. Each campaign uploads to its own Drive folder, with its own ledger there, so the old
+                     # campaign stays usable until the new one is complete (then its ledger replaces nrvRuns.rds; simListArchive)
+                     .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
+                     .archiveLedger = NA_character_, # e.g. "nrvRuns_2026-11-04.rds": each upload adds a row to it in .uploadGSdir; NA: no row
                      # fitting window: vegetation is strictly before the fire year, so the first SCANFI V2 year
                      # (1985) feeds 1986; the end is the last year of historical climate.
                      # expt_draft.R checks this line against climateData::latestHistoricalYear().
@@ -99,7 +103,7 @@ inSim <- SpaDES.project::setupProject(
   .rep = .rep, # without it, a .rep from the queue does not reach params$.globals
   # only dots written here are returned in inSim: a defaultDots value the queue did not set is not a variable after setupProject
   .fitQueue = .fitQueue, .afterQueue = .afterQueue, .diagFile = .diagFile, .rprofPrefix = .rprofPrefix,
-  .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
+  .uploadGSdir = .uploadGSdir, .archiveLedger = .archiveLedger, .GCM = .GCM, .SSP = .SSP,
   paths = list(outputPath = if (.hc) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", paste0("hindcast", .spreadFitFileSuffix, if (identical(.hcIgnitions, "observedEscapes")) "_obsEsc")), .ELFind, .hindcastYear, .rep)
                             ## a fit's outputs (DEoptim progress, figures) are per ledger: fits of one ELF under different
                             ## suffixes (e.g. weightings) ran at once and wrote the same DEoptimProgress file, 2026-10-24
@@ -191,7 +195,7 @@ inSim <- SpaDES.project::setupProject(
     # NRV samples observed climate, so no projected years (canClimateData still needs a valid GCM)
     if (.NRV) list(
       canClimateData = list(climateGCM = "CNRM-ESM2-1", projectedClimateYears = integer(0)),
-      climateYear = list(samplingRange = .samplingRange)),
+      climateYear = list(samplingRange = .samplingRange, yearSeed = as.integer(.rep))), # every ELF of a rep: one climate-year sequence
     if (.hc) .hcSetup$params,
     if (.hc && !is.na(.fireCauses)) list(fireSense_summary = list(fireCauses = strsplit(.fireCauses, ",")[[1]])))
 )
@@ -300,4 +304,8 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
 simOut <- fireSenseUtils::runJob(inSim, elf = inSim$.ELFind, phase = inSim$.phase,
                                  fitQueue = inSim$.fitQueue, afterQueue = inSim$.afterQueue,
                                  diagFile = inSim$.diagFile, rprofPrefix = inSim$.rprofPrefix,
-                                 uploadDir = inSim$.uploadGSdir, hindcast = inSim$.hc)
+                                 uploadDir = inSim$.uploadGSdir, hindcast = inSim$.hc,
+                                 ledger = if (!is.na(inSim$.archiveLedger))
+                                   reproducible::CacheGeoLedger(inSim$.archiveLedger, remote = inSim$.uploadGSdir,
+                                                                destinationPath = inSim$paths$outputPath, key = "runName"),
+                                 scenario = list(ELF = inSim$.ELFind, GCM = inSim$.GCM, SSP = inSim$.SSP, rep = as.integer(inSim$.rep)))
