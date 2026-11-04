@@ -72,7 +72,7 @@ inSim <- SpaDES.project::setupProject(
                      .cohortRemoveSuppressed = NA_character_,   # NA: off; "relativeB,minAgeFrac" e.g. "0.01,0.75" (Biomass_core#131)
                      .cohortSquash = NA_character_,             # NA: off; "interval,width[,width...]" e.g. "100,20" (breaks LandR-CBM)
                      .cohortEstablishmentLimit = NA_character_, # NA: off; "interval,minCohorts" e.g. "20,5"
-                     .packagePath = NA_character_,    # NA: the project library; else "<dev>;<stable>" from expt_draft.R (SpaDES.project::newDevLibrary())
+                     .packagePath = .libPaths()[1],   # the project library; expt_draft.R sets "<dev>;<stable>" (SpaDES.project::newDevLibrary())
                      .fireCauses = NA_character_,     # NA: the module defaults; e.g. "natural,unknown": fireSenseUtils::fireCauseCodes() groups for the fits (dataPrepFit) and the hindcast's observed fires (fireSense_summary)
                      .phase1Only = FALSE,             # TRUE: build every input and cache, then stop before the fit (a 1-CPU Slurm job)
                      .phase2Only = FALSE,             # TRUE: fit if this ELF has no fit, then stop; neither phase: fit if needed, then predict
@@ -110,7 +110,7 @@ inSim <- SpaDES.project::setupProject(
                             ## suffixes (e.g. weightings) ran at once and wrote the same DEoptimProgress file, 2026-10-24
                             else if (isTRUE(.doFit)) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", paste0("fit", .spreadFitFileSuffix)), .ELFind, .GCM, .SSP, .rep)
                             else SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs"), .ELFind, .GCM, .SSP, .rep),
-               packagePath = if (!is.na(.packagePath)) strsplit(.packagePath, ";", fixed = TRUE)[[1]], # this job's libraries, in order; never written to .Rprofile
+               packagePath = strsplit(.packagePath, ";")[[1]], # this job's libraries, in order
                cachePath = file.path(.basePath, "cache"),
                scratchPath = file.path(.basePath, "scratch"),
                inputPath = SpaDES.project::pathBuild(pre = file.path(.basePath, "inputs"), .ELFind)), # inputs vary by ELF only: not by rep, GCM or SSP (projected climate tiles carry GCM_ssp in their own folder); the folder is in prepared inputs' cache keys

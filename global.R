@@ -228,7 +228,8 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
   .obj <- function(n) reproducible::.unwrap(readRDS(file.path(.lazy, .man$file[.man$name == n & .man$where == ""][1])),
                                             filebackedPath = NULL)
   ## .nrvReportMap (FS_NRVR_MAP=TRUE): only the map of Canada's ELFs with those reported so far (a DONE.txt in
-  ## outputs/nrvreport_<tag>/<ELF>/) filled green, by fireSense_summary (mode "ELFmap"), to outputs/nrvreport_<tag>/ELFmap.png
+  ## outputs/nrvreport_<tag>/<ELF>/) coloured by the % of their NRV tests inside the range, by fireSense_summary (mode
+  ## "ELFmap"), to outputs/nrvreport_<tag>/ELFmap.png
   if (isTRUE(get0(".nrvReportMap"))) {
     .reported <- basename(dirname(Sys.glob(file.path(dirname(.out), "*", "DONE.txt"))))
     .ELFs <- .obj("ELFs") # the national ELFs, merges applied; their rasters come back packed
@@ -238,7 +239,7 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
     SpaDES.core::simInitAndSpades(
       times = list(start = 0, end = 1), modules = "fireSense_summary",
       params = list(fireSense_summary = list(mode = "ELFmap", reportedELFs = .reported, simOutputPath = dirname(.out),
-                                             .plots = "png")),
+                                             nrvComparisonPath = dirname(.out), .plots = "png")),
       objects = list(ELFs = .ELFs),
       paths = list(modulePath = get0(".nrvReportModules", ifnotfound = "modules"), outputPath = dirname(.out),
                    cachePath = file.path(.work, "cache"), scratchPath = file.path(.work, "scratch")))
@@ -279,7 +280,8 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
   .keep <- list.files(.work, recursive = TRUE, pattern = paste0(
     "(lm|st)_nrvComparison\\.csv$|st(_CC)?\\.csv$|stability\\.csv$|burnSummaries_fire(Regime|Blocks)\\.csv$|",
     "current_condition_overview\\.png$|_ribbon\\.png$|stand_(age|leading|biomass)\\.png$|",
-    "cumulative_burn_maps\\.png$|fire_per_block\\.png$|cumulBurnMap_.*\\.png$"))
+    "cumulative_burn_maps\\.png$|fire_per_block\\.png$|cumulBurnMap_.*\\.png$|",
+    "burnSummary_.*\\.png$|simulated_(number_size_fires|burnArea_.*|Escapes_.*|Ignitions_.*)\\.png$|stability_.*\\.png$"))
   .keep <- .keep[!grepl("^rep[0-9]+/|/per-metric/", .keep)]
   unlink(.out, recursive = TRUE); dir.create(.out, recursive = TRUE)
   for (.f in .keep) {
@@ -297,13 +299,13 @@ inSimCopy <- reproducible::Copy(inSim)
 .fitQueue <- inSim$.fitQueue; .afterQueue <- inSim$.afterQueue
 .diagFile <- inSim$.diagFile; .rprofPrefix <- inSim$.rprofPrefix
 
-## Phase 1 (.phase1Only): build every input and cache, stop before the threshold calibration, which forks and
-##   so runs in phase 2 on the fit's cores (a 1-CPU phase-1 Slurm job then needs no more).
+## Phase 1 (.phase1Only): build every input and cache, stop before the fit (the threshold calibration that
+##   used to come first was removed with SNLL_FS, fireSense_spreadFit#112).
 ## Phase 2 (.phase2Only): fit if this ELF has no fit, then stop.
 ## Neither: fit if this ELF has no fit, then predict.
 stopifnot(!(.phase1Only && .phase2Only))
 if (.phase1Only) {
-  inSimCopy$events <- list(.stopBefore = list(fireSense_spreadFit = "estimateThreshold",
+  inSimCopy$events <- list(.stopBefore = list(fireSense_spreadFit = "run",
                                               fireSense_dataPrepPredict = "getClimateRasters"))
 } else if (.phase2Only) {
   .validates <- "validate" %in% inSimCopy$params$fireSense_spreadFit$mode ||
