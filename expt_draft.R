@@ -27,22 +27,39 @@ suppressWarnings(rm(.ELFind)) # a leftover from an earlier run in this session w
 # FS_NO_INSTALL=TRUE skips this, for a launch beside running jobs.
 # @modsForFireSense branches = development + our open PRs (R/updateModsForFireSense.sh).
 ####################
+## The project library (.Rprofile) is the frozen "stable" library: nothing installs into it again. An install builds a new
+## dev library beside it, <stable>_dev/<id>, with hard links to the current one plus whatever changed (SpaDES.project
+## newDevLibrary()), so a running job's library never changes. Each queue row carries its library path (.packagePath).
+.stableLib <- .libPaths()[1]
+.devCurrent <- file.path(paste0(.stableLib, "_dev"), "current") # what SpaDES.project::currentDevLibrary() reads; read here
+if (file.exists(.devCurrent)) .libPaths(c(readLines(.devCurrent, n = 1L), .libPaths())) # because stable's SpaDES.project predates it
 if (!isTRUE(as.logical(Sys.getenv("FS_NO_INSTALL", "FALSE")))) {
-  if (!require("pak")) install.packages("pak")
-  pak::pak(c("PredictiveEcology/Require@development",
-             "PredictiveEcology/SpaDES.project@development",
-             "PredictiveEcology/reproducible@development",
-             "PredictiveEcology/SpaDES.core@development",
-             "PredictiveEcology/SpaDES.tools@development",
-             "PredictiveEcology/LandR@modsForFireSense",
-             "PredictiveEcology/clusters@development",
-             "PredictiveEcology/filelock@main",
-             "PredictiveEcology/climateData@modsForFireSense",
-             "PredictiveEcology/quickPlot@development",
-             "googlesheets4"), ask = FALSE) # googlesheets4: the sheet-backed queue (a Suggests of SpaDES.project)
+  if (utils::packageVersion("SpaDES.project") < "1.2.0.9030") { # first install only: newDevLibrary() from a throwaway library
+    .boot <- tempfile("spbootstrap"); dir.create(.boot)
+    pak::pkg_install("PredictiveEcology/SpaDES.project@development", lib = .boot, dependencies = FALSE, ask = FALSE)
+    loadNamespace("SpaDES.project", lib.loc = .boot)
+  }
+  ## (HEAD): Require compares with the branch's latest commit; a bare @branch installs nothing when the package is present
+  SpaDES.project::newDevLibrary(c("PredictiveEcology/Require@development (HEAD)",
+                                  "PredictiveEcology/SpaDES.project@development (HEAD)",
+                                  "PredictiveEcology/reproducible@development (HEAD)",
+                                  "PredictiveEcology/SpaDES.core@development (HEAD)",
+                                  "PredictiveEcology/SpaDES.tools@development (HEAD)",
+                                  "PredictiveEcology/LandR@modsForFireSense (HEAD)",
+                                  "PredictiveEcology/clusters@development (HEAD)",
+                                  "PredictiveEcology/filelock@main (HEAD)",
+                                  "PredictiveEcology/climateData@modsForFireSense (HEAD)",
+                                  "PredictiveEcology/quickPlot@development (HEAD)",
+                                  "googlesheets4"), stable = .stableLib) # googlesheets4: the sheet-backed queue (a Suggests of SpaDES.project)
   # no dependencies: its Remotes say LandR@development, which conflicts with LandR@modsForFireSense
-  pak::pkg_install("PredictiveEcology/fireSenseUtils@development", dependencies = FALSE, ask = FALSE)
+  SpaDES.project::newDevLibrary("PredictiveEcology/fireSenseUtils@development", stable = .stableLib,
+                                installFun = function(packages, libPath)
+                                  pak::pkg_install(packages, lib = libPath, dependencies = FALSE, ask = FALSE))
 }
+## "<dev>;<stable>" (stable alone before the first install). Set here, it overrides global_draft.R's default in
+## preRunSetupProject() below, as .basePath does, and it is each queue row's library (column .packagePath)
+.packagePath <- paste(SpaDES.project::currentDevLibrary(stable = .stableLib), collapse = ";")
+.libPaths(unique(c(strsplit(.packagePath, ";", fixed = TRUE)[[1]], .libPaths())))
 
 options(spades.useRequire = FALSE) # nothing installs from here on: pak above did it, so setupProject() must not run Require
 outs <- SpaDES.project::preRunSetupProject(file = "global_draft.R", upTo = "params")
@@ -195,6 +212,7 @@ if (!is.null(.phaseSetup$spreadSdBounds)) expt$.spreadSdBounds <- .phaseSetup$sp
 if (!is.null(.phaseSetup$prepAreaMult)) expt$.prepAreaMult <- .phaseSetup$prepAreaMult
 if (!is.null(.phaseSetup$spreadSizeLikDf)) expt$.spreadSizeLikDf <- .phaseSetup$spreadSizeLikDf
 if (!is.null(.phaseSetup$spreadPowerLawShape)) expt$.spreadPowerLawShape <- .phaseSetup$spreadPowerLawShape
+expt$.packagePath <- .packagePath # each job keeps this library (global_draft.R paths$packagePath)
 if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
 if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
 if (!is.null(.phaseSetup$fireCauses)) expt$.fireCauses <- .phaseSetup$fireCauses
