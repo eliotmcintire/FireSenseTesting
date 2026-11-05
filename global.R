@@ -14,7 +14,7 @@ if (isTRUE(get0(".score"))) {
   for (.f in list.files("modules/fireSimulator_validation/R", "\\.R$", full.names = TRUE)) source(.f)
   suppressMessages({library(ggplot2); library(patchwork)}) # the page's figures; attached as the module's test helper does
   .hcDir <- file.path(.base, "outputs", paste0("hindcast", .suffix))
-  .hcYears <- seq(1986L, 2021L, 5L)
+  .hcYears <- as.integer(strsplit(.hcYears, ",")[[1]]) # the row's years (expt.R FS_HC_YEARS; all 1986-2024 by default)
   .done <- Filter(function(e) length(hindcastFinishedYears(.hcDir, e, .hcYears, 1L)) == length(.hcYears),
                   setdiff(list.files(.hcDir), strsplit(get0(".scoreSkip", ifnotfound = ""), ",")[[1]]))
   .elfs <- parallel::mclapply(.done, mc.cores = as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", "1")), mc.preschedule = FALSE, function(e)
@@ -31,7 +31,7 @@ if (isTRUE(get0(".score"))) {
   buildValidationPage(.elfs, .res$gates, file.path(.base, "outputs", paste0("score", .suffix), "validation.html"),
                       template = "modules/fireSimulator_validation/pageTemplate.html", dpi = 50, title = "Hindcast validation, GPSC fits",
                       subtitle = paste0("Spread fits ", sub("^_", "", .suffix), " &middot; hindcasts ", paste(range(.hcYears), collapse = "&ndash;"),
-                                        " every 5 years, 20 runs per ELF"))
+                                        ", ", length(.hcYears), " years, 20 runs per ELF"))
   stop("scoring done", call. = FALSE) # ends the job; the queue marks a stop as an ERROR row, the outputs are what count
 }
 

@@ -131,6 +131,10 @@ if (.set %in% c("fit", "phase1")) {
   .phase1Only <- identical(.set, "phase1"); .set <- "nrv"; Sys.setenv(FS_NRV_WAVE = "fit")
 }
 
+## hindcast and score years: every fire year of the fits, 1986-2024 (decided 2026-10-25); FS_HC_YEARS=<years,...> for a subset.
+## Y+1: SCANFI year Y may already show year Y's burns, so year Y+1 uses SCANFI Y (pre-burn vegetation)
+.hcYears <- if (nzchar(Sys.getenv("FS_HC_YEARS"))) as.integer(.split(Sys.getenv("FS_HC_YEARS"))) else 1986:2024
+
 if (identical(.set, "nrv")) {
   ## fit:      fit every named ELF (refit), then stop. With FS_PHASE1_ONLY=TRUE: build caches only.
   ## predict:  1000-year NRV runs, reps 1-5, from the ledger fit. Name only ELFs whose fit is DONE.
@@ -161,8 +165,7 @@ if (identical(.set, "nrv")) {
                       ## FS_HC_ALLSETS=TRUE: one job per ELF x year runs all sets (20 reps, 5 x 4), so one .rep
                       hcAllSets = isTRUE(as.logical(Sys.getenv("FS_HC_ALLSETS", "FALSE"))),
                       reps = as.integer(.split(Sys.getenv("FS_HC_SETS", if (isTRUE(as.logical(Sys.getenv("FS_HC_ALLSETS", "FALSE")))) "1" else "1,2,3,4,5"))),
-                      ## Y+1: SCANFI year Y may already show year Y's burns, so year Y+1 uses SCANFI Y (pre-burn vegetation)
-                      hindcastYears = as.integer(.split(Sys.getenv("FS_HC_YEARS", "1986,1991,1996,2001,2006,2011,2016,2021"))),
+                      hindcastYears = .hcYears,
                       ledgerSuffix = Sys.getenv("FS_HC_LEDGER"), # "" = production ledger
                       hcIgnitions = if (nzchar(Sys.getenv("FS_HC_IGNITIONS"))) Sys.getenv("FS_HC_IGNITIONS"), # unset: drawn ("predicted"); "observedEscapes": spread the observed escapes
                       fireCauses = if (nzchar(Sys.getenv("FS_FIRE_CAUSES"))) Sys.getenv("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (same value as the fit's)
@@ -265,7 +268,7 @@ if (nzchar(Sys.getenv("FS_COHORT_REMOVE_SUPPRESSED"))) expt$.cohortRemoveSuppres
 if (nzchar(Sys.getenv("FS_COHORT_SQUASH"))) expt$.cohortSquash <- Sys.getenv("FS_COHORT_SQUASH")
 if (nzchar(Sys.getenv("FS_COHORT_ESTABLISHMENT_LIMIT"))) expt$.cohortEstablishmentLimit <- Sys.getenv("FS_COHORT_ESTABLISHMENT_LIMIT")
 ## the phase and the run's diagnostics are columns, so a worker reads them as global.R's defaultDots
-if (isTRUE(.phaseSetup$score)) expt$.score <- TRUE
+if (isTRUE(.phaseSetup$score)) {expt$.score <- TRUE; expt$.hcYears <- paste(.hcYears, collapse = ",")}
 if (!is.null(.phaseSetup$nrvReport)) expt$.nrvReport <- .phaseSetup$nrvReport
 if (isTRUE(.phaseSetup$nrvReportMap)) expt$.nrvReportMap <- TRUE
 expt$.phase1Only <- .phase1Only
