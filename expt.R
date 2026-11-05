@@ -29,42 +29,43 @@ suppressWarnings(rm(.ELFind)) # a leftover from an earlier run in this session w
 
 ####################
 # Install packages once, before any worker exists; workers only read the library.
-# FS_NO_INSTALL=TRUE skips this, for a launch beside running jobs.
+# Every launch installs: into a new dev library, never into one a running job uses.
 # @modsForFireSense branches = development + our open PRs (R/updateModsForFireSense.sh).
 ####################
-## The project library (.Rprofile) is the frozen "stable" library: nothing installs into it again. An install builds a new
-## dev library beside it, <stable>_dev/<id>, with hard links to the current one plus whatever changed (SpaDES.project
-## newDevLibrary()), so a running job's library never changes. Each queue row carries its library path (.packagePath).
+## The project library (.Rprofile) is the frozen "stable" library: nothing installs into it again. The launcher
+## (experimentTmux/experimentSBATCH devPackages, below) builds a dev library beside it, <stable>_dev/<id>, with hard links
+## to the current one plus whatever changed, and starts every worker on c(<dev>, <stable>); global.R has no packagePath.
+## With no FS_SET, this run only builds the dev library.
 .stableLib <- .libPaths()[1]
 .devCurrent <- file.path(paste0(.stableLib, "_dev"), "current") # what SpaDES.project::currentDevLibrary() reads; read here
 if (file.exists(.devCurrent)) .libPaths(c(readLines(.devCurrent, n = 1L), .libPaths())) # because stable's SpaDES.project predates it
-if (!isTRUE(as.logical(Sys.getenv("FS_NO_INSTALL", "FALSE")))) {
-  if (utils::packageVersion("SpaDES.project") < "1.2.0.9030") { # first install only: newDevLibrary() from a throwaway library
-    .boot <- tempfile("spbootstrap"); dir.create(.boot)
-    pak::pkg_install("PredictiveEcology/SpaDES.project@development", lib = .boot, dependencies = FALSE, ask = FALSE)
-    loadNamespace("SpaDES.project", lib.loc = .boot)
-  }
-  ## (HEAD): Require compares with the branch's latest commit; a bare @branch installs nothing when the package is present
-  SpaDES.project::newDevLibrary(c("PredictiveEcology/Require@development (HEAD)",
-                                  "PredictiveEcology/SpaDES.project@development (HEAD)",
-                                  "PredictiveEcology/reproducible@development (HEAD)",
-                                  "PredictiveEcology/SpaDES.core@development (HEAD)",
-                                  "PredictiveEcology/SpaDES.tools@development (HEAD)",
-                                  "PredictiveEcology/LandR@modsForFireSense (HEAD)",
-                                  "PredictiveEcology/clusters@development (HEAD)",
-                                  "PredictiveEcology/filelock@main (HEAD)",
-                                  "PredictiveEcology/climateData@modsForFireSense (HEAD)",
-                                  "PredictiveEcology/quickPlot@development (HEAD)",
-                                  "googlesheets4"), stable = .stableLib) # googlesheets4: the sheet-backed queue (a Suggests of SpaDES.project)
-  # no dependencies: its Remotes say LandR@development, which conflicts with LandR@modsForFireSense
-  SpaDES.project::newDevLibrary("PredictiveEcology/fireSenseUtils@development", stable = .stableLib,
-                                installFun = function(packages, libPath)
-                                  pak::pkg_install(packages, lib = libPath, dependencies = FALSE, ask = FALSE))
+if (utils::packageVersion("SpaDES.project") < "1.2.0.9033") { # first launch only: devPackages from a throwaway library
+  .boot <- tempfile("spbootstrap"); dir.create(.boot)
+  pak::pkg_install("PredictiveEcology/SpaDES.project@development", lib = .boot, dependencies = FALSE, ask = FALSE)
+  loadNamespace("SpaDES.project", lib.loc = .boot)
 }
-## "<dev>;<stable>" (stable alone before the first install). Set here, it overrides global.R's default in
-## preRunSetupProject() below, as .basePath does, and it is each queue row's library (column .packagePath)
-.packagePath <- paste(SpaDES.project::currentDevLibrary(stable = .stableLib), collapse = ";")
-.libPaths(unique(c(strsplit(.packagePath, ";", fixed = TRUE)[[1]], .libPaths())))
+## (HEAD): Require compares with the branch's latest commit; a bare @branch installs nothing when the package is present
+.devPackages <- c("PredictiveEcology/Require@development (HEAD)",
+                  "PredictiveEcology/SpaDES.project@development (HEAD)",
+                  "PredictiveEcology/reproducible@development (HEAD)",
+                  "PredictiveEcology/SpaDES.core@development (HEAD)",
+                  "PredictiveEcology/SpaDES.tools@development (HEAD)",
+                  "PredictiveEcology/LandR@modsForFireSense (HEAD)",
+                  "PredictiveEcology/clusters@development (HEAD)",
+                  "PredictiveEcology/filelock@main (HEAD)",
+                  "PredictiveEcology/climateData@modsForFireSense (HEAD)",
+                  "PredictiveEcology/quickPlot@development (HEAD)",
+                  "googlesheets4", # the sheet-backed queue (a Suggests of SpaDES.project)
+                  "PredictiveEcology/fireSenseUtils@development")
+## fireSenseUtils with pak and no dependencies: its Remotes say LandR@development, which conflicts with LandR@modsForFireSense
+.devInstall <- function(packages, libPath) {
+  fsu <- grepl("/fireSenseUtils@", packages)
+  Require::Install(packages[!fsu], libPaths = libPath, standAlone = FALSE)
+  pak::pkg_install(packages[fsu], lib = libPath, dependencies = FALSE, ask = FALSE)
+}
+if (!nzchar(Sys.getenv("FS_SET"))) SpaDES.project::newDevLibrary(.devPackages, stable = .stableLib, installFun = .devInstall)
+## this session's own setupProject() (preRunSetupProject below) uses the current dev library and leaves the .Rprofile, as a worker does
+options(spades.packagePath = SpaDES.project::currentDevLibrary(stable = .stableLib), SpaDES.project.updateRprofile = FALSE)
 
 options(spades.useRequire = FALSE) # nothing installs from here on: pak above did it, so setupProject() must not run Require
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
@@ -259,7 +260,6 @@ if (!is.null(.phaseSetup$spreadSdBounds)) expt$.spreadSdBounds <- .phaseSetup$sp
 if (!is.null(.phaseSetup$prepAreaMult)) expt$.prepAreaMult <- .phaseSetup$prepAreaMult
 if (!is.null(.phaseSetup$spreadSizeLikDf)) expt$.spreadSizeLikDf <- .phaseSetup$spreadSizeLikDf
 if (!is.null(.phaseSetup$spreadPowerLawShape)) expt$.spreadPowerLawShape <- .phaseSetup$spreadPowerLawShape
-expt$.packagePath <- .packagePath # each job keeps this library (global.R paths$packagePath)
 if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
 if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
 if (!is.null(.phaseSetup$fireCauses)) expt$.fireCauses <- .phaseSetup$fireCauses
@@ -336,6 +336,7 @@ if (nzchar(Sys.which("sbatch"))) {
   dir.create(.slurmTmp, recursive = TRUE, showWarnings = FALSE)
   .submit <- function(df, queue_path, after) SpaDES.project::experimentSBATCH(
     df          = df,
+    devPackages = .devPackages, devInstallFun = .devInstall, # nothing changed since the last launch: its dev library
     global_path = "global.R",
     n_workers   = .phaseSetup$n_workers,
     queue_path  = queue_path,
@@ -387,6 +388,8 @@ if (!nzchar(Sys.getenv("TMUX"))) stop("Run expt.R inside tmux")
 
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,
+  devPackages         = .devPackages,
+  devInstallFun       = .devInstall,
   global_path         = "global.R",
   n_workers           = .phaseSetup$n_workers,
   queue_path          = queue_path,
