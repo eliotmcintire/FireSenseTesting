@@ -39,11 +39,6 @@ suppressWarnings(rm(.ELFind)) # a leftover from an earlier run in this session w
 .stableLib <- .libPaths()[1]
 .devCurrent <- file.path(paste0(.stableLib, "_dev"), "current") # what SpaDES.project::currentDevLibrary() reads; read here
 if (file.exists(.devCurrent)) .libPaths(c(readLines(.devCurrent, n = 1L), .libPaths())) # because stable's SpaDES.project predates it
-if (utils::packageVersion("SpaDES.project") < "1.2.0.9033") { # first launch only: devPackages from a throwaway library
-  .boot <- tempfile("spbootstrap"); dir.create(.boot)
-  pak::pkg_install("PredictiveEcology/SpaDES.project@development", lib = .boot, dependencies = FALSE, ask = FALSE)
-  loadNamespace("SpaDES.project", lib.loc = .boot)
-}
 ## (HEAD): Require compares with the branch's latest commit; a bare @branch installs nothing when the package is present
 .devPackages <- c("PredictiveEcology/Require@development (HEAD)",
                   "PredictiveEcology/SpaDES.project@development (HEAD)",
@@ -62,6 +57,14 @@ if (utils::packageVersion("SpaDES.project") < "1.2.0.9033") { # first launch onl
   fsu <- grepl("/fireSenseUtils@", packages)
   Require::Install(packages[!fsu], libPaths = libPath, standAlone = FALSE)
   pak::pkg_install(packages[fsu], lib = libPath, dependencies = FALSE, ask = FALSE)
+}
+if (utils::packageVersion("SpaDES.project") < "1.2.0.9033") { # first launch only: SpaDES.project from a throwaway library
+  .boot <- tempfile("spbootstrap"); dir.create(.boot)
+  pak::pkg_install("PredictiveEcology/SpaDES.project@development", lib = .boot, dependencies = FALSE, ask = FALSE)
+  loadNamespace("SpaDES.project", lib.loc = .boot)
+  ## build the dev library now, first on the path: SpaDES.project is loaded again from the path before the launch, and an
+  ## older one there ignores devPackages (2026-11-05: GPSC jobs started on the stable library alone)
+  .libPaths(c(SpaDES.project::newDevLibrary(.devPackages, stable = .stableLib, installFun = .devInstall)[1], .libPaths()))
 }
 if (!nzchar(Sys.getenv("FS_SET"))) SpaDES.project::newDevLibrary(.devPackages, stable = .stableLib, installFun = .devInstall)
 ## this session's own setupProject() (preRunSetupProject below) uses the current dev library and leaves the .Rprofile, as a worker does
