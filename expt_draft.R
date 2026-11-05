@@ -275,7 +275,7 @@ expt$.phase2Only <- !(.phase1Only || .phaseSetup$predict)
 .optionalColumn(".cacheChaining", "FS_NO_CACHECHAINING", function(x) !isTRUE(as.logical(x)))
 .optionalColumn(".fitQueue", "FS_FIT_QUEUE")
 ## NRV archive: a predict wave uploads into its own campaign folder, so it never overwrites the runs users read now
-if (isTRUE(.phaseSetup$predict) && !(nzchar(Sys.getenv("FS_ARCHIVE_DIR")) && nzchar(Sys.getenv("FS_ARCHIVE_LEDGER"))))
+if (identical(.set, "nrv") && isTRUE(.phaseSetup$predict) && !(nzchar(Sys.getenv("FS_ARCHIVE_DIR")) && nzchar(Sys.getenv("FS_ARCHIVE_LEDGER"))))
   stop("FS_NRV_WAVE=predict needs FS_ARCHIVE_DIR (the campaign's own Drive folder) and FS_ARCHIVE_LEDGER (its ledger file name)")
 .optionalColumn(".uploadGSdir", "FS_ARCHIVE_DIR")
 .optionalColumn(".archiveLedger", "FS_ARCHIVE_LEDGER")
