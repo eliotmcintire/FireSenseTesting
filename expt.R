@@ -1,6 +1,7 @@
 ## Launches a FireSense campaign: installs packages once, builds the job queue, starts the tmux workers.
 ## Each worker sources global.R per job. Run inside tmux:
 ##   FS_SET=nrv FS_NRV_WAVE=<fit|predict|ignition> [FS_NRV_ELFS=4.1,14.4|all] [FS_NRV_LEDGER=_burnEmu_20261027] Rscript expt.R
+##     predict also needs FS_ARCHIVE_DIR=<this campaign's own Drive folder URL> FS_ARCHIVE_LEDGER=nrvRuns_<campaign>.rds
 ##   FS_SET=fit [FS_NRV_ELFS=...|all] [FS_AFTER_QUEUE=<phase-1 queue>] Rscript expt.R   (fit every ELF: phases 1 + 2)
 ##   FS_SET=phase1 [FS_NRV_ELFS=...|all] [FS_FIT_QUEUE=<fit queue>] Rscript expt.R   (inputs and caches only, ahead of the fits:
 ##     same order as the fits; skips any ELF the fit queue has claimed)
@@ -10,10 +11,15 @@
 ##   FS_SET=nrvreport FS_NRVR_ELFS=6.4,9.3 [FS_NRVR_TAG=phase5] [FS_NRVR_MODULES=modules] Rscript expt.R   (the NRV page's
 ##     tables and figures, one job per ELF whose 5 NRV runs are DONE)
 ##   FS_SET=nrvreport FS_NRVR_MAP=TRUE [FS_NRVR_TAG=phase5] Rscript expt.R   (the page's map of the ELFs reported so far)
+##   FS_TRIAL=<name> (see "Spread-fit trials" below) with FS_SET=refit, hindcast or score: one trial's fit, its hindcast and the
+##     scoring of that hindcast, all with the trial's settings and ledger. On the GPSC, one fit per ELF (its own memory):
+##     FS_SET=refit FS_TRIAL=d05 FS_RF_ELFS=6.6.2 FS_SBATCH_MEM=176G Rscript expt.R
+##     FS_SET=hindcast FS_TRIAL=d05 FS_HC_ELFS=6.6.2,14.3,11.3,11.4 Rscript expt.R   (each ELF after its own fit, if still running)
+##     FS_SET=score FS_TRIAL=d05 Rscript expt.R   (after every hindcast job of the trial)
 
 ## inputs, outputs, cache, scratch and shared data: overrides global.R's .basePath here (preRunSetupProject)
-## and, as a queue column, in the workers. GPSC (user elm001): no /mnt/fast; GPFS, which the compute nodes see
-.basePath <- if (Sys.info()[["user"]] == "elm001") "/gpfs/fs7/nrcan/nrcan_forsite/elm001/firesense/fast" else "/mnt/fast"
+## and, as a queue column, in the workers. site.R (in the project folder) holds what differs per machine.
+.basePath <- source("site.R")$value$basePath
 ## no CRAN mirror set (GPSC): install.packages() stops when not interactive. Same repos as the local R; the GPSC is
 ## Ubuntu 24.04 (noble) too, so the P3M binaries fit its system GDAL
 if ("@CRAN@" %in% getOption("repos"))
@@ -26,22 +32,39 @@ suppressWarnings(rm(.ELFind)) # a leftover from an earlier run in this session w
 # FS_NO_INSTALL=TRUE skips this, for a launch beside running jobs.
 # @modsForFireSense branches = development + our open PRs (R/updateModsForFireSense.sh).
 ####################
+## The project library (.Rprofile) is the frozen "stable" library: nothing installs into it again. An install builds a new
+## dev library beside it, <stable>_dev/<id>, with hard links to the current one plus whatever changed (SpaDES.project
+## newDevLibrary()), so a running job's library never changes. Each queue row carries its library path (.packagePath).
+.stableLib <- .libPaths()[1]
+.devCurrent <- file.path(paste0(.stableLib, "_dev"), "current") # what SpaDES.project::currentDevLibrary() reads; read here
+if (file.exists(.devCurrent)) .libPaths(c(readLines(.devCurrent, n = 1L), .libPaths())) # because stable's SpaDES.project predates it
 if (!isTRUE(as.logical(Sys.getenv("FS_NO_INSTALL", "FALSE")))) {
-  if (!require("pak")) install.packages("pak")
-  pak::pak(c("PredictiveEcology/Require@development",
-             "PredictiveEcology/SpaDES.project@development",
-             "PredictiveEcology/reproducible@development",
-             "PredictiveEcology/SpaDES.core@development",
-             "PredictiveEcology/SpaDES.tools@development",
-             "PredictiveEcology/LandR@modsForFireSense",
-             "PredictiveEcology/clusters@development",
-             "PredictiveEcology/filelock@main",
-             "PredictiveEcology/climateData@modsForFireSense",
-             "PredictiveEcology/quickPlot@development",
-             "googlesheets4"), ask = FALSE) # googlesheets4: the sheet-backed queue (a Suggests of SpaDES.project)
+  if (utils::packageVersion("SpaDES.project") < "1.2.0.9030") { # first install only: newDevLibrary() from a throwaway library
+    .boot <- tempfile("spbootstrap"); dir.create(.boot)
+    pak::pkg_install("PredictiveEcology/SpaDES.project@development", lib = .boot, dependencies = FALSE, ask = FALSE)
+    loadNamespace("SpaDES.project", lib.loc = .boot)
+  }
+  ## (HEAD): Require compares with the branch's latest commit; a bare @branch installs nothing when the package is present
+  SpaDES.project::newDevLibrary(c("PredictiveEcology/Require@development (HEAD)",
+                                  "PredictiveEcology/SpaDES.project@development (HEAD)",
+                                  "PredictiveEcology/reproducible@development (HEAD)",
+                                  "PredictiveEcology/SpaDES.core@development (HEAD)",
+                                  "PredictiveEcology/SpaDES.tools@development (HEAD)",
+                                  "PredictiveEcology/LandR@modsForFireSense (HEAD)",
+                                  "PredictiveEcology/clusters@development (HEAD)",
+                                  "PredictiveEcology/filelock@main (HEAD)",
+                                  "PredictiveEcology/climateData@modsForFireSense (HEAD)",
+                                  "PredictiveEcology/quickPlot@development (HEAD)",
+                                  "googlesheets4"), stable = .stableLib) # googlesheets4: the sheet-backed queue (a Suggests of SpaDES.project)
   # no dependencies: its Remotes say LandR@development, which conflicts with LandR@modsForFireSense
-  pak::pkg_install("PredictiveEcology/fireSenseUtils@development", dependencies = FALSE, ask = FALSE)
+  SpaDES.project::newDevLibrary("PredictiveEcology/fireSenseUtils@development", stable = .stableLib,
+                                installFun = function(packages, libPath)
+                                  pak::pkg_install(packages, lib = libPath, dependencies = FALSE, ask = FALSE))
 }
+## "<dev>;<stable>" (stable alone before the first install). Set here, it overrides global.R's default in
+## preRunSetupProject() below, as .basePath does, and it is each queue row's library (column .packagePath)
+.packagePath <- paste(SpaDES.project::currentDevLibrary(stable = .stableLib), collapse = ";")
+.libPaths(unique(c(strsplit(.packagePath, ";", fixed = TRUE)[[1]], .libPaths())))
 
 options(spades.useRequire = FALSE) # nothing installs from here on: pak above did it, so setupProject() must not run Require
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
@@ -61,6 +84,45 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
 # Campaign settings. A queue name is resumed, never extended: relaunching changed settings needs a new tag.
 ####################
 .split <- function(x) strsplit(x, ",")[[1]]
+
+## Spread-fit trials. FS_TRIAL=<name> sets that trial's FS_* values (a value already in the environment wins), so its fit,
+## hindcast and score use one ledger and one set of settings. Fit queues are refit_<name>_<ELF>, hindcast queues
+## hindcast_<name>_<ELF>, the score queue score_<name>.
+.trialBase <- c(FS_FIRE_CAUSES = "natural,unknown", FS_SPREAD_GATE_REFUSAL = "simulate", FS_SPREAD_REPS = "100",
+                FS_SPREAD_INITPOP_METHOD = "emulator", FS_SPREAD_TESTS = "crps",
+                FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=16.5,annualArea=520",
+                FS_HC_ALLSETS = "TRUE", FS_HC_WORKERS = "1", FS_HC_AFTER_FITS = "TRUE")
+.trials <- list(
+  ## 2026-11-04, GPSC, 6.6.2 14.3 11.3 11.4: δ (power-law shape) 0.3-0.5; top-10 weight x3 (t3); the tail-share term (ts);
+  ## the year-effect SD capped at 1 (sd1)
+  d03    = c(ledger = "_crpsCauseAnnD03_20261104",      FS_SPREAD_POWERLAW_SHAPE = "0.3"),
+  d04    = c(ledger = "_crpsCauseAnnD04_20261104",      FS_SPREAD_POWERLAW_SHAPE = "0.4"),
+  d05    = c(ledger = "_crpsCauseAnnD05_20261104",      FS_SPREAD_POWERLAW_SHAPE = "0.5"),
+  d05sd1 = c(ledger = "_crpsCauseAnnD05Sd1_20261104",   FS_SPREAD_POWERLAW_SHAPE = "0.5", FS_SPREAD_SD_BOUNDS = "0,1"),
+  t3d03  = c(ledger = "_crpsCauseAnnD03Top3_20261104",  FS_SPREAD_POWERLAW_SHAPE = "0.3",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=49.5,annualArea=520"),
+  t3d04  = c(ledger = "_crpsCauseAnnD04Top3_20261104",  FS_SPREAD_POWERLAW_SHAPE = "0.4",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=49.5,annualArea=520"),
+  t3d05  = c(ledger = "_crpsCauseAnnD05Top3_20261104",  FS_SPREAD_POWERLAW_SHAPE = "0.5",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=49.5,annualArea=520"),
+  tsd03  = c(ledger = "_crpsCauseAnnD03Share_20261104", FS_SPREAD_POWERLAW_SHAPE = "0.3",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=16.5,annualArea=520,topShare=111"),
+  tsd04  = c(ledger = "_crpsCauseAnnD04Share_20261104", FS_SPREAD_POWERLAW_SHAPE = "0.4",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=16.5,annualArea=520,topShare=111"),
+  tsd05  = c(ledger = "_crpsCauseAnnD05Share_20261104", FS_SPREAD_POWERLAW_SHAPE = "0.5",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=16.5,annualArea=520,topShare=111")
+)
+.trial <- Sys.getenv("FS_TRIAL")
+if (nzchar(.trial)) {
+  if (!.trial %in% names(.trials)) stop("FS_TRIAL must be one of ", paste(names(.trials), collapse = ", "))
+  .tv <- .trials[[.trial]]
+  .tv <- c(.trialBase[setdiff(names(.trialBase), names(.tv))], .tv[names(.tv) != "ledger"],
+           FS_RF_SUFFIX = .tv[["ledger"]], FS_HC_LEDGER = .tv[["ledger"]], FS_HC_TAG = .trial,
+           FS_RF_TAG = paste0(.trial, "_", gsub("\\.", "_", gsub(",", "-", Sys.getenv("FS_RF_ELFS")))))
+  .tv <- .tv[!nzchar(Sys.getenv(names(.tv)))]
+  if (length(.tv)) do.call(Sys.setenv, as.list(.tv))
+}
+
 .phase1Only <- isTRUE(as.logical(Sys.getenv("FS_PHASE1_ONLY", "FALSE")))
 .set <- Sys.getenv("FS_SET")
 ## FS_SET=fit and FS_SET=phase1: the nrv fit wave (phases 1 + 2) and its phase 1 alone, under their own labels
@@ -119,10 +181,17 @@ if (identical(.set, "nrv")) {
                       ledgerSuffix = Sys.getenv("FS_RF_SUFFIX", ""),
                       spreadLink = if (nzchar(Sys.getenv("FS_SPREAD_LINK"))) Sys.getenv("FS_SPREAD_LINK"), # unset: the module default
                       spreadWeighted = if (nzchar(Sys.getenv("FS_SPREAD_WEIGHTED"))) Sys.getenv("FS_SPREAD_WEIGHTED"), # unset: the module default (FALSE)
+                      spreadGateRefusal = if (nzchar(Sys.getenv("FS_SPREAD_GATE_REFUSAL"))) Sys.getenv("FS_SPREAD_GATE_REFUSAL"), # unset: the module default ("minLik"); "simulate": a gate-refused year is still simulated and scored
+                      spreadReps = if (nzchar(Sys.getenv("FS_SPREAD_REPS"))) Sys.getenv("FS_SPREAD_REPS"), # unset: the module default objfunFireReps
+                      spreadCrpsWeights = if (nzchar(Sys.getenv("FS_SPREAD_CRPS_WEIGHTS"))) Sys.getenv("FS_SPREAD_CRPS_WEIGHTS"), # unset: fireSenseUtils::crpsWeightsDefault(); "fire=1,adTest=0.34,..."
+                      fireCauses = if (nzchar(Sys.getenv("FS_FIRE_CAUSES"))) Sys.getenv("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (ignition, escape and spread fits)
                       spreadTests = if (nzchar(Sys.getenv("FS_SPREAD_TESTS"))) Sys.getenv("FS_SPREAD_TESTS"), # unset: the module default DEoptimTests
                       spreadInitialPop = if (nzchar(Sys.getenv("FS_SPREAD_INITIALPOP"))) Sys.getenv("FS_SPREAD_INITIALPOP"), # unset: the module default start
                       spreadInitialPopMethod = if (nzchar(Sys.getenv("FS_SPREAD_INITPOP_METHOD"))) Sys.getenv("FS_SPREAD_INITPOP_METHOD"), # unset: the module default ("calibration")
-                      fireCauses = if (nzchar(Sys.getenv("FS_FIRE_CAUSES"))) Sys.getenv("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (ignition, escape and spread fits)
+                      spreadSdBounds = if (nzchar(Sys.getenv("FS_SPREAD_SD_BOUNDS"))) Sys.getenv("FS_SPREAD_SD_BOUNDS"), # unset: the module default c(0, 10); "0,1" caps the year-effect SD at 1; "NA" = no year effect
+                      prepAreaMult = if (nzchar(Sys.getenv("FS_PREP_AREA_MULT"))) Sys.getenv("FS_PREP_AREA_MULT"), # unset: the module default (10 * multiplier(size)); "40" = buffers 4x as large
+                      spreadSizeLikDf = if (nzchar(Sys.getenv("FS_SPREAD_SIZELIK_DF"))) Sys.getenv("FS_SPREAD_SIZELIK_DF"), # unset: the module default sizeLikDf (5); "30" = per-fire t likelihood with df 30
+                      spreadPowerLawShape = if (nzchar(Sys.getenv("FS_SPREAD_POWERLAW_SHAPE"))) Sys.getenv("FS_SPREAD_POWERLAW_SHAPE"), # unset: the module default powerLawShape (1); e.g. "2" = sharper rise of the power-law link toward p_c
                       n_workers = as.integer(Sys.getenv("FS_RF_WORKERS", length(.split(Sys.getenv("FS_RF_ELFS"))))), # each fit is a cluster; FS_RF_WORKERS caps fits at once
                       refit = TRUE,
                       predict = FALSE)
@@ -177,12 +246,24 @@ if (.phaseSetup$refit) expt$.doFit <- TRUE
 if (nzchar(.phaseSetup$ledgerSuffix %||% "")) expt$.spreadFitFileSuffix <- .phaseSetup$ledgerSuffix
 if (!is.null(.phaseSetup$spreadLink)) expt$.spreadLink <- .phaseSetup$spreadLink
 if (!is.null(.phaseSetup$spreadWeighted)) expt$.spreadWeighted <- .phaseSetup$spreadWeighted
+if (!is.null(.phaseSetup$spreadGateRefusal)) expt$.spreadGateRefusal <- .phaseSetup$spreadGateRefusal
+if (!is.null(.phaseSetup$spreadReps)) expt$.spreadReps <- .phaseSetup$spreadReps
+if (!is.null(.phaseSetup$spreadCrpsWeights)) expt$.spreadCrpsWeights <- .phaseSetup$spreadCrpsWeights
 if (!is.null(.phaseSetup$spreadTests)) expt$.spreadTests <- .phaseSetup$spreadTests
 if (!is.null(.phaseSetup$spreadInitialPop)) expt$.spreadInitialPop <- .phaseSetup$spreadInitialPop
 if (!is.null(.phaseSetup$spreadInitialPopMethod)) expt$.spreadInitialPopMethod <- .phaseSetup$spreadInitialPopMethod
+if (!is.null(.phaseSetup$spreadSdBounds)) expt$.spreadSdBounds <- .phaseSetup$spreadSdBounds
+if (!is.null(.phaseSetup$prepAreaMult)) expt$.prepAreaMult <- .phaseSetup$prepAreaMult
+if (!is.null(.phaseSetup$spreadSizeLikDf)) expt$.spreadSizeLikDf <- .phaseSetup$spreadSizeLikDf
+if (!is.null(.phaseSetup$spreadPowerLawShape)) expt$.spreadPowerLawShape <- .phaseSetup$spreadPowerLawShape
+expt$.packagePath <- .packagePath # each job keeps this library (global.R paths$packagePath)
 if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
 if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
 if (!is.null(.phaseSetup$fireCauses)) expt$.fireCauses <- .phaseSetup$fireCauses
+## Biomass_core cohort-reduction options (#131), e.g. FS_COHORT_REMOVE_SUPPRESSED=0.01,0.75 FS_COHORT_ESTABLISHMENT_LIMIT=20,5
+if (nzchar(Sys.getenv("FS_COHORT_REMOVE_SUPPRESSED"))) expt$.cohortRemoveSuppressed <- Sys.getenv("FS_COHORT_REMOVE_SUPPRESSED")
+if (nzchar(Sys.getenv("FS_COHORT_SQUASH"))) expt$.cohortSquash <- Sys.getenv("FS_COHORT_SQUASH")
+if (nzchar(Sys.getenv("FS_COHORT_ESTABLISHMENT_LIMIT"))) expt$.cohortEstablishmentLimit <- Sys.getenv("FS_COHORT_ESTABLISHMENT_LIMIT")
 ## the phase and the run's diagnostics are columns, so a worker reads them as global.R's defaultDots
 if (isTRUE(.phaseSetup$score)) expt$.score <- TRUE
 if (!is.null(.phaseSetup$nrvReport)) expt$.nrvReport <- .phaseSetup$nrvReport
@@ -193,6 +274,11 @@ expt$.phase2Only <- !(.phase1Only || .phaseSetup$predict)
 .optionalColumn(".workerMemoryGB", "FS_WORKER_MEM_GB", as.numeric)
 .optionalColumn(".cacheChaining", "FS_NO_CACHECHAINING", function(x) !isTRUE(as.logical(x)))
 .optionalColumn(".fitQueue", "FS_FIT_QUEUE")
+## NRV archive: a predict wave uploads into its own campaign folder, so it never overwrites the runs users read now
+if (identical(.set, "nrv") && isTRUE(.phaseSetup$predict) && !(nzchar(Sys.getenv("FS_ARCHIVE_DIR")) && nzchar(Sys.getenv("FS_ARCHIVE_LEDGER"))))
+  stop("FS_NRV_WAVE=predict needs FS_ARCHIVE_DIR (the campaign's own Drive folder) and FS_ARCHIVE_LEDGER (its ledger file name)")
+.optionalColumn(".uploadGSdir", "FS_ARCHIVE_DIR")
+.optionalColumn(".archiveLedger", "FS_ARCHIVE_LEDGER")
 .optionalColumn(".afterQueue", "FS_AFTER_QUEUE")
 .optionalColumn(".diagFile", "FS_DIAG_FILE")
 .optionalColumn(".rprofPrefix", "FS_RPROF")
@@ -222,6 +308,14 @@ if (!is.null(.phaseSetup$hindcastYears)) {
     expt <- expt[order(ave(seq_len(NROW(expt)), expt$.ELFind, FUN = seq_along), match(expt$.ELFind, unique(expt$.ELFind))), , drop = FALSE]
 }
 rownames(expt) <- NULL
+## every queue column must be a name global.R uses (a defaultDots entry, a setupProject dot or a get0() name):
+## a worker silently ignores a column the script never reads, e.g. a misspelled setting
+.globalNames <- local({
+  pd <- utils::getParseData(parse("global.R", keep.source = TRUE))
+  unique(gsub("^[\"']|[\"']$", "", pd$text[pd$token %in% c("SYMBOL", "SYMBOL_SUB", "STR_CONST")]))
+})
+if (length(.unread <- setdiff(names(expt), .globalNames)))
+  stop("queue column(s) that global.R never reads: ", paste(.unread, collapse = ", "))
 message("Queueing ", NROW(expt), " jobs, fire years ", .fireYearStart, ":", .fireYearEnd)
 
 ####################
@@ -234,7 +328,7 @@ if (nzchar(Sys.which("sbatch"))) {
     Sys.setenv(https_proxy = "http://webproxy.science.gc.ca:8888", http_proxy = "http://webproxy.science.gc.ca:8888",
                no_proxy = "localhost,127.0.0.1,science.gc.ca")
   .oneCore <- identical(.set, "hindcast") || identical(.set, "score") || (identical(.set, "nrv") && .phaseSetup$predict)
-  expt$.cores <- 40L # spread fits on the job's own node, not on .cores's machines; 40 at 10 GB (global.R)
+  expt$.cores <- 40L # spread fits on the job's own node, not on .cores's machines; 40 at 9 GB each (the fireSenseUtils default; FS_WORKER_MEM_GB sets it)
   .slurmTmp <- file.path(.basePath, "scratch", "tmp") # TMPDIR of the jobs (see sbatch_opts)
   dir.create(.slurmTmp, recursive = TRUE, showWarnings = FALSE)
   .submit <- function(df, queue_path, after) SpaDES.project::experimentSBATCH(
@@ -244,7 +338,7 @@ if (nzchar(Sys.which("sbatch"))) {
     queue_path  = queue_path,
     log_dir     = file.path("logs", sub("\\.rds$", "", basename(queue_path))),
     ## the account's allocation is on gpsc8 (64 CPUs, ~486 GB per standard node); its "low" QoS allows 0 CPUs
-    ## phase 1 is one core (the forking threshold calibration is in phase 2, global.R); FS_SBATCH_AFTER=<job ids>
+    ## phase 1 is one core (it stops before the fit); FS_SBATCH_AFTER=<job ids>
     ## starts these jobs only after those succeed (a fit after its phase 1); FS_HC_AFTER_FITS=TRUE: each ELF's hindcast
     ## after its own fit job, if one is queued or running (found by its log folder; none: it starts now and stops if the ledger has no fit)
     ## a compute node's /tmp is a 500 MB tmpfs: R's tempdir() there (reproducible.tempPath, where downloads and
@@ -280,7 +374,7 @@ if (nzchar(Sys.which("sbatch"))) {
     .jobs <- strsplit(system2("squeue", c("-M", "gpsc8", "-u", Sys.info()[["user"]], "-h", "-o", "'%i|%T|%o'"), stdout = TRUE), "\\|")
     .jobs <- Filter(function(j) length(j) == 3 && j[2] %in% c("RUNNING", "PENDING"), .jobs)
     for (.elf in unique(expt$.ELFind)) {
-      .fit <- vapply(Filter(function(j) grepl(paste0("experiment_queue_refit_pile[A-Za-z0-9]*_", gsub("\\.", "_", .elf), "/"), j[3]), .jobs), `[`, "", 1)
+      .fit <- vapply(Filter(function(j) grepl(paste0("experiment_queue_refit_", if (nzchar(.trial)) .trial else "pile[A-Za-z0-9]*", "_", gsub("\\.", "_", .elf), "/"), j[3]), .jobs), `[`, "", 1)
       .submit(expt[expt$.ELFind == .elf, , drop = FALSE], sub("\\.rds$", paste0("_", .elf, ".rds"), queue_path), c(.after, .fit))
     }
   } else .submit(expt, queue_path, .after)

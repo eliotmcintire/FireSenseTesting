@@ -7,11 +7,13 @@
 ##   FS_SET=hindcast FS_HC_ELFS=4.1,14.4 [FS_HC_LEDGER=_boundfix_rep81] [FS_HC_IGNITIONS=observedEscapes] [FS_HC_ALLSETS=TRUE] Rscript expt.R
 ##   FS_SET=refit FS_RF_ELFS=6.6.1,9.1.2 Rscript expt.R   (same rep and ledger as production, so caches are shared)
 ##   FS_SET=refit FS_PHASE1_ONLY=TRUE FS_RF_ELFS=... Rscript expt.R   (caches only: here, ahead of the same refit on the GPSC)
+##   FS_SET=nrvreport FS_NRVR_ELFS=6.4,9.3 [FS_NRVR_TAG=phase5] [FS_NRVR_MODULES=modules] Rscript expt.R   (the NRV page's
+##     tables and figures, one job per ELF whose 5 NRV runs are DONE)
+##   FS_SET=nrvreport FS_NRVR_MAP=TRUE [FS_NRVR_TAG=phase5] Rscript expt.R   (the page's map of the ELFs reported so far)
 
 ## inputs, outputs, cache, scratch and shared data: overrides global.R's .basePath here (preRunSetupProject)
-## and, as a queue column, in the workers. site.R holds what differs per machine.
-.site <- source("site.R")$value
-.basePath <- .site$basePath
+## and, as a queue column, in the workers. GPSC (user elm001): no /mnt/fast; GPFS, which the compute nodes see
+.basePath <- if (Sys.info()[["user"]] == "elm001") "/gpfs/fs7/nrcan/nrcan_forsite/elm001/firesense/fast" else "/mnt/fast"
 ## no CRAN mirror set (GPSC): install.packages() stops when not interactive. Same repos as the local R; the GPSC is
 ## Ubuntu 24.04 (noble) too, so the P3M binaries fit its system GDAL
 if ("@CRAN@" %in% getOption("repos"))
@@ -42,7 +44,7 @@ if (!isTRUE(as.logical(Sys.getenv("FS_NO_INSTALL", "FALSE")))) {
 }
 
 options(spades.useRequire = FALSE) # nothing installs from here on: pak above did it, so setupProject() must not run Require
-outs <- SpaDES.project::preRunSetupProject(file = "global_draft.R", upTo = "params")
+outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 
 ####################
 # Fitting years: the end is the last year of historical climate. Workers take the window from
@@ -50,7 +52,7 @@ outs <- SpaDES.project::preRunSetupProject(file = "global_draft.R", upTo = "para
 ####################
 .fireYearStart <- 1986L # vegetation strictly before the fire year: SCANFI 1985 feeds 1986
 .fireYearEnd <- as.integer(climateData::latestHistoricalYear())
-.globalYears <- as.integer(regmatches(.l <- grep("^\\s*\\.fireYears = c\\(", readLines("global_draft.R"), value = TRUE)[1],
+.globalYears <- as.integer(regmatches(.l <- grep("^\\s*\\.fireYears = c\\(", readLines("global.R"), value = TRUE)[1],
                                       gregexpr("[0-9]{4}", .l))[[1]])
 if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
   stop("global.R's .fireYears do not match ", .fireYearStart, ":", .fireYearEnd, "; edit global.R")
@@ -101,6 +103,7 @@ if (identical(.set, "nrv")) {
                       hindcastYears = as.integer(.split(Sys.getenv("FS_HC_YEARS", "1986,1991,1996,2001,2006,2011,2016,2021"))),
                       ledgerSuffix = Sys.getenv("FS_HC_LEDGER"), # "" = production ledger
                       hcIgnitions = if (nzchar(Sys.getenv("FS_HC_IGNITIONS"))) Sys.getenv("FS_HC_IGNITIONS"), # unset: drawn ("predicted"); "observedEscapes": spread the observed escapes
+                      fireCauses = if (nzchar(Sys.getenv("FS_FIRE_CAUSES"))) Sys.getenv("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (same value as the fit's)
                       n_workers = as.integer(Sys.getenv("FS_HC_WORKERS", "12")),
                       refit = FALSE,
                       predict = TRUE)
@@ -114,6 +117,12 @@ if (identical(.set, "nrv")) {
                       onlyELFs = .split(Sys.getenv("FS_RF_ELFS")),
                       reps = as.integer(Sys.getenv("FS_RF_REP", "1")),
                       ledgerSuffix = Sys.getenv("FS_RF_SUFFIX", ""),
+                      spreadLink = if (nzchar(Sys.getenv("FS_SPREAD_LINK"))) Sys.getenv("FS_SPREAD_LINK"), # unset: the module default
+                      spreadWeighted = if (nzchar(Sys.getenv("FS_SPREAD_WEIGHTED"))) Sys.getenv("FS_SPREAD_WEIGHTED"), # unset: the module default (FALSE)
+                      spreadTests = if (nzchar(Sys.getenv("FS_SPREAD_TESTS"))) Sys.getenv("FS_SPREAD_TESTS"), # unset: the module default DEoptimTests
+                      spreadInitialPop = if (nzchar(Sys.getenv("FS_SPREAD_INITIALPOP"))) Sys.getenv("FS_SPREAD_INITIALPOP"), # unset: the module default start
+                      spreadInitialPopMethod = if (nzchar(Sys.getenv("FS_SPREAD_INITPOP_METHOD"))) Sys.getenv("FS_SPREAD_INITPOP_METHOD"), # unset: the module default ("calibration")
+                      fireCauses = if (nzchar(Sys.getenv("FS_FIRE_CAUSES"))) Sys.getenv("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (ignition, escape and spread fits)
                       n_workers = as.integer(Sys.getenv("FS_RF_WORKERS", length(.split(Sys.getenv("FS_RF_ELFS"))))), # each fit is a cluster; FS_RF_WORKERS caps fits at once
                       refit = TRUE,
                       predict = FALSE)
@@ -128,8 +137,29 @@ if (identical(.set, "nrv")) {
                       refit = FALSE,
                       predict = FALSE,
                       score = TRUE)
+} else if (identical(.set, "nrvreport")) {
+  ## The NRV page: one job per ELF summarises that ELF's 5 finished NRV runs with the summary modules in mode = "multi"
+  ## (global.R's .nrvReport branch) and keeps the page's tables and figures in outputs/nrvreport_<FS_NRVR_TAG>/<ELF>/.
+  ## FS_NRVR_MODULES=<folder>: the summary modules from that folder instead of modules/ (a test of changed copies)
+  ## FS_NRVR_MAP=TRUE: one light job redraws the map of the ELFs reported so far (outputs/nrvreport_<tag>/ELFmap.png),
+  ## from the saved NRV run of the first reported ELF
+  .map <- isTRUE(as.logical(Sys.getenv("FS_NRVR_MAP", "FALSE")))
+  .ELFs <- if (.map) basename(dirname(Sys.glob(file.path(.basePath, "outputs", paste0("nrvreport_", Sys.getenv("FS_NRVR_TAG", "phase5")),
+                                                          "*", "DONE.txt"))))[1]
+           else .split(Sys.getenv("FS_NRVR_ELFS"))
+  if (!length(.ELFs) || anyNA(.ELFs) || !all(nzchar(.ELFs)))
+    stop("FS_SET=nrvreport needs FS_NRVR_ELFS=<ELFs whose 5 NRV runs are DONE>, or FS_NRVR_MAP=TRUE once one ELF is reported")
+  .phaseSetup <- list(queue = paste0("experiment_queue_nrvreport_", Sys.getenv("FS_NRVR_TAG", "phase5"), if (.map) "_map", "_",
+                                     format(Sys.time(), "%Y%m%d-%H%M"), ".rds"),
+                      onlyELFs = .ELFs,
+                      reps = 1L,
+                      n_workers = length(.ELFs), # one job per ELF
+                      refit = FALSE,
+                      predict = FALSE,
+                      nrvReport = Sys.getenv("FS_NRVR_TAG", "phase5"),
+                      nrvReportMap = .map)
 } else {
-  stop("Set FS_SET=nrv, phase1, hindcast, refit or score")
+  stop("Set FS_SET=nrv, phase1, hindcast, refit, score or nrvreport")
 }
 message("FS_SET=", .setLabel, ": queue ", .phaseSetup$queue)
 
@@ -145,21 +175,18 @@ expt$.GCM <- "NRV"
 expt$.basePath <- .basePath
 if (.phaseSetup$refit) expt$.doFit <- TRUE
 if (nzchar(.phaseSetup$ledgerSuffix %||% "")) expt$.spreadFitFileSuffix <- .phaseSetup$ledgerSuffix
+if (!is.null(.phaseSetup$spreadLink)) expt$.spreadLink <- .phaseSetup$spreadLink
+if (!is.null(.phaseSetup$spreadWeighted)) expt$.spreadWeighted <- .phaseSetup$spreadWeighted
+if (!is.null(.phaseSetup$spreadTests)) expt$.spreadTests <- .phaseSetup$spreadTests
+if (!is.null(.phaseSetup$spreadInitialPop)) expt$.spreadInitialPop <- .phaseSetup$spreadInitialPop
+if (!is.null(.phaseSetup$spreadInitialPopMethod)) expt$.spreadInitialPopMethod <- .phaseSetup$spreadInitialPopMethod
 if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
 if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
-## Module parameters named by FS_* variables, for a refit or a hindcast: one `.params` column that global.R merges over its
-## defaults. A parameter is set only if its variable is; FS_SPREAD_INITIALPOP is an .rds path, read by global.R.
-.env <- function(x, split = FALSE) if (nzchar(v <- Sys.getenv(x))) if (split) .split(v) else v
-.fsKnobs <- Filter(length, list(
-  fireSense_spreadFit = Filter(length, list(spreadLink = .env("FS_SPREAD_LINK"),
-                                            weighted = .env("FS_SPREAD_WEIGHTED"),
-                                            DEoptimTests = .env("FS_SPREAD_TESTS", split = TRUE),
-                                            initialpop = .env("FS_SPREAD_INITIALPOP"),
-                                            initialPopMethod = .env("FS_SPREAD_INITPOP_METHOD"))),
-  .globals = Filter(length, list(fireCauses = .env("FS_FIRE_CAUSES", split = TRUE))))) # the ignition, escape and spread fits, and a hindcast's observed fires
-if (.set %in% c("hindcast", "refit") && length(.fsKnobs)) expt$.params <- rep(list(.fsKnobs), NROW(expt))
+if (!is.null(.phaseSetup$fireCauses)) expt$.fireCauses <- .phaseSetup$fireCauses
 ## the phase and the run's diagnostics are columns, so a worker reads them as global.R's defaultDots
 if (isTRUE(.phaseSetup$score)) expt$.score <- TRUE
+if (!is.null(.phaseSetup$nrvReport)) expt$.nrvReport <- .phaseSetup$nrvReport
+if (isTRUE(.phaseSetup$nrvReportMap)) expt$.nrvReportMap <- TRUE
 expt$.phase1Only <- .phase1Only
 expt$.phase2Only <- !(.phase1Only || .phaseSetup$predict)
 .optionalColumn <- function(col, env, f = identity) if (nzchar(Sys.getenv(env))) expt[[col]] <<- f(Sys.getenv(env))
@@ -168,8 +195,9 @@ expt$.phase2Only <- !(.phase1Only || .phaseSetup$predict)
 .optionalColumn(".fitQueue", "FS_FIT_QUEUE")
 .optionalColumn(".afterQueue", "FS_AFTER_QUEUE")
 .optionalColumn(".diagFile", "FS_DIAG_FILE")
-.optionalColumn(".archiveLedger", "FS_ARCHIVE_LEDGER") # production NRV waves only, e.g. nrvRuns_phase6.rds; unset for experiments
 .optionalColumn(".rprofPrefix", "FS_RPROF")
+.optionalColumn(".scoreSkip", "FS_SCORE_SKIP") # FS_SET=score: ELFs left out of the scoring, comma-separated
+.optionalColumn(".nrvReportModules", "FS_NRVR_MODULES") # FS_SET=nrvreport: the folder of the summary modules
 
 if (is.null(.phaseSetup$onlyELFs)) {
   ## every ELF, by ecozone priority
@@ -206,12 +234,12 @@ if (nzchar(Sys.which("sbatch"))) {
     Sys.setenv(https_proxy = "http://webproxy.science.gc.ca:8888", http_proxy = "http://webproxy.science.gc.ca:8888",
                no_proxy = "localhost,127.0.0.1,science.gc.ca")
   .oneCore <- identical(.set, "hindcast") || identical(.set, "score") || (identical(.set, "nrv") && .phaseSetup$predict)
-  expt$.cores <- 40L # spread fits on the job's own node, not on .cores's machines; 40 at 9 GB (the fireSenseUtils default)
+  expt$.cores <- 40L # spread fits on the job's own node, not on .cores's machines; 40 at 10 GB (global.R)
   .slurmTmp <- file.path(.basePath, "scratch", "tmp") # TMPDIR of the jobs (see sbatch_opts)
   dir.create(.slurmTmp, recursive = TRUE, showWarnings = FALSE)
   .submit <- function(df, queue_path, after) SpaDES.project::experimentSBATCH(
     df          = df,
-    global_path = "global_draft.R",
+    global_path = "global.R",
     n_workers   = .phaseSetup$n_workers,
     queue_path  = queue_path,
     log_dir     = file.path("logs", sub("\\.rds$", "", basename(queue_path))),
@@ -225,6 +253,12 @@ if (nzchar(Sys.which("sbatch"))) {
                          qos = "nrcan__standard_gpsc8_allocation", nodes = 1, ntasks = 1,
                          export = paste0("ALL,TMPDIR=", .slurmTmp)),
                     if (.phase1Only) list(cpus_per_task = 1, mem = "96G", time = "1-00:00:00") # 32G was OOM-killed (12.1_2, prepSpreadFitData); to be set from measured peaks
+                    else if (identical(.set, "nrvreport") && isTRUE(.phaseSetup$nrvReportMap)) # the ELF map only
+                      list(cpus_per_task = 1, mem = "4G", time = "01:00:00") # 2.5 min, MaxRSS 1.7 GB
+                    else if (identical(.set, "nrvreport")) # one ELF's 5 runs; the landscape metrics and figures use the CPUs
+                      list(cpus_per_task = 4, mem = Sys.getenv("FS_SBATCH_MEM", "24G"), time = "1-00:00:00") # 6.4: 42 min, MaxRSS 13 GB
+                    else if (identical(.set, "score")) # the scoring job reads 12 ELFs at once (global.R); ~8 GB each
+                      list(cpus_per_task = 12, mem = Sys.getenv("FS_SBATCH_MEM", "160G"), time = "2-00:00:00")
                     else if (.oneCore) # one core per ELF x year (hindcast) or ELF x set (NRV) job; FS_SBATCH_MEM until the MaxRSS of the first jobs is known
                       list(cpus_per_task = 1, mem = Sys.getenv("FS_SBATCH_MEM", "64G"), time = if (identical(.set, "nrv")) "7-00:00:00" else "2-00:00:00")
                     else list(cpus_per_task = 42, # 40 workers + 2 kept free; 7.1 GB/CPU is the partition's limit
@@ -237,7 +271,8 @@ if (nzchar(Sys.which("sbatch"))) {
   )
 
   .after <- strsplit(Sys.getenv("FS_SBATCH_AFTER"), ",")[[1]]
-  if (identical(.set, "score")) # every job of the hindcast being scored
+  ## FS_SCORE_NOW=TRUE: score what has finished now, without waiting for the jobs still queued (rerun later for the rest)
+  if (identical(.set, "score") && !isTRUE(as.logical(Sys.getenv("FS_SCORE_NOW", "FALSE")))) # every job of the hindcast being scored
     .after <- c(.after, vapply(Filter(function(j) length(j) == 3 && grepl(paste0("experiment_queue_hindcast_", Sys.getenv("FS_HC_TAG"), "(_|/)"), j[3]),
                                       strsplit(system2("squeue", c("-M", "gpsc8", "-u", Sys.info()[["user"]], "-h", "-o", "'%i|%T|%o'"), stdout = TRUE), "\\|")),
                                `[`, "", 1))
@@ -255,7 +290,7 @@ if (!nzchar(Sys.getenv("TMUX"))) stop("Run expt.R inside tmux")
 
 workers <- SpaDES.project::experimentTmux(
   df                  = expt,
-  global_path         = "global_draft.R",
+  global_path         = "global.R",
   n_workers           = .phaseSetup$n_workers,
   queue_path          = queue_path,
   on_error            = "continue",

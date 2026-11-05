@@ -1,4 +1,4 @@
-## What differs per machine. global_draft.R and expt_draft.R read it from the project folder, as the workers and the IDE run them.
+## What differs per machine. global.R and expt.R read it from the project folder, as the workers and the IDE run them.
 ## Returns a list: basePath (inputs, outputs, cache, scratch and shared data), cores (the machines a spread fit
 ## may use), maxWorkersPerHost, mcCores (per-process cap on climate mosaics, fire buffers and threshold forks;
 ## otherwise each takes the whole machine).
