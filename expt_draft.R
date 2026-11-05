@@ -11,6 +11,11 @@
 ##   FS_SET=nrvreport FS_NRVR_ELFS=6.4,9.3 [FS_NRVR_TAG=phase5] [FS_NRVR_MODULES=modules] Rscript expt_draft.R   (the NRV page's
 ##     tables and figures, one job per ELF whose 5 NRV runs are DONE)
 ##   FS_SET=nrvreport FS_NRVR_MAP=TRUE [FS_NRVR_TAG=phase5] Rscript expt_draft.R   (the page's map of the ELFs reported so far)
+##   FS_TRIAL=<name> (see "Spread-fit trials" below) with FS_SET=refit, hindcast or score: one trial's fit, its hindcast and the
+##     scoring of that hindcast, all with the trial's settings and ledger. On the GPSC, one fit per ELF (its own memory):
+##     FS_SET=refit FS_TRIAL=d05 FS_RF_ELFS=6.6.2 FS_SBATCH_MEM=176G Rscript expt_draft.R
+##     FS_SET=hindcast FS_TRIAL=d05 FS_HC_ELFS=6.6.2,14.3,11.3,11.4 Rscript expt_draft.R   (each ELF after its own fit, if still running)
+##     FS_SET=score FS_TRIAL=d05 Rscript expt_draft.R   (after every hindcast job of the trial)
 
 ## inputs, outputs, cache, scratch and shared data: overrides global_draft.R's .basePath here (preRunSetupProject)
 ## and, as a queue column, in the workers. site.R (in the project folder) holds what differs per machine.
@@ -79,6 +84,45 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
 # Campaign settings. A queue name is resumed, never extended: relaunching changed settings needs a new tag.
 ####################
 .split <- function(x) strsplit(x, ",")[[1]]
+
+## Spread-fit trials. FS_TRIAL=<name> sets that trial's FS_* values (a value already in the environment wins), so its fit,
+## hindcast and score use one ledger and one set of settings. Fit queues are refit_<name>_<ELF>, hindcast queues
+## hindcast_<name>_<ELF>, the score queue score_<name>.
+.trialBase <- c(FS_FIRE_CAUSES = "natural,unknown", FS_SPREAD_GATE_REFUSAL = "simulate", FS_SPREAD_REPS = "100",
+                FS_SPREAD_INITPOP_METHOD = "emulator", FS_SPREAD_TESTS = "crps",
+                FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=16.5,annualArea=520",
+                FS_HC_ALLSETS = "TRUE", FS_HC_WORKERS = "1", FS_HC_AFTER_FITS = "TRUE")
+.trials <- list(
+  ## 2026-11-04, GPSC, 6.6.2 14.3 11.3 11.4: δ (power-law shape) 0.3-0.5; top-10 weight x3 (t3); the tail-share term (ts);
+  ## the year-effect SD capped at 1 (sd1)
+  d03    = c(ledger = "_crpsCauseAnnD03_20261104",      FS_SPREAD_POWERLAW_SHAPE = "0.3"),
+  d04    = c(ledger = "_crpsCauseAnnD04_20261104",      FS_SPREAD_POWERLAW_SHAPE = "0.4"),
+  d05    = c(ledger = "_crpsCauseAnnD05_20261104",      FS_SPREAD_POWERLAW_SHAPE = "0.5"),
+  d05sd1 = c(ledger = "_crpsCauseAnnD05Sd1_20261104",   FS_SPREAD_POWERLAW_SHAPE = "0.5", FS_SPREAD_SD_BOUNDS = "0,1"),
+  t3d03  = c(ledger = "_crpsCauseAnnD03Top3_20261104",  FS_SPREAD_POWERLAW_SHAPE = "0.3",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=49.5,annualArea=520"),
+  t3d04  = c(ledger = "_crpsCauseAnnD04Top3_20261104",  FS_SPREAD_POWERLAW_SHAPE = "0.4",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=49.5,annualArea=520"),
+  t3d05  = c(ledger = "_crpsCauseAnnD05Top3_20261104",  FS_SPREAD_POWERLAW_SHAPE = "0.5",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=49.5,annualArea=520"),
+  tsd03  = c(ledger = "_crpsCauseAnnD03Share_20261104", FS_SPREAD_POWERLAW_SHAPE = "0.3",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=16.5,annualArea=520,topShare=111"),
+  tsd04  = c(ledger = "_crpsCauseAnnD04Share_20261104", FS_SPREAD_POWERLAW_SHAPE = "0.4",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=16.5,annualArea=520,topShare=111"),
+  tsd05  = c(ledger = "_crpsCauseAnnD05Share_20261104", FS_SPREAD_POWERLAW_SHAPE = "0.5",
+             FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=16.5,annualArea=520,topShare=111")
+)
+.trial <- Sys.getenv("FS_TRIAL")
+if (nzchar(.trial)) {
+  if (!.trial %in% names(.trials)) stop("FS_TRIAL must be one of ", paste(names(.trials), collapse = ", "))
+  .tv <- .trials[[.trial]]
+  .tv <- c(.trialBase[setdiff(names(.trialBase), names(.tv))], .tv[names(.tv) != "ledger"],
+           FS_RF_SUFFIX = .tv[["ledger"]], FS_HC_LEDGER = .tv[["ledger"]], FS_HC_TAG = .trial,
+           FS_RF_TAG = paste0(.trial, "_", gsub("\\.", "_", gsub(",", "-", Sys.getenv("FS_RF_ELFS")))))
+  .tv <- .tv[!nzchar(Sys.getenv(names(.tv)))]
+  if (length(.tv)) do.call(Sys.setenv, as.list(.tv))
+}
+
 .phase1Only <- isTRUE(as.logical(Sys.getenv("FS_PHASE1_ONLY", "FALSE")))
 .set <- Sys.getenv("FS_SET")
 ## FS_SET=fit and FS_SET=phase1: the nrv fit wave (phases 1 + 2) and its phase 1 alone, under their own labels
@@ -330,7 +374,7 @@ if (nzchar(Sys.which("sbatch"))) {
     .jobs <- strsplit(system2("squeue", c("-M", "gpsc8", "-u", Sys.info()[["user"]], "-h", "-o", "'%i|%T|%o'"), stdout = TRUE), "\\|")
     .jobs <- Filter(function(j) length(j) == 3 && j[2] %in% c("RUNNING", "PENDING"), .jobs)
     for (.elf in unique(expt$.ELFind)) {
-      .fit <- vapply(Filter(function(j) grepl(paste0("experiment_queue_refit_pile[A-Za-z0-9]*_", gsub("\\.", "_", .elf), "/"), j[3]), .jobs), `[`, "", 1)
+      .fit <- vapply(Filter(function(j) grepl(paste0("experiment_queue_refit_", if (nzchar(.trial)) .trial else "pile[A-Za-z0-9]*", "_", gsub("\\.", "_", .elf), "/"), j[3]), .jobs), `[`, "", 1)
       .submit(expt[expt$.ELFind == .elf, , drop = FALSE], sub("\\.rds$", paste0("_", .elf, ".rds"), queue_path), c(.after, .fit))
     }
   } else .submit(expt, queue_path, .after)
