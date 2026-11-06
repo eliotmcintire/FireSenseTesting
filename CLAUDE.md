@@ -10,5 +10,7 @@
 - `~/GitHub/FireSenseTesting_burnable` is a second project folder with its own library, modules/ and outputs;
   its `global.R`, `expt.R` and `site.R` are symlinks to the files here. A branch checkout here changes
   what its workers run.
-- The GPSC copy is not a git repo: sync the three files with copy + mv, never edit in place.
+- This folder and the GPSC copy (`/gpfs/fs7/nrcan/nrcan_forsite/elm001/firesense/FireSenseTesting`) are both clones
+  of `master` and must stay identical: commit and push every change here, then `git pull` there. No side branches,
+  no hand-copied files, no edits on the GPSC.
 - Settings reach a job as queue columns (defaultDots), not environment variables read in `global.R`.
