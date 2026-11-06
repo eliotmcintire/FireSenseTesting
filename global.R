@@ -43,7 +43,7 @@ inSim <- SpaDES.project::setupProject(
                      .GCM = "CNRM-ESM2-1", # or "NRV"
                      .samplingRange = 1985:2024, # NRV climate years
                      # NRV run archive. Each campaign uploads to its own Drive folder, with its own ledger there, so the old
-                     # campaign stays usable until the new one is complete (then its ledger replaces nrvRuns.rds; simListArchive)
+                     # campaign stays usable until the new one is complete (then its ledger replaces nrvRuns.rds, which setupProject(alreadyRun = ) reads)
                      .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
                      .archiveLedger = NA_character_, # e.g. "nrvRuns_2026-11-04.rds": each upload adds a row to it in .uploadGSdir; NA: no row
                      # fitting window: vegetation is strictly before the fire year, so the first SCANFI V2 year
