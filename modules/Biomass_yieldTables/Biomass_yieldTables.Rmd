@@ -1,0 +1,155 @@
+---
+title: "LandRCBM Manual"
+subtitle: "`r paste('v.', Sys.getenv('SpadesCBM_MAN_VERSION'))`"
+author: "Dominique Caron, Camille Giuliano"
+date: "May 25, 2026"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup-CBM_core, include = FALSE}
+```
+
+# Biomass_yieldTables
+
+:::{.rmdimportant}
+This documentation is work in progress. Potential discrepancies and omissions may exist for the time being. If you find any, please contact us [here]("https://github.com/PredictiveEcology/Biomass_yieldTables/issues").
+:::
+
+## Overview
+
+[Biomass_yieldTables](https://github.com/PredictiveEcology/Biomass_yieldTables) produces the biomass yield curves for cohorts on a user-specified study area from [LandR](https://landr-manual.predictiveecology.org/). The [module](https://predictiveecology.github.io/LandRCBM/lexicon.html#modules) initializes the landscape keeping species composition, but setting all biomass to 1 and ages to 0. The module `Biomass_core` is then run internally without dispersal and disturbances to simulate vegetation dynamics from year 0 until all species dies out (i.e., maximum longevity among all species). The module records the aboveground biomass of each species, in each pixel, at each time step to build yield tables that take into account species traits and competition.
+
+## Inputs
+
+The module needs the inputs to run `Biomass_core`. For now, there are no defaults for the inputs, and the user either need to provide all the inputs themselves or run the module alongside other modules that can generate the expected inputs (e.g., `Biomass_borealDataPrep`). 
+
+| Name              | Class      | Description                            | Source          |
+|-------------------|------------|----------------------------------------|-----------------|
+| cohortData        | Data table | Table with cohort-level attributes     | Biomass_borealDataPrep |
+| species           | Data table | Table of invariant species traits      | Biomass_borealDataPrep |
+| rasterToMatch     | SpatRaster | Template raster to use for simulations | User provided   |
+
+## Module functioning
+
+### Events
+
+This [module](https://predictiveecology.github.io/LandRCBM/lexicon.html#modules) only has one [event](https://predictiveecology.github.io/LandRCBM/lexicon.html#events), the `init` event. Here, the module initializes the landscape, keeping appropriate species present in each pixel and setting all ages to 0 and biomass to 1. New pixel groups are created for pixels based species composition and ecoregion. These pixel groups will share the same yield curves and will become the `yieldTableIndex`. Vegetation dynamics are simulated by running `Biomass_core` internally and the `cohortData` object is saved each year. Finally, `cohortData` objects for each year are loaded and combined to create the yield tables. The resulting yield curves for a random set of pixel groups are plotted and saved in the `ouputs` folder. 
+
+
+### Outputs
+
+| Name              | Class      | Description                                                     |
+|-------------------|------------|-----------------------------------------------------------------|
+| yieldTablesCumulative | Data table | Yield tables intended to supply CBM spinup requirements     |
+| yieldTablesId     | Data table | Table spatially linking yield tables to pixels                  |
+
+
+### Usage
+
+Here is an example of a workflow to build yield tables for the Western Boreal Regional Integrated Assessment (RIA) study area. Note that you will need data permissions for permanent sample plot and inventory data to run this global. If you have permissions, be sure to sign into the appropriate Google account. Note that this global requires some large files and an initial run will take some time to download them. 
+
+
+```
+repos <- c("predictiveecology.r-universe.dev", getOption("repos"))
+if (!require("SpaDES.project")){
+  Require::Install(c("SpaDES.project", "SpaDES.core", "reproducible"), repos = repos, dependencies = TRUE)
+}
+
+getRIA <- function(x) {
+  x <- sf::st_read(x) 
+  ria <- x[x$TSA_NUMBER %in% c('08', '16', '24', '40', '41'),]
+  ria <- sf::st_union(ria)|> sf::st_as_sf()
+  return(ria)
+}
+
+out <- SpaDES.project::setupProject(
+  paths = list(projectPath = getwd(),
+               inputPath = "~/inputs",
+               outputPath = "outputs/yieldTables",
+               cachePath = "cache"),
+  options = options(spades.moduleCodeChecks = FALSE,
+                    spades.recoveryMode = FALSE),
+  times = list(start = 2020, end = 2020),
+  modules = c("PredictiveEcology/Biomass_speciesFactorial@development",
+              "PredictiveEcology/Biomass_borealDataPrep@development",
+              "PredictiveEcology/Biomass_speciesParameters@development",
+              "PredictiveEcology/Biomass_yieldTables@main"
+  ),
+  params = list(
+    .globals = list(
+      .plots = c("png"),
+      .plotInterval = 10,
+      sppEquivCol = 'LandR',
+      .studyAreaName = "RIAsmall"
+    ),
+    Biomass_borealDataPrep = list(
+      .studyAreaName = "RIA",
+      subsetDataBiomassModel = 50
+    ),
+    Biomass_speciesFactorial = list(
+      .plots = NULL, #"pdf",
+      runExperiment = TRUE,
+      factorialSize = "medium"
+    ),
+    Biomass_speciesParameters = list(
+      .plots = "png",
+      standAgesForFitting = c(0, 110),
+      .useCache = c(".inputObjects", "init"),
+      speciesFittingApproach = "focal"
+    ),
+    Biomass_yieldTables = list(
+      moduleNameAndBranch = "PredictiveEcology/Biomass_core@development",
+      maxAge = 150,
+      .plots = "png",
+      .useCache = "generateData"
+    )
+  ),
+  packages = c("googledrive", 'RCurl', 'XML', "stars"),
+  useGit = F,
+  functions = getRIA,
+  # Study area is within RIA (RIA buffered 150km inward)
+  studyArea = {
+    reproducible::prepInputs(
+      url = "https://drive.google.com/file/d/1LxacDOobTrRUppamkGgVAUFIxNT4iiHU/view?usp=sharing",
+      destinationPath = "inputs",
+      fun = getRIA,
+      overwrite = TRUE
+    ) |> sf::st_buffer(dist = -150000)
+  },
+  studyAreaLarge = studyArea,
+  rasterToMatch = {
+    sa <- terra::vect(studyArea)
+    targetCRS <- terra::crs(sa)
+    rtm <- terra::rast(sa, res = c(250, 250), crs = targetCRS)
+    rtm[] <- 1
+    rtm <- terra::mask(rtm, sa)
+    rtm
+  },
+  sppEquiv = {
+    speciesInStudy <- LandR::speciesInStudyArea(studyAreaLarge,
+                                                dPath = "inputs")
+    species <- LandR::equivalentName(speciesInStudy$speciesList, df = LandR::sppEquivalencies_CA, "LandR")
+    sppEquiv <- LandR::sppEquivalencies_CA[LandR %in% species]
+    sppEquiv <- sppEquiv[KNN != "" & LANDIS_traits != ""] #avoid a bug with shore pine
+  }
+)
+
+out$loadOrder <- unlist(out$modules)
+
+initOut <- SpaDES.core::simInit2(out)
+simOut <- SpaDES.core::spades(initOut)
+```
+
+### Links to other modules
+
+- [CBM_defaults](https://github.com/PredictiveEcology/CBM_defaults)
+- [CBM_datPrep](https://github.com/PredictiveEcology/CBM_dataPrep)
+- [CBM_vol2biomass](https://github.com/PredictiveEcology/CBM_vol2biomass)
+- [CBM_core](https://github.com/PredictiveEcology/CBM_core)
+- [Biomass_borealDataPrep](https://github.com/PredictiveEcology/Biomass_borealDataPrep)
+- [Biomass_speciesFactorial](https://github.com/PredictiveEcology/Biomass_borealDataPrep)
+- [Biomass_speciesParameters](https://github.com/PredictiveEcology/Biomass_speciesParameters)
+- [LandRCBM_split3pools](https://github.com/PredictiveEcology/LandRCBM_split3pools)
+- [Biomass_regeneration](https://github.com/PredictiveEcology/Biomass_regeneration)
+- [Biomass_core](https://github.com/PredictiveEcology/Biomass_core)
