@@ -121,6 +121,10 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
 .trials <- c(.trials, setNames(lapply(.trials, function(t) c(ledger = sub("_20261104$", "Whole_20261107", t[["ledger"]]),
                                                               t[names(t) != "ledger"], FS_WHOLE_LANDSCAPE = "TRUE", FS_SPREAD_REPS = "50")),
                                paste0("w", names(.trials))))
+## the ELF map and which ELFs have a fit: the same for every launch of this call
+.ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
+.ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
+
 ## One launch: the FS_SET (with FS_TRIAL, the ELFs, tags and memory) the environment names. On Slurm it submits and
 ## returns; in tmux it starts the workers. FS_SET=chain (below) calls it once per trial x ELF x step.
 .launch <- function() {
@@ -252,8 +256,6 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
   # Build the queue
   ####################
   queue_path <- .phaseSetup$queue
-  .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
-  .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
 
   expt <- expand.grid(.ELFind = .ELFinds, .rep = .phaseSetup$reps, stringsAsFactors = FALSE)
   expt$.GCM <- "NRV"
@@ -442,11 +444,15 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
     on.exit({ now <- names(Sys.getenv()); Sys.unsetenv(setdiff(now, names(.env0))); do.call(Sys.setenv, as.list(.env0)) })
     tryCatch(.launch(), error = function(e) message("chain step FS_SET=", v[["FS_SET"]], " failed: ", conditionMessage(e)))
   }
+  .first <- TRUE
   for (.tr in .trialsRun) for (.e in .elfsRun) {
     .q <- paste0(.tr, "_", gsub("\\.", "_", .e), Sys.getenv("FS_CHAIN_SUFFIX"))
-    message("chain ", .tr, " ", .e, ": queue tag ", .q)
+    message(format(Sys.time(), "%H:%M:%S"), " chain ", .tr, " ", .e, ": queue tag ", .q)
     .step(FS_SET = "refit", FS_TRIAL = .tr, FS_RF_ELFS = .e, FS_RF_TAG = .q,
           FS_SBATCH_MEM = unname(.fitMem[.e]), FS_WORKER_MEM_GB = unname(.fitWorkerGB[.e]))
+    ## the first submission checked every (HEAD) package against GitHub and settled the dev library; the rest reuse it
+    ## (a bare @branch installs nothing when the package is present, so no network lookups per job)
+    if (.first) { .devPackages <- sub(" \\(HEAD\\)$", "", .devPackages); .first <- FALSE }
     .step(FS_SET = "hindcast", FS_TRIAL = .tr, FS_HC_ELFS = .e, FS_HC_TAG = .q, FS_HC_FIT_TAG = .q)
     .step(FS_SET = "score", FS_TRIAL = .tr, FS_HC_ELFS = .e, FS_HC_TAG = .q, FS_SBATCH_MEM = Sys.getenv("FS_SCORE_MEM", "32G"))
   }
