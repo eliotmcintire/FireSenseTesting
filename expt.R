@@ -388,7 +388,9 @@ if (nzchar(Sys.which("sbatch"))) {
     .jobs <- strsplit(system2("squeue", c("-M", "gpsc8", "-u", Sys.info()[["user"]], "-h", "-o", "'%i|%T|%o'"), stdout = TRUE), "\\|")
     .jobs <- Filter(function(j) length(j) == 3 && j[2] %in% c("RUNNING", "PENDING"), .jobs)
     for (.elf in unique(expt$.ELFind)) {
-      .fit <- vapply(Filter(function(j) grepl(paste0("experiment_queue_refit_", if (nzchar(.trial)) .trial else "pile[A-Za-z0-9]*", "_", gsub("\\.", "_", .elf), "/"), j[3]), .jobs), `[`, "", 1)
+      ## the fit job of this ELF: queue refit_<trial>_<ELF>, or refit_<FS_HC_FIT_TAG> (a fit relaunched under its own FS_RF_TAG)
+      .rfQueue <- if (nzchar(Sys.getenv("FS_HC_FIT_TAG"))) Sys.getenv("FS_HC_FIT_TAG") else paste0(if (nzchar(.trial)) .trial else "pile[A-Za-z0-9]*", "_", gsub("\\.", "_", .elf))
+      .fit <- vapply(Filter(function(j) grepl(paste0("experiment_queue_refit_", .rfQueue, "/"), j[3]), .jobs), `[`, "", 1)
       .submit(expt[expt$.ELFind == .elf, , drop = FALSE], sub("\\.rds$", paste0("_", .elf, ".rds"), queue_path), c(.after, .fit))
     }
   } else .submit(expt, queue_path, .after)
