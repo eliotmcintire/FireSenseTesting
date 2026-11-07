@@ -89,7 +89,7 @@
 [submodule "modules/LandR_ClimateSensitiveSimulator"]
 	path = modules/LandR_ClimateSensitiveSimulator
 	url = https://github.com/PredictiveEcology/LandR_ClimateSensitiveSimulator
-	branch = bbdp-modsForFireSense
+	branch = development
 [submodule "modules/fireSimulator_validation"]
 	path = modules/fireSimulator_validation
 	url = https://github.com/PredictiveEcology/fireSimulator_validation
