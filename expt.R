@@ -116,6 +116,11 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
   tsd05  = c(ledger = "_crpsCauseAnnD05Share_20261104", FS_SPREAD_POWERLAW_SHAPE = "0.5",
              FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=16.5,annualArea=520,topShare=111")
 )
+## 2026-11-07: the same 10 arms with every fire spreading on the whole ELF (no buffer cut; fireSenseUtils#219) and 50 replicates:
+## w<arm>, ledger <arm ledger>Whole_20261107
+.trials <- c(.trials, setNames(lapply(.trials, function(t) c(ledger = sub("_20261104$", "Whole_20261107", t[["ledger"]]),
+                                                              t[names(t) != "ledger"], FS_WHOLE_LANDSCAPE = "TRUE", FS_SPREAD_REPS = "50")),
+                               paste0("w", names(.trials))))
 .trial <- Sys.getenv("FS_TRIAL")
 if (nzchar(.trial)) {
   if (!.trial %in% names(.trials)) stop("FS_TRIAL must be one of ", paste(names(.trials), collapse = ", "))
@@ -198,6 +203,7 @@ if (identical(.set, "nrv")) {
                       spreadSdBounds = if (nzchar(Sys.getenv("FS_SPREAD_SD_BOUNDS"))) Sys.getenv("FS_SPREAD_SD_BOUNDS"), # unset: the module default c(0, 10); "0,1" caps the year-effect SD at 1; "NA" = no year effect
                       prepAreaMult = if (nzchar(Sys.getenv("FS_PREP_AREA_MULT"))) Sys.getenv("FS_PREP_AREA_MULT"), # unset: the module default (10 * multiplier(size)); "40" = buffers 4x as large
                       spreadSizeLikDf = if (nzchar(Sys.getenv("FS_SPREAD_SIZELIK_DF"))) Sys.getenv("FS_SPREAD_SIZELIK_DF"), # unset: the module default sizeLikDf (5); "30" = per-fire t likelihood with df 30
+                      wholeLandscape = if (nzchar(Sys.getenv("FS_WHOLE_LANDSCAPE"))) Sys.getenv("FS_WHOLE_LANDSCAPE"), # unset: buffered fit; "TRUE": every fire spreads on the whole ELF (whole-ELF covariate tables from dataPrepFit)
                       spreadPowerLawShape = if (nzchar(Sys.getenv("FS_SPREAD_POWERLAW_SHAPE"))) Sys.getenv("FS_SPREAD_POWERLAW_SHAPE"), # unset: the module default powerLawShape (1); e.g. "2" = sharper rise of the power-law link toward p_c
                       n_workers = as.integer(Sys.getenv("FS_RF_WORKERS", length(.split(Sys.getenv("FS_RF_ELFS"))))), # each fit is a cluster; FS_RF_WORKERS caps fits at once
                       refit = TRUE,
@@ -262,6 +268,7 @@ if (!is.null(.phaseSetup$spreadInitialPopMethod)) expt$.spreadInitialPopMethod <
 if (!is.null(.phaseSetup$spreadSdBounds)) expt$.spreadSdBounds <- .phaseSetup$spreadSdBounds
 if (!is.null(.phaseSetup$prepAreaMult)) expt$.prepAreaMult <- .phaseSetup$prepAreaMult
 if (!is.null(.phaseSetup$spreadSizeLikDf)) expt$.spreadSizeLikDf <- .phaseSetup$spreadSizeLikDf
+if (!is.null(.phaseSetup$wholeLandscape)) expt$.wholeLandscape <- as.logical(.phaseSetup$wholeLandscape)
 if (!is.null(.phaseSetup$spreadPowerLawShape)) expt$.spreadPowerLawShape <- .phaseSetup$spreadPowerLawShape
 if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
 if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE

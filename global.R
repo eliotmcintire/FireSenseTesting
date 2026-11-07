@@ -66,6 +66,7 @@ inSim <- SpaDES.project::setupProject(
                      .prepAreaMult = NA_character_,   # NA: the module default (10 * multiplier(size)); or e.g. "40": the fit buffers' multiplier
                      .spreadPowerLawShape = NA_character_, # NA: the module default powerLawShape (1); or e.g. "2" (curvature of the power-law spread link)
                      .spreadSizeLikDf = NA_character_, # NA: the module default sizeLikDf (5); or e.g. "30" (df of the per-fire t size likelihood)
+                     .wholeLandscape = NA,            # NA/FALSE: buffered spread fit; TRUE: every fire spreads on the whole ELF (fireSense_spreadFit wholeLandscapeSpread + fireSense_dataPrepFit wholeLandscapeSpreadCovariates)
                      .hindcastYear = NA_integer_,     # a SCANFI year makes this job a hindcast
                      .hcAllSets = FALSE,              # TRUE: one hindcast job runs every fitted spread parameter set, 20 reps (5 sets x 4; fireSense_spreadPredict paramSetByReplicate)
                      .hcIgnitions = NA_character_,    # NA: the module default ("predicted"); "observedEscapes": a hindcast spreads each year's observed escapes (spread alone)
@@ -121,7 +122,7 @@ inSim <- SpaDES.project::setupProject(
                "PredictiveEcology/reproducible@development (>= 3.2.1.9084)",     # a short download is never kept, downloads staged in destinationPath (#668); clearCache(cacheId) lists only those ids (#666); offline-safe prepInputs (#657-#659) and CacheGeo with no Google credentials (#664); Copy(), the reproducible.* options and their defaults
                "PredictiveEcology/SpaDES.project@development (>= 1.2.0.9033)",   # 9033: every library of packagePath kept (#218); 9031: experiment*(devPackages = ) starts workers on a dev library, no packagePath here (#216); 9028: optionsCache()/optionsBatch(), queue helpers for runJob() (#210); workers start from a launcher file (#202); params merge, .rep from the caller, per-worker terra/GDAL defaults
                "PredictiveEcology/clusters@development (>= 0.0.92)",          # 0.0.92: every library of the run reaches workers and remote hosts, run libraries first (#69); 0.0.91: a rebuilt cluster keeps every worker (#68); clusters.maxWorkersPerHost (#58), across all fits on a host (#59)
-               "PredictiveEcology/fireSenseUtils@development (>= 0.2.3.9155)",   # 9155: plotELFs() metric colours not covered by `which`, colour bar beside the map (#218); 9154: the whole library path reaches the DEoptim cluster (#217); 9153: optional top-fire area share CRPS term (#216); 9151: fire figures count the same fires on both sides, escape = one pixel in ha (#214); 9150: fire figures use every replicate, median fire size (#213); 9148: plotELFs() metricCol/metricTitle/metricRange, the NRV map (#212); 9147: phase-1 stops before the fit (#211); 9144: SNLL_FS and the threshold calibration removed (#209); 9142: predict-only "latest" ledgers (#206); 9140: runJob(), hindcastSetup(), 9 GB per spread-fit worker (#199); makeFireSenseLCC() CWIM destinationPath (#178); ELFsNotFitted(): Prairie grassland 10.2 left out like the Arctic (#177); yearEffectMultiplier()/yearEffectSD() (#171), fuelCovsToCoarse() (#172) with fuel in the stackAndExtract cache key (#173); ledger suffix, xgbObjective(), hindcastObserved()$points, powerLaw link + calibratePowerLaw() (#167, #168), ELFmetricsFilename() (#170)
+               "PredictiveEcology/fireSenseUtils@development (>= 0.2.3.9156)",   # 9156: wholeLandscape spread with SpaDES.tools spreadCpp(link =) (needs SpaDES.tools >= 2.2.0.9002), no per-replicate gc, no gates under gateRefusal "simulate", re-score caches keyed on shipped data (#219); 9155: plotELFs() metric colours not covered by `which`, colour bar beside the map (#218); 9154: the whole library path reaches the DEoptim cluster (#217); 9153: optional top-fire area share CRPS term (#216); 9151: fire figures count the same fires on both sides, escape = one pixel in ha (#214); 9150: fire figures use every replicate, median fire size (#213); 9148: plotELFs() metricCol/metricTitle/metricRange, the NRV map (#212); 9147: phase-1 stops before the fit (#211); 9144: SNLL_FS and the threshold calibration removed (#209); 9142: predict-only "latest" ledgers (#206); 9140: runJob(), hindcastSetup(), 9 GB per spread-fit worker (#199); makeFireSenseLCC() CWIM destinationPath (#178); ELFsNotFitted(): Prairie grassland 10.2 left out like the Arctic (#177); yearEffectMultiplier()/yearEffectSD() (#171), fuelCovsToCoarse() (#172) with fuel in the stackAndExtract cache key (#173); ledger suffix, xgbObjective(), hindcastObserved()$points, powerLaw link + calibratePowerLaw() (#167, #168), ELFmetricsFilename() (#170)
                "qs2"),                                                           # reproducible.cacheSaveFormat
   require = c("reproducible", "terra"),
   options = c(
@@ -174,7 +175,8 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.spreadInitialPopMethod)) list(initialPopMethod = .spreadInitialPopMethod),
         if (!is.na(.spreadSdBounds)) list(yearSpreadSDBounds = as.numeric(strsplit(.spreadSdBounds, ",")[[1]])),
         if (!is.na(.spreadSizeLikDf)) list(sizeLikDf = as.numeric(.spreadSizeLikDf)),
-        if (!is.na(.spreadPowerLawShape)) list(powerLawShape = as.numeric(.spreadPowerLawShape))),
+        if (!is.na(.spreadPowerLawShape)) list(powerLawShape = as.numeric(.spreadPowerLawShape)),
+        if (isTRUE(as.logical(.wholeLandscape))) list(wholeLandscapeSpread = TRUE)),
       fireSense_dataPrepFit = c(list(
         doFit = .doFit, # a refit chooses its spread climate variable afresh (fireSense_dataPrepFit#81)
         dataYears = seq(1985L, 2020L, 5L), # every SCANFI year
@@ -182,7 +184,8 @@ inSim <- SpaDES.project::setupProject(
                       "prepIgnitionFitData")),
         if (!is.na(.fireCauses)) list(fireCauses = strsplit(.fireCauses, ",")[[1]]),
         if (!is.na(.prepAreaMult)) list(areaMultiplier = as.call(list(as.name("function"), as.pairlist(alist(size = )),
-                                                                      bquote(.(as.numeric(.prepAreaMult)) * fireSenseUtils::multiplier(size)), NULL)))),
+                                                                      bquote(.(as.numeric(.prepAreaMult)) * fireSenseUtils::multiplier(size)), NULL))),
+        if (isTRUE(as.logical(.wholeLandscape))) list(wholeLandscapeSpreadCovariates = TRUE)),
       Biomass_core = c(list(),
         if (!is.na(.cohortRemoveSuppressed)) list(cohortRemoveSuppressed = as.numeric(strsplit(.cohortRemoveSuppressed, ",")[[1]])),
         if (!is.na(.cohortSquash)) list(cohortSquash = as.numeric(strsplit(.cohortSquash, ",")[[1]])),
