@@ -14,3 +14,6 @@
   of `master` and must stay identical: commit and push every change here, then `git pull` there. No side branches,
   no hand-copied files, no edits on the GPSC.
 - Settings reach a job as queue columns (defaultDots), not environment variables read in `global.R`.
+- `modules/*` are git submodules on both machines, each at the head of the branch its run names (`branch =` in
+  `.gitmodules`). After a module merge, on mega: `git submodule update --remote modules/<m>`, commit the pointer, push;
+  on the GPSC: `git pull && git submodule update --init`. Never rsync or hand-copy module files.
