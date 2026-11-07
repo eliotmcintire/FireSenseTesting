@@ -41,7 +41,6 @@ inSim <- SpaDES.project::setupProject(
                      .ELFind = "4.3",
                      .SSP = 370,
                      .GCM = "CNRM-ESM2-1", # or "NRV"
-                     .samplingRange = 1986:2024, # NRV climate years = the fire years: vegetation of year t (1985 on) goes with climate and fires of t + 1 (1986 on); climateYear >= 0.1.0.9002 stops on a year with no climate (yearSeed, #10)
                      # NRV run archive. Each campaign uploads to its own Drive folder, with its own ledger there, so the old
                      # campaign stays usable until the new one is complete (then its ledger replaces nrvRuns.rds, which setupProject(alreadyRun = ) reads)
                      .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
@@ -198,7 +197,7 @@ inSim <- SpaDES.project::setupProject(
     # NRV samples observed climate, so no projected years (canClimateData still needs a valid GCM)
     if (.NRV) list(
       canClimateData = list(climateGCM = "CNRM-ESM2-1", projectedClimateYears = integer(0)),
-      climateYear = list(samplingRange = .samplingRange, yearSeed = as.integer(.rep))), # every ELF of a rep: one climate-year sequence
+      climateYear = list(samplingRange = fireSenseUtils::defaultFireYears(), yearSeed = as.integer(.rep))), # NRV climate years = the fire years (vegetation of t goes with climate and fires of t + 1); every ELF of a rep: one climate-year sequence
     if (.hc) .hcSetup$params,
     if (.hc && !is.na(.fireCauses)) list(fireSense_summary = list(fireCauses = strsplit(.fireCauses, ",")[[1]])))
 )
