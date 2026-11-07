@@ -41,7 +41,7 @@ inSim <- SpaDES.project::setupProject(
                      .ELFind = "4.3",
                      .SSP = 370,
                      .GCM = "CNRM-ESM2-1", # or "NRV"
-                     .samplingRange = 1985:2024, # NRV climate years
+                     .samplingRange = 1986:2024, # NRV climate years: the historical climate the run loads (1986-2024); 1985 is not in it, and climateYear >= 0.1.0.9002 stops on a missing year (yearSeed, #10) where older versions dropped it
                      # NRV run archive. Each campaign uploads to its own Drive folder, with its own ledger there, so the old
                      # campaign stays usable until the new one is complete (then its ledger replaces nrvRuns.rds, which setupProject(alreadyRun = ) reads)
                      .uploadGSdir = "https://drive.google.com/drive/folders/188ERmd1k6s6YMv3wHtnHQHD7pgLseBjf?usp=drive_link",
