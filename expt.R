@@ -63,11 +63,11 @@ if (utils::packageVersion("SpaDES.project") < "1.2.0.9034") { # 9034: queue grou
   ## older one there ignores devPackages (2026-11-05: GPSC jobs started on the stable library alone)
   .libPaths(c(SpaDES.project::newDevLibrary(.devPackages, stable = .stableLib)[1], .libPaths()))
 }
-if (!nzchar(Sys.getenv("FS_SET"))) SpaDES.project::newDevLibrary(.devPackages, stable = .stableLib)
+if (!nzchar(Sys.getenv("FS_SET"))) {SpaDES.project::newDevLibrary(.devPackages, stable = .stableLib); quit(save = "no")} # no FS_SET: build the dev library only
 ## this session's own setupProject() (preRunSetupProject below) uses the current dev library and leaves the .Rprofile, as a worker does
 options(spades.packagePath = SpaDES.project::currentDevLibrary(stable = .stableLib), SpaDES.project.updateRprofile = FALSE)
 
-options(spades.useRequire = FALSE) # nothing installs from here on: pak above did it, so setupProject() must not run Require
+options(spades.useRequire = FALSE) # nothing installs from here on: the dev library above has it, so setupProject() must not run Require
 outs <- SpaDES.project::preRunSetupProject(file = "global.R", upTo = "params")
 
 ####################
