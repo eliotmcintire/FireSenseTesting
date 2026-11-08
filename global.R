@@ -137,7 +137,7 @@ inSim <- SpaDES.project::setupProject(
       reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9",
       reproducible.urlRemap = "https://raw.githubusercontent.com/PredictiveEcology/PredictiveEcology.org/main/scripts/arbutus_manifest_SCANFI_v2_clean.csv",
       clusters.deoptimConvergenceWindow = as.integer(.deoptimWindow), # DEoptim early stop: judge over 300 generations ...
-      clusters.deoptimMinGenerations = as.integer(.deoptimMinGenerations), # ... and never before 350 (Eliot 2026-11-03; was 400/600 since 2026-10-16); 50-rep fits 600/700 (2026-11-08)
+      clusters.deoptimMinGenerations = as.integer(.deoptimMinGenerations), # ... and never before 350 (Eliot 2026-11-03; was 400/600 since 2026-10-16); wl<arm> trials 400/400 (2026-11-08)
       clusters.maxWorkersPerHost = site$maxWorkersPerHost,
       clusters.workerMemoryGB = if (!is.na(.workerMemoryGB)) .workerMemoryGB, # a fit's own record replaces it
       mc.cores = site$mcCores,

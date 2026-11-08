@@ -124,11 +124,11 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
 .trials <- c(.trials, setNames(lapply(.trials, function(t) c(ledger = sub("_20261104$", "Whole_20261107", t[["ledger"]]),
                                                               t[names(t) != "ledger"], FS_WHOLE_LANDSCAPE = "TRUE", FS_SPREAD_REPS = "50")),
                                paste0("w", names(.trials))))
-## 2026-11-08: the whole-landscape arms run twice as long: half the replicates, so twice the generations for the same
-## precision (Eliot). wl<arm>, ledger <arm ledger>WholeLong_20261108, early stop judged over 600 generations, never before 700
+## 2026-11-08: the whole-landscape arms run longer (half the replicates; Eliot): wl<arm>, ledger <arm ledger>WholeLong_20261108,
+## early stop judged over 400 generations, never before 400 (300/350 otherwise)
 .trials <- c(.trials, setNames(lapply(.trials[!startsWith(names(.trials), "w")], function(t)
   c(ledger = sub("_20261104$", "WholeLong_20261108", t[["ledger"]]), t[names(t) != "ledger"], FS_WHOLE_LANDSCAPE = "TRUE",
-    FS_SPREAD_REPS = "50", FS_DEOPTIM_WINDOW = "600", FS_DEOPTIM_MIN_GENERATIONS = "700")),
+    FS_SPREAD_REPS = "50", FS_DEOPTIM_WINDOW = "400", FS_DEOPTIM_MIN_GENERATIONS = "400")),
   paste0("wl", names(.trials)[!startsWith(names(.trials), "w")])))
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
