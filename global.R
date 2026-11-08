@@ -65,6 +65,8 @@ inSim <- SpaDES.project::setupProject(
                      .prepAreaMult = NA_character_,   # NA: the module default (10 * multiplier(size)); or e.g. "40": the fit buffers' multiplier
                      .spreadPowerLawShape = NA_character_, # NA: the module default powerLawShape (1); or e.g. "2" (curvature of the power-law spread link)
                      .spreadSizeLikDf = NA_character_, # NA: the module default sizeLikDf (5); or e.g. "30" (df of the per-fire t size likelihood)
+                     .deoptimWindow = 300L,           # DEoptim early stop: generations over which the population median must stop improving (clusters.deoptimConvergenceWindow)
+                     .deoptimMinGenerations = 350L,   # DEoptim early stop: never before this many generations (clusters.deoptimMinGenerations)
                      .wholeLandscape = NA,            # NA/FALSE: buffered spread fit; TRUE: every fire spreads on the whole ELF (fireSense_spreadFit wholeLandscapeSpread + fireSense_dataPrepFit wholeLandscapeSpreadCovariates)
                      .hindcastYear = NA_integer_,     # a SCANFI year makes this job a hindcast
                      .hcAllSets = FALSE,              # TRUE: one hindcast job runs every fitted spread parameter set, 20 reps (5 sets x 4; fireSense_spreadPredict paramSetByReplicate)
@@ -134,8 +136,8 @@ inSim <- SpaDES.project::setupProject(
       reproducible.destinationPathShared = file.path(.basePath, "data"),
       reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9",
       reproducible.urlRemap = "https://raw.githubusercontent.com/PredictiveEcology/PredictiveEcology.org/main/scripts/arbutus_manifest_SCANFI_v2_clean.csv",
-      clusters.deoptimConvergenceWindow = 300L, # DEoptim early stop: judge over 300 generations ...
-      clusters.deoptimMinGenerations = 350L,    # ... and never before 350 (Eliot 2026-11-03; was 400/600 since 2026-10-16)
+      clusters.deoptimConvergenceWindow = as.integer(.deoptimWindow), # DEoptim early stop: judge over 300 generations ...
+      clusters.deoptimMinGenerations = as.integer(.deoptimMinGenerations), # ... and never before 350 (Eliot 2026-11-03; was 400/600 since 2026-10-16); 50-rep fits 600/700 (2026-11-08)
       clusters.maxWorkersPerHost = site$maxWorkersPerHost,
       clusters.workerMemoryGB = if (!is.na(.workerMemoryGB)) .workerMemoryGB, # a fit's own record replaces it
       mc.cores = site$mcCores,

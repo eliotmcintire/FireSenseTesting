@@ -124,6 +124,12 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
 .trials <- c(.trials, setNames(lapply(.trials, function(t) c(ledger = sub("_20261104$", "Whole_20261107", t[["ledger"]]),
                                                               t[names(t) != "ledger"], FS_WHOLE_LANDSCAPE = "TRUE", FS_SPREAD_REPS = "50")),
                                paste0("w", names(.trials))))
+## 2026-11-08: the whole-landscape arms run twice as long: half the replicates, so twice the generations for the same
+## precision (Eliot). wl<arm>, ledger <arm ledger>WholeLong_20261108, early stop judged over 600 generations, never before 700
+.trials <- c(.trials, setNames(lapply(.trials[!startsWith(names(.trials), "w")], function(t)
+  c(ledger = sub("_20261104$", "WholeLong_20261108", t[["ledger"]]), t[names(t) != "ledger"], FS_WHOLE_LANDSCAPE = "TRUE",
+    FS_SPREAD_REPS = "50", FS_DEOPTIM_WINDOW = "600", FS_DEOPTIM_MIN_GENERATIONS = "700")),
+  paste0("wl", names(.trials)[!startsWith(names(.trials), "w")])))
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -299,6 +305,8 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
   .optionalColumn(".workerMemoryGB", "FS_WORKER_MEM_GB", as.numeric)
   .optionalColumn(".cacheChaining", "FS_NO_CACHECHAINING", function(x) !isTRUE(as.logical(x)))
   .optionalColumn(".fitQueue", "FS_FIT_QUEUE")
+  .optionalColumn(".deoptimWindow", "FS_DEOPTIM_WINDOW", as.integer)
+  .optionalColumn(".deoptimMinGenerations", "FS_DEOPTIM_MIN_GENERATIONS", as.integer)
   ## NRV archive: a predict wave uploads into its own campaign folder, so it never overwrites the runs users read now
   if (identical(.set, "nrv") && isTRUE(.phaseSetup$predict) && !(nzchar(.ev("FS_ARCHIVE_DIR")) && nzchar(.ev("FS_ARCHIVE_LEDGER"))))
     stop("FS_NRV_WAVE=predict needs FS_ARCHIVE_DIR (the campaign's own Drive folder) and FS_ARCHIVE_LEDGER (its ledger file name)")
