@@ -68,8 +68,7 @@ inSim <- SpaDES.project::setupProject(
                                   "PredictiveEcology/Biomass_speciesFactorial@development",
                                   "PredictiveEcology/Biomass_speciesParameters@development",
                                   "PredictiveEcology/NRV_summary@modsForFireSense",
-                                  "PredictiveEcology/burnSummaries@modsForFireSense",
-                                  "PredictiveEcology/Biomass_summary@modsForFireSense")),
+                                  "PredictiveEcology/burnSummaries@modsForFireSense")),
   # A hindcast holds year Y's vegetation static and draws Y's climate (see fireSenseUtils::hindcastSetup)
   .hc = !is.na(.hindcastYear),
   .hcSetup = if (.hc) fireSenseUtils::hindcastSetup(.hindcastYear, allSets = .hcAllSets, ignitions = .hcIgnitions),
