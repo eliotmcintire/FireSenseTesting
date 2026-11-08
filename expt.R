@@ -54,22 +54,16 @@ if (file.exists(.devCurrent)) .libPaths(c(readLines(.devCurrent, n = 1L), .libPa
                   "PredictiveEcology/climateData@modsForFireSense (HEAD)",
                   "PredictiveEcology/quickPlot@development (HEAD)",
                   "googlesheets4", # the sheet-backed queue (a Suggests of SpaDES.project)
-                  "PredictiveEcology/fireSenseUtils@development")
-## fireSenseUtils with pak and no dependencies: its Remotes say LandR@development, which conflicts with LandR@modsForFireSense
-.devInstall <- function(packages, libPath) {
-  fsu <- grepl("/fireSenseUtils@", packages)
-  Require::Install(packages[!fsu], libPaths = libPath, standAlone = FALSE)
-  pak::pkg_install(packages[fsu], lib = libPath, dependencies = FALSE, ask = FALSE)
-}
+                  "PredictiveEcology/fireSenseUtils@development (HEAD)")
 if (utils::packageVersion("SpaDES.project") < "1.2.0.9034") { # 9034: queue groups (FS_SET=chain). First launch only: SpaDES.project from a throwaway library
   .boot <- tempfile("spbootstrap"); dir.create(.boot)
   pak::pkg_install("PredictiveEcology/SpaDES.project@development", lib = .boot, dependencies = FALSE, ask = FALSE)
   loadNamespace("SpaDES.project", lib.loc = .boot)
   ## build the dev library now, first on the path: SpaDES.project is loaded again from the path before the launch, and an
   ## older one there ignores devPackages (2026-11-05: GPSC jobs started on the stable library alone)
-  .libPaths(c(SpaDES.project::newDevLibrary(.devPackages, stable = .stableLib, installFun = .devInstall)[1], .libPaths()))
+  .libPaths(c(SpaDES.project::newDevLibrary(.devPackages, stable = .stableLib)[1], .libPaths()))
 }
-if (!nzchar(Sys.getenv("FS_SET"))) SpaDES.project::newDevLibrary(.devPackages, stable = .stableLib, installFun = .devInstall)
+if (!nzchar(Sys.getenv("FS_SET"))) SpaDES.project::newDevLibrary(.devPackages, stable = .stableLib)
 ## this session's own setupProject() (preRunSetupProject below) uses the current dev library and leaves the .Rprofile, as a worker does
 options(spades.packagePath = SpaDES.project::currentDevLibrary(stable = .stableLib), SpaDES.project.updateRprofile = FALSE)
 
@@ -438,7 +432,7 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
   message("FS_SET=chain: queue ", .queue, ", ", length(.workers), " groups")
   SpaDES.project::experimentSBATCH(
     df          = .expt,
-    devPackages = .devPackages, devInstallFun = .devInstall, # one dev library for every group
+    devPackages = .devPackages, # one dev library for every group
     global_path = "global.R",
     n_workers   = .workers,
     queue_path  = .queue,
@@ -458,7 +452,7 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
   if (.slurm) {
     .submit <- function(df, queue_path, after) SpaDES.project::experimentSBATCH(
       df          = df,
-      devPackages = .devPackages, devInstallFun = .devInstall, # nothing changed since the last launch: its dev library
+      devPackages = .devPackages, # nothing changed since the last launch: its dev library
       global_path = "global.R",
       n_workers   = .s$n_workers,
       queue_path  = queue_path,
@@ -494,7 +488,6 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
     workers <- SpaDES.project::experimentTmux(
       df                  = expt,
       devPackages         = .devPackages,
-      devInstallFun       = .devInstall,
       global_path         = "global.R",
       n_workers           = .s$n_workers,
       queue_path          = queue_path,
