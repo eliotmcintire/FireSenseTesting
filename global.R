@@ -74,7 +74,7 @@ inSim <- SpaDES.project::setupProject(
   .hcSetup = if (.hc) fireSenseUtils::hindcastSetup(.hindcastYear, allSets = .hcAllSets, ignitions = .hcIgnitions),
   .doFit = if (.hc) FALSE else .doFit, # a hindcast only predicts from a fit in the ledger; it stops if there is none
   .NRV = identical(.GCM, "NRV"),
-  .score = .score,
+  .score = isTRUE(as.logical(.score)), # NA in a queue whose other rows score (FS_SET=chain): not a score row
   .scoreYears = as.integer(strsplit(.hcYears, ",")[[1]]),
   .phase = if (.phase1Only && .phase2Only) stop(".phase1Only and .phase2Only are both TRUE")
            else if (.phase1Only) "inputs" else if (.phase2Only) "fit" else "all", # fireSenseUtils::fireSensePhases
