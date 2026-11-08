@@ -6,35 +6,6 @@ site <- source("site.R", local = TRUE)$value
 # tmux panes report interactive() == TRUE; batch workers run inside tmux
 userInteractive <- interactive() && !nzchar(Sys.getenv("TMUX"))
 
-## Phase 4 (a queue row with .score = TRUE, from expt.R's FS_SET=score): score the hindcasts of every ELF that has finished
-## all its years, pooled, with fireSimulator_validation (modules/), and write its validation page (validation.html).
-## The ledger suffix and the base path come from the row; ELFs are read in parallel on the job's CPUs.
-if (isTRUE(get0(".score"))) {
-  .base <- get0(".basePath", ifnotfound = site$basePath); .suffix <- get0(".spreadFitFileSuffix", ifnotfound = "")
-  for (.f in list.files("modules/fireSimulator_validation/R", "\\.R$", full.names = TRUE)) source(.f)
-  suppressMessages({library(ggplot2); library(patchwork)}) # the page's figures; attached as the module's test helper does
-  .hcDir <- file.path(.base, "outputs", paste0("hindcast", .suffix))
-  .hcYears <- as.integer(strsplit(.hcYears, ",")[[1]]) # the row's years (expt.R FS_HC_YEARS; all 1986-2024 by default)
-  .done <- Filter(function(e) length(hindcastFinishedYears(.hcDir, e, .hcYears, 1L)) == length(.hcYears),
-                  setdiff(list.files(.hcDir), strsplit(get0(".scoreSkip", ifnotfound = ""), ",")[[1]]))
-  .elfs <- parallel::mclapply(.done, mc.cores = as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", "1")), mc.preschedule = FALSE, function(e)
-    readFireSenseHindcast(e, .hcDir, years = .hcYears, sets = 1L, inputsDir = file.path(.base, "inputs"),
-                          ledgerFile = Sys.glob(file.path(.base, "inputs", e, paste0("fireSenseParams_*", .suffix, ".rds")))[1],
-                          nfdbPath = tail(Sys.glob(file.path(.base, "inputs", e, "NFDB_point_*.shp")), 1),
-                          nbacPath = tail(Sys.glob(file.path(.base, "inputs", e, "NBAC_merged_*.shp")), 1),
-                          obsCacheDir = {d <- file.path(.base, "outputs", paste0("score", .suffix), "obs"); dir.create(d, recursive = TRUE, showWarnings = FALSE); d}))
-  .elfs <- Filter(Negate(is.null), .elfs)
-  message("scoring ", length(.elfs), " ELFs")
-  .res <- runWave1(.elfs)
-  saveRDS(.res, file.path(.base, "outputs", paste0("score", .suffix), "wave1.rds"))
-  write.csv(.res$results, file.path(.base, "outputs", paste0("score", .suffix), "wave1_results.csv"), row.names = FALSE)
-  buildValidationPage(.elfs, .res$gates, file.path(.base, "outputs", paste0("score", .suffix), "validation.html"),
-                      template = "modules/fireSimulator_validation/pageTemplate.html", dpi = 50, title = "Hindcast validation, GPSC fits",
-                      subtitle = paste0("Spread fits ", sub("^_", "", .suffix), " &middot; hindcasts ", paste(range(.hcYears), collapse = "&ndash;"),
-                                        ", ", length(.hcYears), " years, 20 runs per ELF"))
-  stop("scoring done", call. = FALSE) # ends the job; the queue marks a stop as an ERROR row, the outputs are what count
-}
-
 inSim <- SpaDES.project::setupProject(
   defaultDots = list(.basePath = site$basePath, # inputs, outputs, cache, scratch and shared data live here
                      .rep = 1,
@@ -71,6 +42,11 @@ inSim <- SpaDES.project::setupProject(
                      .hindcastYear = NA_integer_,     # a SCANFI year makes this job a hindcast
                      .hcAllSets = FALSE,              # TRUE: one hindcast job runs every fitted spread parameter set, 20 reps (5 sets x 4; fireSense_spreadPredict paramSetByReplicate)
                      .hcIgnitions = NA_character_,    # NA: the module default ("predicted"); "observedEscapes": a hindcast spreads each year's observed escapes (spread alone)
+                     ## Phase 4 (expt.R's FS_SET=score): the job runs fireSimulator_validation alone. It scores the hindcasts of every
+                     ## ELF that has finished all .hcYears, pooled, and writes wave1.rds, wave1_results.csv and validation.html
+                     .score = FALSE,
+                     .hcYears = paste(1986:2024, collapse = ","), # the years scored (expt.R FS_HC_YEARS)
+                     .scoreSkip = NA_character_,      # ELFs left out of the scoring, comma-separated
                      .cohortRemoveSuppressed = NA_character_,   # NA: off; "relativeB,minAgeFrac" e.g. "0.01,0.75" (Biomass_core#131)
                      .cohortSquash = NA_character_,             # NA: off; "interval,width[,width...]" e.g. "100,20" (breaks LandR-CBM)
                      .cohortEstablishmentLimit = NA_character_, # NA: off; "interval,minCohorts" e.g. "20,5"
@@ -99,6 +75,8 @@ inSim <- SpaDES.project::setupProject(
   .hcSetup = if (.hc) fireSenseUtils::hindcastSetup(.hindcastYear, allSets = .hcAllSets, ignitions = .hcIgnitions),
   .doFit = if (.hc) FALSE else .doFit, # a hindcast only predicts from a fit in the ledger; it stops if there is none
   .NRV = identical(.GCM, "NRV"),
+  .score = .score,
+  .scoreYears = as.integer(strsplit(.hcYears, ",")[[1]]),
   .phase = if (.phase1Only && .phase2Only) stop(".phase1Only and .phase2Only are both TRUE")
            else if (.phase1Only) "inputs" else if (.phase2Only) "fit" else "all", # fireSenseUtils::fireSensePhases
   .ELFind = .ELFind,
@@ -106,7 +84,8 @@ inSim <- SpaDES.project::setupProject(
   # only dots written here are returned in inSim: a defaultDots value the queue did not set is not a variable after setupProject
   .fitQueue = .fitQueue, .afterQueue = .afterQueue, .diagFile = .diagFile, .rprofPrefix = .rprofPrefix,
   .uploadGSdir = .uploadGSdir, .archiveLedger = .archiveLedger, .GCM = .GCM, .SSP = .SSP,
-  paths = list(outputPath = if (.hc) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", paste0("hindcast", .spreadFitFileSuffix, if (identical(.hcIgnitions, "observedEscapes")) "_obsEsc")), .ELFind, .hindcastYear, .rep)
+  paths = list(outputPath = if (.score) file.path(.basePath, "outputs", paste0("score", .spreadFitFileSuffix))
+                            else if (.hc) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", paste0("hindcast", .spreadFitFileSuffix, if (identical(.hcIgnitions, "observedEscapes")) "_obsEsc")), .ELFind, .hindcastYear, .rep)
                             ## a fit's outputs (DEoptim progress, figures) are per ledger: fits of one ELF under different
                             ## suffixes (e.g. weightings) ran at once and wrote the same DEoptimProgress file, 2026-10-24
                             else if (isTRUE(.doFit)) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", paste0("fit", .spreadFitFileSuffix)), .ELFind, .GCM, .SSP, .rep)
@@ -117,7 +96,8 @@ inSim <- SpaDES.project::setupProject(
   # the outputs folder may arrive as its symlink target, so name the run by what is below ".../outputs/"
   runName = gsub("/", "_", sub("^.*/outputs/", "", paths$outputPath)),
   times = if (.hc) .hcSetup$times else .times,
-  modules = if (.hc) .hcSetup$modules else .modules, # a hindcast cannot use the parent: it would bring the vegetation modules
+  modules = if (.score) "fireSimulator_validation" # modules/; none of the fire-model modules
+            else if (.hc) .hcSetup$modules else .modules, # a hindcast cannot use the parent: it would bring the vegetation modules
   # only what this file itself calls or configures; modules list their own in reqdPkgs
   packages = c("PredictiveEcology/SpaDES.core@development (>= 3.2.1.9056)",      # 9056: nested init keeps dot-named outputs (#516); event hits keep duplicate events (#505); spades.cacheKeyReachable (#500), cacheKey = FALSE (#503); module version out of event cache keys (#501); module globalVariables() (#496) without the self-referencing simList (#498), cache hit restores own outputs only (#495), chain jump restores changed objects (#497)
                "PredictiveEcology/reproducible@development (>= 3.2.1.9084)",     # a short download is never kept, downloads staged in destinationPath (#668); clearCache(cacheId) lists only those ids (#666); offline-safe prepInputs (#657-#659) and CacheGeo with no Google credentials (#664); Copy(), the reproducible.* options and their defaults
@@ -201,6 +181,15 @@ inSim <- SpaDES.project::setupProject(
       canClimateData = list(climateGCM = "CNRM-ESM2-1", projectedClimateYears = integer(0)),
       climateYear = list(samplingRange = fireSenseUtils::defaultFireYears(), yearSeed = as.integer(.rep))), # NRV climate years = the fire years (vegetation of t goes with climate and fires of t + 1); every ELF of a rep: one climate-year sequence
     if (.hc) .hcSetup$params,
+    if (.score) list(fireSimulator_validation = list(
+      hindcastPath = file.path(.basePath, "outputs", paste0("hindcast", .spreadFitFileSuffix)),
+      hindcastYears = .scoreYears,
+      skipELFs = if (!is.na(.scoreSkip)) strsplit(.scoreSkip, ",")[[1]] else character(0),
+      inputsPath = file.path(.basePath, "inputs"), ledgerSuffix = .spreadFitFileSuffix,
+      nCores = as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", "1")), # ELFs read in parallel on the job's CPUs
+      pageTitle = "Hindcast validation, GPSC fits",
+      pageSubtitle = paste0("Spread fits ", sub("^_", "", .spreadFitFileSuffix), " &middot; hindcasts ",
+                            paste(range(.scoreYears), collapse = "&ndash;"), ", ", length(.scoreYears), " years, 20 runs per ELF"))),
     if (.hc && !is.na(.fireCauses)) list(fireSense_summary = list(fireCauses = strsplit(.fireCauses, ",")[[1]])))
 )
 message(inSim$runName)
@@ -305,7 +294,9 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
 ## Runs the job up to the end of its phase ("inputs": stop before the fit; "fit": fit if this ELF has no fit, then stop;
 ## "all": fit if needed, then predict and save the simList to Drive for multi.R). .fitQueue/.afterQueue: an inputs job
 ## skips an ELF the fit queue has claimed or will claim next; a fit job waits while the inputs queue is building its ELF.
-simOut <- fireSenseUtils::runJob(inSim, elf = inSim$.ELFind, phase = inSim$.phase,
+## A score row (.score) runs its one module; nothing else here applies to it.
+simOut <- if (isTRUE(inSim$.score)) SpaDES.core::simInitAndSpades2(inSim) else
+  fireSenseUtils::runJob(inSim, elf = inSim$.ELFind, phase = inSim$.phase,
                                  fitQueue = inSim$.fitQueue, afterQueue = inSim$.afterQueue,
                                  diagFile = inSim$.diagFile, rprofPrefix = inSim$.rprofPrefix,
                                  uploadDir = inSim$.uploadGSdir, hindcast = inSim$.hc,

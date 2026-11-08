@@ -226,7 +226,7 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
                         refit = TRUE,
                         predict = FALSE)
   } else if (identical(.set, "score")) {
-    ## Phase 4: one job scores the hindcasts of every ELF (global.R's .score branch). FS_HC_TAG and FS_HC_LEDGER name the
+    ## Phase 4: one job scores the hindcasts of every ELF (global.R runs fireSimulator_validation). FS_HC_TAG and FS_HC_LEDGER name the
     ## hindcast to score; on Slurm it starts after every job of that hindcast has ended (afterany, even if some failed)
     .phaseSetup <- list(queue = paste0("experiment_queue_score_", .ev("FS_HC_TAG", format(Sys.Date(), "%Y-%m-%d")), ".rds"),
                         onlyELFs = .split(.ev("FS_HC_ELFS", "4.1")), # a single row; the job reads every ELF found
@@ -379,7 +379,7 @@ if (.slurm) {
       list(cpus_per_task = 1, mem = "4G", time = "01:00:00") # 2.5 min, MaxRSS 1.7 GB
     else if (identical(s$set, "nrvreport")) # one ELF's 5 runs; the landscape metrics and figures use the CPUs
       list(cpus_per_task = 4, mem = .mem("24G"), time = "1-00:00:00") # 6.4: 42 min, MaxRSS 13 GB
-    else if (identical(s$set, "score")) # the scoring job reads 12 ELFs at once (global.R); ~8 GB each
+    else if (identical(s$set, "score")) # the scoring job reads 12 ELFs at once (fireSimulator_validation nCores); ~8 GB each
       list(cpus_per_task = 12, mem = .mem("160G"), time = "2-00:00:00")
     else if (s$oneCore) # one core per ELF x year (hindcast) or ELF x set (NRV) job; FS_SBATCH_MEM until the MaxRSS of the first jobs is known
       list(cpus_per_task = 1, mem = .mem("64G"), time = if (identical(s$set, "nrv")) "7-00:00:00" else "2-00:00:00")
