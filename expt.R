@@ -232,6 +232,7 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
                         onlyELFs = .split(.ev("FS_HC_ELFS", "4.1")), # a single row; the job reads every ELF found
                         reps = 1L,
                         ledgerSuffix = .ev("FS_HC_LEDGER"),
+                        hcIgnitions = if (nzchar(.ev("FS_HC_IGNITIONS"))) .ev("FS_HC_IGNITIONS"), # scores the observedEscapes hindcast (its own folders)
                         n_workers = 1L,
                         refit = FALSE,
                         predict = FALSE,

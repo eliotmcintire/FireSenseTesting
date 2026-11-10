@@ -72,6 +72,7 @@ inSim <- SpaDES.project::setupProject(
   # A hindcast holds year Y's vegetation static and draws Y's climate (see fireSenseUtils::hindcastSetup)
   .hc = !is.na(.hindcastYear),
   .hcSetup = if (.hc) fireSenseUtils::hindcastSetup(.hindcastYear, allSets = .hcAllSets, ignitions = .hcIgnitions),
+  .hcSuffix = paste0(.spreadFitFileSuffix, if (identical(.hcIgnitions, "observedEscapes")) "_obsEsc"), # hindcast and score folders: an observedEscapes hindcast is kept apart
   .doFit = if (.hc) FALSE else .doFit, # a hindcast only predicts from a fit in the ledger; it stops if there is none
   .NRV = identical(.GCM, "NRV"),
   .score = isTRUE(as.logical(.score)), # NA in a queue whose other rows score (FS_SET=chain): not a score row
@@ -83,8 +84,8 @@ inSim <- SpaDES.project::setupProject(
   # only dots written here are returned in inSim: a defaultDots value the queue did not set is not a variable after setupProject
   .fitQueue = .fitQueue, .afterQueue = .afterQueue, .diagFile = .diagFile, .rprofPrefix = .rprofPrefix,
   .uploadGSdir = .uploadGSdir, .archiveLedger = .archiveLedger, .GCM = .GCM, .SSP = .SSP,
-  paths = list(outputPath = if (.score) file.path(.basePath, "outputs", paste0("score", .spreadFitFileSuffix))
-                            else if (.hc) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", paste0("hindcast", .spreadFitFileSuffix, if (identical(.hcIgnitions, "observedEscapes")) "_obsEsc")), .ELFind, .hindcastYear, .rep)
+  paths = list(outputPath = if (.score) file.path(.basePath, "outputs", paste0("score", .hcSuffix))
+                            else if (.hc) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", paste0("hindcast", .hcSuffix)), .ELFind, .hindcastYear, .rep)
                             ## a fit's outputs (DEoptim progress, figures) are per ledger: fits of one ELF under different
                             ## suffixes (e.g. weightings) ran at once and wrote the same DEoptimProgress file, 2026-10-24
                             else if (isTRUE(.doFit)) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", paste0("fit", .spreadFitFileSuffix)), .ELFind, .GCM, .SSP, .rep)
@@ -181,7 +182,7 @@ inSim <- SpaDES.project::setupProject(
       climateYear = list(samplingRange = fireSenseUtils::defaultFireYears(), yearSeed = as.integer(.rep))), # NRV climate years = the fire years (vegetation of t goes with climate and fires of t + 1); every ELF of a rep: one climate-year sequence
     if (.hc) .hcSetup$params,
     if (.score) list(fireSimulator_validation = list(
-      hindcastPath = file.path(.basePath, "outputs", paste0("hindcast", .spreadFitFileSuffix)),
+      hindcastPath = file.path(.basePath, "outputs", paste0("hindcast", .hcSuffix)),
       hindcastYears = .scoreYears,
       skipELFs = if (!is.na(.scoreSkip)) strsplit(.scoreSkip, ",")[[1]] else character(0),
       inputsPath = file.path(.basePath, "inputs"), ledgerSuffix = .spreadFitFileSuffix,
