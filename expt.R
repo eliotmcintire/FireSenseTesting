@@ -131,6 +131,20 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
   c(ledger = sub("Whole_20261107$", "WholeFix_20261110", t[["ledger"]]), t[names(t) != "ledger"],
     FS_DEOPTIM_WINDOW = "400", FS_DEOPTIM_MIN_GENERATIONS = "400")),
   c("wd04fix", "wd05fix")))
+## 2026-11-11 campaign: fires that start in the ELF core only, at their whole extent, in fit, hindcast and score; one
+## escape definition shared by every module; ignition and escape models trained on the core; the spread climate variable
+## chosen per ELF from the larger candidate pool (dataPrepFit spreadClimateCandidates). Whole landscape, 50 reps, 400/400.
+## c<arm>: no per-fire effect (ledger <arm>Core_20261111); c<arm>r: with it (ledger <arm>CoreRE_20261111);
+## arms d04, d05, t3d04, t3d05, tsd04, tsd05
+.coreArms <- c("d04", "d05", "t3d04", "t3d05", "tsd04", "tsd05")
+.coreTrial <- function(t, tag, fireSD) c(ledger = sub("_20261104$", paste0(tag, "_20261111"), t[["ledger"]]), t[names(t) != "ledger"],
+                                         FS_WHOLE_LANDSCAPE = "TRUE", FS_SPREAD_REPS = "50", FS_DEOPTIM_WINDOW = "400",
+                                         FS_DEOPTIM_MIN_GENERATIONS = "400", fireSD)
+.trials <- c(.trials,
+             setNames(lapply(.trials[.coreArms], .coreTrial, tag = "Core", fireSD = c(FS_SPREAD_FIRE_SD_BOUNDS = "NA")),
+                      paste0("c", .coreArms)),
+             setNames(lapply(.trials[.coreArms], .coreTrial, tag = "CoreRE", fireSD = character()),
+                      paste0("c", .coreArms, "r")))
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -225,6 +239,7 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
                         spreadInitialPop = if (nzchar(.ev("FS_SPREAD_INITIALPOP"))) .ev("FS_SPREAD_INITIALPOP"), # unset: the module default start
                         spreadInitialPopMethod = if (nzchar(.ev("FS_SPREAD_INITPOP_METHOD"))) .ev("FS_SPREAD_INITPOP_METHOD"), # unset: the module default ("calibration")
                         spreadSdBounds = if (nzchar(.ev("FS_SPREAD_SD_BOUNDS"))) .ev("FS_SPREAD_SD_BOUNDS"), # unset: the module default c(0, 10); "0,1" caps the year-effect SD at 1; "NA" = no year effect
+                        spreadFireSdBounds = if (nzchar(.ev("FS_SPREAD_FIRE_SD_BOUNDS"))) .ev("FS_SPREAD_FIRE_SD_BOUNDS"), # unset: the module default c(0, 10) (whole-landscape fits); "NA" = no per-fire effect
                         prepAreaMult = if (nzchar(.ev("FS_PREP_AREA_MULT"))) .ev("FS_PREP_AREA_MULT"), # unset: the module default (10 * multiplier(size)); "40" = buffers 4x as large
                         spreadSizeLikDf = if (nzchar(.ev("FS_SPREAD_SIZELIK_DF"))) .ev("FS_SPREAD_SIZELIK_DF"), # unset: the module default sizeLikDf (5); "30" = per-fire t likelihood with df 30
                         wholeLandscape = if (nzchar(.ev("FS_WHOLE_LANDSCAPE"))) .ev("FS_WHOLE_LANDSCAPE"), # unset: buffered fit; "TRUE": every fire spreads on the whole ELF (whole-ELF covariate tables from dataPrepFit)
@@ -286,6 +301,7 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
   if (!is.null(.phaseSetup$spreadInitialPop)) expt$.spreadInitialPop <- .phaseSetup$spreadInitialPop
   if (!is.null(.phaseSetup$spreadInitialPopMethod)) expt$.spreadInitialPopMethod <- .phaseSetup$spreadInitialPopMethod
   if (!is.null(.phaseSetup$spreadSdBounds)) expt$.spreadSdBounds <- .phaseSetup$spreadSdBounds
+  if (!is.null(.phaseSetup$spreadFireSdBounds)) expt$.spreadFireSdBounds <- .phaseSetup$spreadFireSdBounds
   if (!is.null(.phaseSetup$prepAreaMult)) expt$.prepAreaMult <- .phaseSetup$prepAreaMult
   if (!is.null(.phaseSetup$spreadSizeLikDf)) expt$.spreadSizeLikDf <- .phaseSetup$spreadSizeLikDf
   if (!is.null(.phaseSetup$wholeLandscape)) expt$.wholeLandscape <- as.logical(.phaseSetup$wholeLandscape)

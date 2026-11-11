@@ -33,6 +33,7 @@ inSim <- SpaDES.project::setupProject(
                      .spreadInitialPop = NA_character_, # NA: the module default (DEoptim draws, or calibration passing sets); or an .rds matrix, NP x names(lower)
                      .spreadInitialPopMethod = NA_character_, # NA: the module default ("calibration"); or "emulator" (fireSense_spreadFit#98)
                      .spreadSdBounds = NA_character_, # NA: the module default (0,10); or e.g. "0,1" (bounds of the year-effect SD); "NA": no year effect
+                     .spreadFireSdBounds = NA_character_, # NA: the module default (0,10; whole-landscape fits only); or e.g. "0,1" (bounds of the per-fire SD); "NA": no per-fire effect
                      .prepAreaMult = NA_character_,   # NA: the module default (10 * multiplier(size)); or e.g. "40": the fit buffers' multiplier
                      .spreadPowerLawShape = NA_character_, # NA: the module default powerLawShape (1); or e.g. "2" (curvature of the power-law spread link)
                      .spreadSizeLikDf = NA_character_, # NA: the module default sizeLikDf (5); or e.g. "30" (df of the per-fire t size likelihood)
@@ -155,6 +156,7 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.spreadInitialPop)) list(initialpop = readRDS(.spreadInitialPop)),
         if (!is.na(.spreadInitialPopMethod)) list(initialPopMethod = .spreadInitialPopMethod),
         if (!is.na(.spreadSdBounds)) list(yearSpreadSDBounds = as.numeric(strsplit(.spreadSdBounds, ",")[[1]])),
+        if (!is.na(.spreadFireSdBounds)) list(fireSpreadSDBounds = as.numeric(strsplit(.spreadFireSdBounds, ",")[[1]])),
         if (!is.na(.spreadSizeLikDf)) list(sizeLikDf = as.numeric(.spreadSizeLikDf)),
         if (!is.na(.spreadPowerLawShape)) list(powerLawShape = as.numeric(.spreadPowerLawShape)),
         if (isTRUE(as.logical(.wholeLandscape))) list(wholeLandscapeSpread = TRUE)),
