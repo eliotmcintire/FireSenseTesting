@@ -124,6 +124,13 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
   c(ledger = sub("_20261104$", "WholeLong_20261108", t[["ledger"]]), t[names(t) != "ledger"], FS_WHOLE_LANDSCAPE = "TRUE",
     FS_SPREAD_REPS = "50", FS_DEOPTIM_WINDOW = "400", FS_DEOPTIM_MIN_GENERATIONS = "400")),
   paste0("wl", names(.trials)[!startsWith(names(.trials), "w")])))
+## 2026-11-10: controls. The w*/wl* fits ran on stale buffered tables (a cached dataPrepFit step restored the Nov-4
+## tables; its cache entries were deleted on the GPSC 2026-11-10). wd04/wd05 again on truly whole tables, today's code:
+## <arm>fix, ledger <arm ledger>WholeFix_20261110, 400/400 stop
+.trials <- c(.trials, setNames(lapply(.trials[c("wd04", "wd05")], function(t)
+  c(ledger = sub("Whole_20261107$", "WholeFix_20261110", t[["ledger"]]), t[names(t) != "ledger"],
+    FS_DEOPTIM_WINDOW = "400", FS_DEOPTIM_MIN_GENERATIONS = "400")),
+  c("wd04fix", "wd05fix")))
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
