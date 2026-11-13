@@ -151,6 +151,24 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
 .coreTrials <- paste0("c", c(.coreArms, paste0(.coreArms, "r")))
 .trials <- c(.trials, setNames(lapply(.trials[.coreTrials], function(t)
   c(ledger = sub("_20261111$", "Ig_20261112", t[["ledger"]]), t[names(t) != "ledger"])), paste0(.coreTrials, "i")))
+## 2026-11-14: the spread link (fireSenseUtils#229/#230, SpaDES.tools#157). The power law had no lower asymptote (p clamped
+## to 0 below x ~ 0), so escaped fires stalled under 50 ha. Arms are the core top-10 x3 trials (ct3d04/ct3d05 settings, core
+## starts, whole landscape, 50 reps, 400/400), refit from scratch (spread, ignition and escape) under the new ledger:
+##   lp04 / lp05: "powerLawSmooth", delta 0.4 / 0.5, lower asymptote 0.13;  lgz: "richards" nu 0 (Gompertz), 0.13;
+##   lri: "richards" nu 0.5, 0.13;  each also with the per-fire effect (suffix r);  lp04r0 / lgzr0: lower asymptote 0.001, per-fire only
+.linkTrial <- function(base, tag, set, fireSD) c(ledger = paste0("_crpsCauseAnn", tag, "_20261114"),
+                                               .trials[[base]][setdiff(names(.trials[[base]]), c("ledger", "FS_SPREAD_FIRE_SD_BOUNDS"))],
+                                               set, fireSD)
+.linkArms <- list(lp04 = list("ct3d04", "LinkP04", c(FS_SPREAD_LINK = "powerLawSmooth")),
+                  lp05 = list("ct3d05", "LinkP05", c(FS_SPREAD_LINK = "powerLawSmooth")),
+                  lgz  = list("ct3d04", "LinkGz",  c(FS_SPREAD_LINK = "richards", FS_SPREAD_RICHARDS_NU = "0")),
+                  lri  = list("ct3d04", "LinkRi",  c(FS_SPREAD_LINK = "richards", FS_SPREAD_RICHARDS_NU = "0.5")))
+for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
+  .trials[[.a]] <- .linkTrial(.l[[1]], .l[[2]], .l[[3]], c(FS_SPREAD_FIRE_SD_BOUNDS = "NA"))
+  .trials[[paste0(.a, "r")]] <- .linkTrial(.l[[1]], paste0(.l[[2]], "RE"), .l[[3]], character())
+  if (.a %in% c("lp04", "lgz"))
+    .trials[[paste0(.a, "r0")]] <- .linkTrial(.l[[1]], paste0(.l[[2]], "RE0"), c(.l[[3]], FS_SPREAD_LOWER_ASYMPTOTE = "0.001"), character())
+}
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -236,6 +254,8 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
                         reps = as.integer(.ev("FS_RF_REP", "1")),
                         ledgerSuffix = .ev("FS_RF_SUFFIX", ""),
                         spreadLink = if (nzchar(.ev("FS_SPREAD_LINK"))) .ev("FS_SPREAD_LINK"), # unset: the module default
+                        spreadLowerAsymptote = if (nzchar(.ev("FS_SPREAD_LOWER_ASYMPTOTE"))) .ev("FS_SPREAD_LOWER_ASYMPTOTE"), # unset: the module default lowerAsymptote (0.13); "0.001" = the minimum
+                        spreadRichardsNu = if (nzchar(.ev("FS_SPREAD_RICHARDS_NU"))) .ev("FS_SPREAD_RICHARDS_NU"), # unset: the module default richardsNu (0.5); "0" = Gompertz
                         spreadWeighted = if (nzchar(.ev("FS_SPREAD_WEIGHTED"))) .ev("FS_SPREAD_WEIGHTED"), # unset: the module default (FALSE)
                         spreadGateRefusal = if (nzchar(.ev("FS_SPREAD_GATE_REFUSAL"))) .ev("FS_SPREAD_GATE_REFUSAL"), # unset: the module default ("minLik"); "simulate": a gate-refused year is still simulated and scored
                         spreadReps = if (nzchar(.ev("FS_SPREAD_REPS"))) .ev("FS_SPREAD_REPS"), # unset: the module default objfunFireReps
@@ -299,6 +319,8 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
   if (.phaseSetup$refit) expt$.doFit <- TRUE
   if (nzchar(.phaseSetup$ledgerSuffix %||% "")) expt$.spreadFitFileSuffix <- .phaseSetup$ledgerSuffix
   if (!is.null(.phaseSetup$spreadLink)) expt$.spreadLink <- .phaseSetup$spreadLink
+  if (!is.null(.phaseSetup$spreadLowerAsymptote)) expt$.spreadLowerAsymptote <- .phaseSetup$spreadLowerAsymptote
+  if (!is.null(.phaseSetup$spreadRichardsNu)) expt$.spreadRichardsNu <- .phaseSetup$spreadRichardsNu
   if (!is.null(.phaseSetup$spreadWeighted)) expt$.spreadWeighted <- .phaseSetup$spreadWeighted
   if (!is.null(.phaseSetup$spreadGateRefusal)) expt$.spreadGateRefusal <- .phaseSetup$spreadGateRefusal
   if (!is.null(.phaseSetup$spreadReps)) expt$.spreadReps <- .phaseSetup$spreadReps

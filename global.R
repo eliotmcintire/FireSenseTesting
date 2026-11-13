@@ -24,7 +24,9 @@ inSim <- SpaDES.project::setupProject(
                      .spreadFitMode = "fit",          # or "fit,validate"
                      .heldOutFold = NA_integer_,      # 1 or 2 fits only that fold
                      .spreadFitFileSuffix = "_bufIndep20261024", # buffer-independent spread objective (fireSenseUtils#183, fireSense_spreadFit#91), 2026-10-24; "_prod20261021" was the previous ledger
-                     .spreadLink = NA_character_,     # NA: the module default ("powerLaw"); or "ceiling", "climateOutside"
+                     .spreadLink = NA_character_,     # NA: the module default ("powerLaw"); or "ceiling", "climateOutside", "powerLawSmooth", "richards"
+                     .spreadLowerAsymptote = NA_character_, # NA: the module default lowerAsymptote (fireSenseUtils::spreadProbFloor, 0.13); links "powerLawSmooth" and "richards" only, at least fireSenseUtils::spreadLowerAsymptoteMin
+                     .spreadRichardsNu = NA_character_, # NA: the module default richardsNu (0.5); link "richards" only; "0" = Gompertz
                      .spreadWeighted = NA_character_, # NA: the module default (FALSE, every fire weighs 1); or "log", "sqrt" (fireSenseUtils sizeWeight())
                      .spreadGateRefusal = NA_character_, # NA: the module default ("minLik"); "simulate": gate-refused years are simulated and scored
                      .spreadReps = NA_character_, # NA: the module default objfunFireReps; e.g. "100"
@@ -148,6 +150,8 @@ inSim <- SpaDES.project::setupProject(
         cores = .cores,
         mode = strsplit(.spreadFitMode, ",")[[1]]),
         if (!is.na(.spreadLink)) list(spreadLink = .spreadLink),
+        if (!is.na(.spreadLowerAsymptote)) list(lowerAsymptote = as.numeric(.spreadLowerAsymptote)),
+        if (!is.na(.spreadRichardsNu)) list(richardsNu = as.numeric(.spreadRichardsNu)),
         if (!is.na(.spreadWeighted)) list(weighted = .spreadWeighted),
         if (!is.na(.spreadGateRefusal)) list(gateRefusal = .spreadGateRefusal),
         if (!is.na(.spreadReps)) list(objfunFireReps = as.integer(.spreadReps)),
