@@ -422,7 +422,7 @@ if (.slurm) {
   .logDir <- function(queue_path) file.path("logs", sub("\\.rds$", "", basename(queue_path)))
 }
 
-## FS_SET=chain: a whole Slurm campaign in one experimentSBATCH() call, one queue experiment_queue_chain_<FS_CHAIN_SUFFIX
+## FS_SET=chain: a whole campaign in one call (Slurm: experimentSBATCH(); elsewhere tmux panes, FS_CHAIN_WORKERS), one queue experiment_queue_chain_<FS_CHAIN_SUFFIX
 ## or today>.rds. For each trial (FS_TRIAL, comma-separated) x ELF (FS_RF_ELFS), tag <trial>_<ELF><FS_CHAIN_SUFFIX>, three
 ## queue groups (SpaDES.project ?experimentGroups): fit_<tag> (the refit row), hc_<tag> (its ELF x year rows, after the
 ## fit succeeded) and score_<tag> (after every hindcast job ended, afterany). Memory per ELF: FS_FIT_MEM="6.6.2=320G,14.3=200G"
@@ -430,8 +430,34 @@ if (.slurm) {
 ## FS_SCORE_MEM (default 32G): each score job, one ELF.
 ##   FS_SET=chain FS_TRIAL=wd03,wd04 FS_RF_ELFS=6.6.2,14.3 FS_FIT_MEM=... FS_FIT_WORKER_GB=... [FS_CHAIN_SUFFIX=_e] Rscript expt.R
 ## FS_DRY_RUN=TRUE writes the queue and the job scripts without submitting; delete both (queue .rds, logs/<queue>/) after.
+## Without Slurm it only prints the rows per step and the pane count.
+## Worker panes on this machine (no Slurm): one queue, these panes. Worker panes take the tmux session's environment,
+## not this process's.
+.runTmux <- function(df, n_workers, queue_path) {
+  if (!nzchar(Sys.getenv("TMUX"))) stop("Run expt.R inside tmux")
+  SpaDES.project::experimentTmux(
+    df                  = df,
+    devPackages         = .devPackages,
+    global_path         = "global.R",
+    n_workers           = n_workers,
+    queue_path          = queue_path,
+    on_error            = "continue",
+    delay_before_source = 120,
+    statusCalculate = quote({dd <- dir(file.path("/mnt/fast/outputs", runName), recursive = TRUE, full.names = TRUE)
+                             ee <- grep(value = TRUE, pattern = "objFun.*png$", dd)
+                             fi <- file.info(ee)
+                             tail(fi[order(fi$mtime),], 1) |> rownames() |> dirname()}),
+    folderWithIterInFilename = quote({dd <- dir(file.path("/mnt/fast/outputs", runName), recursive = TRUE, full.names = TRUE)
+                                      ee <- grep(value = TRUE, pattern = "hists", dd)
+                                      fi <- file.info(ee)
+                                      tail(fi[order(fi$mtime),], 1) |> rownames() |> dirname()}),
+    workersToMonitor = outs$params$fireSense_spreadFit$cores,
+    runNameLabel = quote(colnames(q)[1]),
+    ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
+  )
+}
+
 if (identical(Sys.getenv("FS_SET"), "chain")) {
-  if (!.slurm) stop("FS_SET=chain is for Slurm (the GPSC)")
   .trialsRun <- .split(Sys.getenv("FS_TRIAL")); .elfsRun <- .split(Sys.getenv("FS_RF_ELFS"))
   if (!length(.trialsRun) || !all(.trialsRun %in% names(.trials))) stop("FS_SET=chain needs FS_TRIAL=<trials in .trials, comma-separated>")
   if (!length(.elfsRun)) stop("FS_SET=chain needs FS_RF_ELFS")
@@ -452,7 +478,7 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
       .x$.afterType <- c("afterok", "afterok", "afterany")[.k]
       .rows[[length(.rows) + 1L]] <- .x
       .workers[.g[.k]] <- .steps[[.k]]$n_workers
-      .opts[[.g[.k]]] <- .sbatchStep(.steps[[.k]], mem = .mems[.k])
+      if (.slurm) .opts[[.g[.k]]] <- .sbatchStep(.steps[[.k]], mem = .mems[.k])
     }
   }
   ## columns another step does not use are NA: global.R reads NA as "not set"
@@ -460,7 +486,14 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
   .checkColumns(.expt)
   .queue <- paste0("experiment_queue_chain_", if (nzchar(.suffix)) sub("^_", "", .suffix) else format(Sys.Date(), "%Y-%m-%d"), ".rds")
   message("FS_SET=chain: queue ", .queue, ", ", length(.workers), " groups")
-  SpaDES.project::experimentSBATCH(
+  if (!.slurm) {
+    ## tmux: one pool of panes for every group (a pane claims a row once the groups in its .after have finished).
+    ## FS_CHAIN_WORKERS panes, default one per fit plus FS_HC_WORKERS (12) for the hindcast and score rows.
+    .nPanes <- as.integer(Sys.getenv("FS_CHAIN_WORKERS", sum(grepl("^fit_", .expt$.group)) + as.integer(Sys.getenv("FS_HC_WORKERS", "12"))))
+    if (.dryRun) {
+      print(table(sub("_.*", "", .expt$.group))); message("FS_DRY_RUN: ", nrow(.expt), " rows, ", .nPanes, " panes; nothing launched")
+    } else .runTmux(.expt, .nPanes, .queue)
+  } else SpaDES.project::experimentSBATCH(
     df          = .expt,
     devPackages = .devPackages, # one dev library for every group
     global_path = "global.R",
@@ -513,27 +546,6 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
       }
     } else .submit(expt, queue_path, .after)
   } else {
-    if (!nzchar(Sys.getenv("TMUX"))) stop("Run expt.R inside tmux")
-
-    workers <- SpaDES.project::experimentTmux(
-      df                  = expt,
-      devPackages         = .devPackages,
-      global_path         = "global.R",
-      n_workers           = .s$n_workers,
-      queue_path          = queue_path,
-      on_error            = "continue",
-      delay_before_source = 120,
-      statusCalculate = quote({dd <- dir(file.path("/mnt/fast/outputs", runName), recursive = TRUE, full.names = TRUE)
-                               ee <- grep(value = TRUE, pattern = "objFun.*png$", dd)
-                               fi <- file.info(ee)
-                               tail(fi[order(fi$mtime),], 1) |> rownames() |> dirname()}),
-      folderWithIterInFilename = quote({dd <- dir(file.path("/mnt/fast/outputs", runName), recursive = TRUE, full.names = TRUE)
-                                        ee <- grep(value = TRUE, pattern = "hists", dd)
-                                        fi <- file.info(ee)
-                                        tail(fi[order(fi$mtime),], 1) |> rownames() |> dirname()}),
-      workersToMonitor = outs$params$fireSense_spreadFit$cores,
-      runNameLabel = quote(colnames(q)[1]),
-      ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
-    )
+    workers <- .runTmux(expt, .s$n_workers, queue_path)
   }
 }
