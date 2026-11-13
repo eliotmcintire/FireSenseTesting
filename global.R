@@ -24,6 +24,7 @@ inSim <- SpaDES.project::setupProject(
                      .spreadFitMode = "fit",          # or "fit,validate"
                      .heldOutFold = NA_integer_,      # 1 or 2 fits only that fold
                      .spreadFitFileSuffix = "_bufIndep20261024", # buffer-independent spread objective (fireSenseUtils#183, fireSense_spreadFit#91), 2026-10-24; "_prod20261021" was the previous ledger
+                     .ledgerFolder = NA_character_,   # NA: fireSenseUtils' default fit-ledger Drive folder (production); experiments: the testing folder (FS_LEDGER_FOLDER), so spread and ignition fits, and latestSpreadFits, read and write there
                      .spreadLink = NA_character_,     # NA: the module default ("powerLaw"); or "ceiling", "climateOutside", "powerLawSmooth", "richards"
                      .spreadLowerAsymptote = NA_character_, # NA: the module default lowerAsymptote (fireSenseUtils::spreadProbFloor, 0.13); links "powerLawSmooth" and "richards" only, at least fireSenseUtils::spreadLowerAsymptoteMin
                      .spreadRichardsNu = NA_character_, # NA: the module default richardsNu (0.5); link "richards" only; "0" = Gompertz
@@ -118,6 +119,7 @@ inSim <- SpaDES.project::setupProject(
       LandR.assertions = FALSE,
       reproducible.destinationPathShared = file.path(.basePath, "data"),
       reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9",
+      fireSenseUtils.spreadFitLedgerFolder = if (!is.na(.ledgerFolder)) .ledgerFolder, # ignition ledgers follow it (fireSenseUtils::ignitionFitLedgerFolder())
       reproducible.urlRemap = "https://raw.githubusercontent.com/PredictiveEcology/PredictiveEcology.org/main/scripts/arbutus_manifest_SCANFI_v2_clean.csv",
       clusters.deoptimConvergenceWindow = as.integer(.deoptimWindow), # DEoptim early stop: judge over 300 generations ...
       clusters.deoptimMinGenerations = as.integer(.deoptimMinGenerations), # ... and never before 350 (Eliot 2026-11-03; was 400/600 since 2026-10-16); wl<arm> trials 400/400 (2026-11-08)

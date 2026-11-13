@@ -156,9 +156,11 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
 ## starts, whole landscape, 50 reps, 400/400), refit from scratch (spread, ignition and escape) under the new ledger:
 ##   lp04 / lp05: "powerLawSmooth", delta 0.4 / 0.5, lower asymptote 0.13;  lgz: "richards" nu 0 (Gompertz), 0.13;
 ##   lri: "richards" nu 0.5, 0.13;  each also with the per-fire effect (suffix r);  lp04r0 / lgzr0: lower asymptote 0.001, per-fire only
+## Experiment fit ledgers go to the Drive testing folder, not production (Eliot 2026-11-13)
+.ledgerFolderTesting <- "https://drive.google.com/drive/folders/1nqSVuGRYxIvcgZMn7TIbn5HfRiUHR2xq"
 .linkTrial <- function(base, tag, set, fireSD) c(ledger = paste0("_crpsCauseAnn", tag, "_20261114"),
                                                .trials[[base]][setdiff(names(.trials[[base]]), c("ledger", "FS_SPREAD_FIRE_SD_BOUNDS"))],
-                                               set, fireSD)
+                                               set, fireSD, FS_LEDGER_FOLDER = .ledgerFolderTesting)
 .linkArms <- list(lp04 = list("ct3d04", "LinkP04", c(FS_SPREAD_LINK = "powerLawSmooth")),
                   lp05 = list("ct3d05", "LinkP05", c(FS_SPREAD_LINK = "powerLawSmooth")),
                   lgz  = list("ct3d04", "LinkGz",  c(FS_SPREAD_LINK = "richards", FS_SPREAD_RICHARDS_NU = "0")),
@@ -351,6 +353,7 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
   .optionalColumn(".workerMemoryGB", "FS_WORKER_MEM_GB", as.numeric)
   .optionalColumn(".cacheChaining", "FS_NO_CACHECHAINING", function(x) !isTRUE(as.logical(x)))
   .optionalColumn(".fitQueue", "FS_FIT_QUEUE")
+  .optionalColumn(".ledgerFolder", "FS_LEDGER_FOLDER") # experiments: the Drive testing folder for fit ledgers (production keeps the default)
   .optionalColumn(".deoptimWindow", "FS_DEOPTIM_WINDOW", as.integer)
   .optionalColumn(".deoptimMinGenerations", "FS_DEOPTIM_MIN_GENERATIONS", as.integer)
   ## NRV archive: a predict wave uploads into its own campaign folder, so it never overwrites the runs users read now
