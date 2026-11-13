@@ -145,6 +145,12 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
                       paste0("c", .coreArms)),
              setNames(lapply(.trials[.coreArms], .coreTrial, tag = "CoreRE", fireSD = character()),
                       paste0("c", .coreArms, "r")))
+## 2026-11-12: the same 12 core trials with the ignition fit weighted by each coarse pixel's core share (dataPrepFit#101,
+## ignitionFit#55); the spread fits are reused (each trial's spread ledger copied to the new suffix before launch), so only
+## ignition and escape refit: c<arm>i / c<arm>ri, ledger <arm>CoreIg_20261112 / <arm>CoreREIg_20261112
+.coreTrials <- paste0("c", c(.coreArms, paste0(.coreArms, "r")))
+.trials <- c(.trials, setNames(lapply(.trials[.coreTrials], function(t)
+  c(ledger = sub("_20261111$", "Ig_20261112", t[["ledger"]]), t[names(t) != "ledger"])), paste0(.coreTrials, "i")))
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
