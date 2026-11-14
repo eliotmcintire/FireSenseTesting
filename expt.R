@@ -427,7 +427,7 @@ if (.slurm) {
                         qos = "nrcan__standard_gpsc8_allocation", nodes = 1, ntasks = 1,
                         export = paste0("ALL,TMPDIR=", .slurmTmp), kill_on_invalid_dep = "yes")
   ## a step's own options. `mem` (FS_SBATCH_MEM for one FS_SET) replaces the default memory; "" keeps it
-  .sbatchStep <- function(s, mem = s$ev("FS_SBATCH_MEM")) {
+  .sbatchStep <- function(s, mem = s$ev("FS_SBATCH_MEM"), cpus = s$ev("FS_SBATCH_CPUS")) {
     .mem <- function(default) if (nzchar(mem)) mem else default
     if (s$phase1Only) list(cpus_per_task = 1, mem = "96G", time = "1-00:00:00") # 32G was OOM-killed (12.1_2, prepSpreadFitData); to be set from measured peaks
     else if (identical(s$set, "nrvreport") && isTRUE(s$ps$nrvReportMap)) # the ELF map only
@@ -438,7 +438,8 @@ if (.slurm) {
       list(cpus_per_task = 12, mem = .mem("160G"), time = "2-00:00:00")
     else if (s$oneCore) # one core per ELF x year (hindcast) or ELF x set (NRV) job; FS_SBATCH_MEM until the MaxRSS of the first jobs is known
       list(cpus_per_task = 1, mem = .mem("64G"), time = if (identical(s$set, "nrv")) "7-00:00:00" else "2-00:00:00")
-    else list(cpus_per_task = 42, # 40 workers + 2 kept free; 7.1 GB/CPU is the partition's limit
+    else list(cpus_per_task = if (nzchar(cpus)) as.integer(cpus) else 42L, # 40 workers + 2 kept free. The partition caps memory at
+              ## 7270 MB per CPU (MaxMemPerCPU), so more than ~300G needs more CPUs: 64 (the whole node) allows ~454G
               ## per ELF (FS_SBATCH_MEM, or FS_FIT_MEM in a chain): 40 x the worker peak clusters records in
               ## fitMemory.rds, / 0.9 headroom, + the master. 13.1 and 6.6.1 need ~1-2 GB per worker (294G); 12.1_2 needs 8.5 (420G)
               mem = .mem("294G"),
@@ -452,6 +453,7 @@ if (.slurm) {
 ## queue groups (SpaDES.project ?experimentGroups): fit_<tag> (the refit row), hc_<tag> (its ELF x year rows, after the
 ## fit succeeded) and score_<tag> (after every hindcast job ended, afterany). Memory per ELF: FS_FIT_MEM="6.6.2=320G,14.3=200G"
 ## (the fit job) and FS_FIT_WORKER_GB="6.6.2=6.1,14.3=3.5" (per DEoptim worker); an ELF left out takes the defaults.
+## FS_FIT_CPUS="6.6.2=64" (the fit job's CPUs, default 42): the partition allows 7270 MB per CPU, so a whole node (64) for ~454G.
 ## FS_SCORE_MEM (default 32G): each score job, one ELF.
 ##   FS_SET=chain FS_TRIAL=wd03,wd04 FS_RF_ELFS=6.6.2,14.3 FS_FIT_MEM=... FS_FIT_WORKER_GB=... [FS_CHAIN_SUFFIX=_e] Rscript expt.R
 ## FS_DRY_RUN=TRUE writes the queue and the job scripts without submitting; delete both (queue .rds, logs/<queue>/) after.
@@ -489,7 +491,7 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
   if (!length(.trialsRun) || !all(.trialsRun %in% names(.trials))) stop("FS_SET=chain needs FS_TRIAL=<trials in .trials, comma-separated>")
   if (!length(.elfsRun)) stop("FS_SET=chain needs FS_RF_ELFS")
   .perELF <- function(env) { kv <- strsplit(.split(Sys.getenv(env, "")), "="); setNames(vapply(kv, `[`, "", 2L), vapply(kv, `[`, "", 1L)) }
-  .fitMem <- .perELF("FS_FIT_MEM"); .fitWorkerGB <- .perELF("FS_FIT_WORKER_GB")
+  .fitMem <- .perELF("FS_FIT_MEM"); .fitWorkerGB <- .perELF("FS_FIT_WORKER_GB"); .fitCpus <- .perELF("FS_FIT_CPUS")
   .suffix <- Sys.getenv("FS_CHAIN_SUFFIX")
   .rows <- list(); .workers <- integer(); .opts <- list()
   for (.tr in .trialsRun) for (.e in .elfsRun) {
@@ -505,7 +507,8 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
       .x$.afterType <- c("afterok", "afterok", "afterany")[.k]
       .rows[[length(.rows) + 1L]] <- .x
       .workers[.g[.k]] <- .steps[[.k]]$n_workers
-      if (.slurm) .opts[[.g[.k]]] <- .sbatchStep(.steps[[.k]], mem = .mems[.k])
+      if (.slurm) .opts[[.g[.k]]] <- .sbatchStep(.steps[[.k]], mem = .mems[.k],
+                                                  cpus = if (.k == 1L && !is.na(.fitCpus[.e])) .fitCpus[[.e]] else "")
     }
   }
   ## columns another step does not use are NA: global.R reads NA as "not set"
