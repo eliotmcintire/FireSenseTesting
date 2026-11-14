@@ -23,6 +23,9 @@ inSim <- SpaDES.project::setupProject(
                      .doFit = NA,                     # NA: fit only if no ledger fit; TRUE: always refit; FALSE: never fit
                      .spreadFitMode = "fit",          # or "fit,validate"
                      .heldOutFold = NA_integer_,      # 1 or 2 fits only that fold
+                     .spreadProfileAt = NA_character_, # NA: off; e.g. "-20,-10,0,10,20": the job fits nothing and profiles the ledger's spread fit at these values (fireSense_spreadFit mode "profile")
+                     .spreadProfileCoefs = NA_character_, # with .spreadProfileAt: NA every covariate coefficient; "fuel" the fuel biomass ones; or names, comma-separated
+                     .spreadProfileReps = NA_character_, # with .spreadProfileAt: evaluations per profile point; NA: the module default profileReps
                      .spreadFitFileSuffix = "_bufIndep20261024", # buffer-independent spread objective (fireSenseUtils#183, fireSense_spreadFit#91), 2026-10-24; "_prod20261021" was the previous ledger
                      .ledgerFolder = NA_character_,   # NA: fireSenseUtils' default fit-ledger Drive folder (production); experiments: the testing folder (FS_LEDGER_FOLDER), so spread and ignition fits, and latestSpreadFits, read and write there
                      .spreadLink = NA_character_,     # NA: the module default ("powerLaw"); or "ceiling", "climateOutside", "powerLawSmooth", "richards"
@@ -150,7 +153,10 @@ inSim <- SpaDES.project::setupProject(
       fireSense_spreadFit = c(list(
         doFit = .doFit,
         cores = .cores,
-        mode = strsplit(.spreadFitMode, ",")[[1]]),
+        mode = if (!is.na(.spreadProfileAt)) "profile" else strsplit(.spreadFitMode, ",")[[1]]),
+        if (!is.na(.spreadProfileAt)) list(profileAt = as.numeric(strsplit(.spreadProfileAt, ",")[[1]])),
+        if (!is.na(.spreadProfileCoefs)) list(profileCoefs = strsplit(.spreadProfileCoefs, ",")[[1]]),
+        if (!is.na(.spreadProfileReps)) list(profileReps = as.integer(.spreadProfileReps)),
         if (!is.na(.spreadLink)) list(spreadLink = .spreadLink),
         if (!is.na(.spreadLowerAsymptote)) list(lowerAsymptote = as.numeric(.spreadLowerAsymptote)),
         if (!is.na(.spreadRichardsNu)) list(richardsNu = as.numeric(.spreadRichardsNu)),
@@ -181,7 +187,7 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.cohortEstablishmentLimit)) list(cohortEstablishmentLimit = as.numeric(strsplit(.cohortEstablishmentLimit, ",")[[1]]))),
       Biomass_speciesFactorial = list(.plots = NULL),
       Biomass_speciesParameters = list(standAgesForFitting = c(0, 100), balanceGrowth = TRUE),
-      fireSense_ignitionFit = list(.useCache = TRUE, doFit = .doFit),
+      fireSense_ignitionFit = list(.useCache = TRUE, doFit = if (is.na(.spreadProfileAt)) .doFit else NA), # a profile job fits nothing: its ignition fit is the ledger's
       burnSummaries = list(reps = .rep, summaryPeriod = as.integer(c(times$start, times$end))),
       NRV_summary = list(reps = .rep)),
     # NRV samples observed climate, so no projected years (canClimateData still needs a valid GCM)

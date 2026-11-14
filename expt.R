@@ -18,6 +18,8 @@
 ##     FS_SET=score FS_TRIAL=d05 Rscript expt.R   (after every hindcast job of the trial)
 ##   FS_SET=chain FS_TRIAL=d05,wd05 FS_RF_ELFS=6.6.2,14.3 [FS_FIT_MEM=6.6.2=320G] [FS_FIT_WORKER_GB=6.6.2=6.1] [FS_CHAIN_SUFFIX=_e]
 ##     Rscript expt.R   (Slurm: every trial x ELF's fit, hindcast and score in one call, one queue; see "FS_SET=chain" below)
+##     FS_CHAIN_FIT_ONLY=TRUE: the fit step only. With FS_SPREAD_PROFILE_AT=-20,-10,0,10,20 [FS_SPREAD_PROFILE_COEFS=fuel]
+##     [FS_SPREAD_PROFILE_REPS=30] a fit job fits nothing: it profiles the trial's ledger spread fit at those values
 ##   FS_DRY_RUN=TRUE with any Slurm FS_SET: write the queue and the job scripts (logs/<queue>/), submit nothing
 
 ## inputs, outputs, cache, scratch and shared data: overrides global.R's .basePath here (preRunSetupProject)
@@ -356,6 +358,11 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
   .optionalColumn(".ledgerFolder", "FS_LEDGER_FOLDER") # experiments: the Drive testing folder for fit ledgers (production keeps the default)
   .optionalColumn(".deoptimWindow", "FS_DEOPTIM_WINDOW", as.integer)
   .optionalColumn(".deoptimMinGenerations", "FS_DEOPTIM_MIN_GENERATIONS", as.integer)
+  ## FS_SPREAD_PROFILE_AT=<values,...>: a fit job fits nothing and profiles the ledger's spread fit (fireSense_spreadFit mode
+  ## "profile"); FS_SPREAD_PROFILE_COEFS=fuel|<names,...> (unset: every covariate), FS_SPREAD_PROFILE_REPS=<n>
+  .optionalColumn(".spreadProfileAt", "FS_SPREAD_PROFILE_AT")
+  .optionalColumn(".spreadProfileCoefs", "FS_SPREAD_PROFILE_COEFS")
+  .optionalColumn(".spreadProfileReps", "FS_SPREAD_PROFILE_REPS")
   ## NRV archive: a predict wave uploads into its own campaign folder, so it never overwrites the runs users read now
   if (identical(.set, "nrv") && isTRUE(.phaseSetup$predict) && !(nzchar(.ev("FS_ARCHIVE_DIR")) && nzchar(.ev("FS_ARCHIVE_LEDGER"))))
     stop("FS_NRV_WAVE=predict needs FS_ARCHIVE_DIR (the campaign's own Drive folder) and FS_ARCHIVE_LEDGER (its ledger file name)")
@@ -500,7 +507,8 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
                    .step("hindcast", .tr, c(FS_HC_ELFS = .e)),
                    .step("score", .tr, c(FS_HC_ELFS = .e)))
     .mems <- c(if (!is.na(.fitMem[.e])) .fitMem[[.e]] else "", "", Sys.getenv("FS_SCORE_MEM", "32G"))
-    for (.k in 1:3) {
+    ## FS_CHAIN_FIT_ONLY=TRUE: the fit step alone (e.g. a profile of the ledger fits, FS_SPREAD_PROFILE_AT)
+    for (.k in if (isTRUE(as.logical(Sys.getenv("FS_CHAIN_FIT_ONLY", "FALSE")))) 1L else 1:3) {
       .x <- .steps[[.k]]$expt
       .x$.group <- .g[.k]
       .x$.after <- c("", .g[1:2])[.k]
