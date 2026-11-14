@@ -478,7 +478,9 @@ if (.slurm) {
                                       tail(fi[order(fi$mtime),], 1) |> rownames() |> dirname()}),
     workersToMonitor = outs$params$fireSense_spreadFit$cores,
     runNameLabel = quote(colnames(q)[1]),
-    ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
+    ## the queue sheet goes where the trial's fit ledgers go: an experiment's testing folder (FS_LEDGER_FOLDER), else production
+    ss_id = if (!is.null(df$.ledgerFolder) && !is.na(df$.ledgerFolder[1])) df$.ledgerFolder[1]
+            else "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
   )
 }
 
