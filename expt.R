@@ -173,6 +173,9 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
   if (.a %in% c("lp04", "lgz"))
     .trials[[paste0(.a, "r0")]] <- .linkTrial(.l[[1]], paste0(.l[[2]], "RE0"), c(.l[[3]], FS_SPREAD_LOWER_ASYMPTOTE = "0.001"), character())
 }
+## 2026-11-15: l_rich (lri) with each fit year's fitted ignition and escape multipliers in the hindcast instead of a draw
+## (ignitionFit#56, burn#48). Its spread ledger is lri's, copied on Drive to the new name, so only ignition and escape refit.
+.trials$lrie <- c(ledger = "_crpsCauseAnnLinkRiYE_20261115", .trials$lri[names(.trials$lri) != "ledger"], FS_HC_YEAR_EFFECTS = "fitted")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
