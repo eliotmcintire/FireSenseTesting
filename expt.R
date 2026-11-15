@@ -177,10 +177,15 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
   if (.a %in% c("lp04", "lgz"))
     .trials[[paste0(.a, "r0")]] <- .linkTrial(.l[[1]], paste0(.l[[2]], "RE0"), c(.l[[3]], FS_SPREAD_LOWER_ASYMPTOTE = "0.001"), character())
 }
-## 2026-11-15: l_rich (lri) with each fit year's fitted ignition and escape multipliers in the hindcast instead of a draw
-## (ignitionFit#56, burn#48). Its spread ledger is lri's, copied on Drive to the new name, so only ignition and escape refit.
-.trials$lrie <- c(ledger = "_crpsCauseAnnLinkRiYE_20261115", .trials$lri[names(.trials$lri) != "ledger"], FS_HC_YEAR_EFFECTS = "fitted",
-                 FS_RF_DOFIT = "NA") # without it the fit step refits spread too (doFit TRUE)
+## 2026-11-15: each link arm <a>e: <a> with each fit year's fitted ignition and escape multipliers in the hindcast instead of a
+## draw (ignitionFit#56, burn#48). Ledger <tag>YE_20261115: the arm's spread ledger copied on Drive; lrie refit ignition and
+## escape, and its ignition ledger was then copied to the other arms (the ignition settings are the same), so they fit nothing.
+## The hindcast saves its replay files (reference for FS_SET=fasthc).
+for (.a in grep("^l(p0[45]|gz|ri)(r|r0)?$", names(.trials), value = TRUE))
+  .trials[[paste0(.a, "e")]] <- c(ledger = sub("_20261114$", "YE_20261115", .trials[[.a]][["ledger"]]),
+                                 .trials[[.a]][names(.trials[[.a]]) != "ledger"], FS_HC_YEAR_EFFECTS = "fitted",
+                                 FS_RF_DOFIT = "NA", # without it the fit step refits spread too (doFit TRUE)
+                                 FS_HC_REPLAY_SAVE = "TRUE")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
