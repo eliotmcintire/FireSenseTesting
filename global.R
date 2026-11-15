@@ -110,7 +110,6 @@ inSim <- SpaDES.project::setupProject(
                inputPath = SpaDES.project::pathBuild(pre = file.path(.basePath, "inputs"), .ELFind)), # inputs vary by ELF only: not by rep, GCM or SSP (projected climate tiles carry GCM_ssp in their own folder); the folder is in prepared inputs' cache keys
   # the outputs folder may arrive as its symlink target, so name the run by what is below ".../outputs/"
   runName = gsub("/", "_", sub("^.*/outputs/", "", paths$outputPath)),
-  objects = if (.hc && .fast) list(.ELFind = .ELFind) else list(), # a replay hindcast has no fireSense_ELFs to make it
   times = if (.hc) .hcSetup$times else .times,
   modules = if (.score) "fireSimulator_validation" # modules/; none of the fire-model modules
             else if (.hc && .fast) paste0("fireSense_", c("dataPrepPredict", "spreadPredict", "burn", "summary")) # replay: no climate, vegetation, fit or ELF modules
