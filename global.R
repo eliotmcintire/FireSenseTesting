@@ -220,8 +220,9 @@ inSim <- SpaDES.project::setupProject(
     if (.hc && !is.na(.hcYearEffects)) list(fireSense_burn = list(yearEffects = .hcYearEffects)),
     if (.hc && .hcReplaySave) list(.globals = list(replaySave = TRUE)), # fireSense_dataPrepPredict and fireSense_burn
     if (.hc && .fast) list(.globals = list(replayFrom = .replayFrom), fireSense_burn = list(ignitionSource = "replay"),
-                           fireSense_summary = list(repMaps = FALSE),
-                           fireSense_spreadPredict = if (!is.na(.paramSets)) list(paramSets = .paramSets, repsPerSet = .repsPerSet)))
+                           fireSense_summary = list(repMaps = FALSE)),
+    ## not `fireSense_spreadPredict = if (...) list(...)` in the list above: a NULL there drops hindcastSetup's spreadPredict params
+    if (.hc && .fast && !is.na(.paramSets)) list(fireSense_spreadPredict = list(paramSets = .paramSets, repsPerSet = .repsPerSet)))
 )
 message(inSim$runName)
 ## The NRV page (a queue row with .nrvReport = <tag>, from expt.R's FS_SET=nrvreport): the summary modules in mode = "multi"
