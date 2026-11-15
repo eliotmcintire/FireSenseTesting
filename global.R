@@ -149,7 +149,9 @@ inSim <- SpaDES.project::setupProject(
         .plotInterval = 100,
         .plots = "png",
         .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData")),
-      canClimateData = list(climateGCM = .GCM, climateSSP = .SSP),
+      canClimateData = c(list(climateGCM = .GCM, climateSSP = .SSP),
+        ## a hindcast's year-jobs share one climate folder per ELF (else each year folder gets a ~3.3 GB copy)
+        if (.hc) list(outputDir = file.path(.basePath, "outputs", paste0("hindcast", .hcSuffix), .ELFind, "climate"))),
       fireSense_spreadFit = c(list(
         doFit = .doFit,
         cores = .cores,
