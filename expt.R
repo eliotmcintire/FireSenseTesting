@@ -22,7 +22,8 @@
 ##     FS_SET=score FS_TRIAL=d05 Rscript expt.R   (after every hindcast job of the trial)
 ##   FS_SET=chain FS_TRIAL=d05,wd05 FS_RF_ELFS=6.6.2,14.3 [FS_FIT_MEM=6.6.2=320G] [FS_FIT_WORKER_GB=6.6.2=6.1] [FS_CHAIN_SUFFIX=_e]
 ##     Rscript expt.R   (Slurm: every trial x ELF's fit, hindcast and score in one call, one queue; see "FS_SET=chain" below)
-##     FS_CHAIN_FIT_ONLY=TRUE: the fit step only. With FS_SPREAD_PROFILE_AT=-20,-10,0,10,20 [FS_SPREAD_PROFILE_COEFS=fuel]
+##     FS_CHAIN_STEPS=fit,hc,score (default; also fasthc,fastscore with FS_CHAIN_FASTHC_FROM=<reference trial>: a replay
+##     hindcast of each trial on that trial's hindcast, and its score). FS_CHAIN_FIT_ONLY=TRUE: the fit step only. With FS_SPREAD_PROFILE_AT=-20,-10,0,10,20 [FS_SPREAD_PROFILE_COEFS=fuel]
 ##     [FS_SPREAD_PROFILE_REPS=30] a fit job fits nothing: it profiles the trial's ledger spread fit at those values
 ##   FS_DRY_RUN=TRUE with any Slurm FS_SET: write the queue and the job scripts (logs/<queue>/), submit nothing
 
@@ -534,22 +535,39 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
   .fitMem <- .perELF("FS_FIT_MEM"); .fitWorkerGB <- .perELF("FS_FIT_WORKER_GB"); .fitCpus <- .perELF("FS_FIT_CPUS")
   .suffix <- Sys.getenv("FS_CHAIN_SUFFIX")
   .rows <- list(); .workers <- integer(); .opts <- list()
+  ## FS_CHAIN_STEPS: which of fit, hc, score, fasthc, fastscore (default fit,hc,score; FS_CHAIN_FIT_ONLY=TRUE: the fit step
+  ## alone, e.g. a profile of the ledger fits, FS_SPREAD_PROFILE_AT). fasthc/fastscore need FS_CHAIN_FASTHC_FROM=<trial>: each
+  ## trial's replay hindcast of that trial's hindcast (its ignitions and covariates, FS_HC_REPLAY_SAVE), after that trial's hc
+  ## step of the ELF when it is in this call, and its score
+  .stepNames <- c("fit", "hc", "score", "fasthc", "fastscore")
+  .stepsRun <- if (isTRUE(as.logical(Sys.getenv("FS_CHAIN_FIT_ONLY", "FALSE")))) "fit" else .split(Sys.getenv("FS_CHAIN_STEPS", "fit,hc,score"))
+  if (!all(.stepsRun %in% .stepNames)) stop("FS_CHAIN_STEPS must be among ", paste(.stepNames, collapse = ", "))
+  .fastFrom <- Sys.getenv("FS_CHAIN_FASTHC_FROM")
+  if (any(c("fasthc", "fastscore") %in% .stepsRun) && !.fastFrom %in% names(.trials)) stop("FS_CHAIN_STEPS fasthc needs FS_CHAIN_FASTHC_FROM=<trial>")
   for (.tr in .trialsRun) for (.e in .elfsRun) {
-    .g <- paste0(c("fit_", "hc_", "score_"), .tr, "_", gsub("\\.", "_", .e), .suffix)
-    .steps <- list(.step("refit", .tr, c(FS_RF_ELFS = .e, if (!is.na(.fitWorkerGB[.e])) c(FS_WORKER_MEM_GB = .fitWorkerGB[[.e]]))),
-                   .step("hindcast", .tr, c(FS_HC_ELFS = .e)),
-                   .step("score", .tr, c(FS_HC_ELFS = .e)))
-    .mems <- c(if (!is.na(.fitMem[.e])) .fitMem[[.e]] else "", "", Sys.getenv("FS_SCORE_MEM", "32G"))
-    ## FS_CHAIN_FIT_ONLY=TRUE: the fit step alone (e.g. a profile of the ledger fits, FS_SPREAD_PROFILE_AT)
-    for (.k in if (isTRUE(as.logical(Sys.getenv("FS_CHAIN_FIT_ONLY", "FALSE")))) 1L else 1:3) {
+    .gOf <- function(tr) setNames(paste0(.stepNames, "_", tr, "_", gsub("\\.", "_", .e), .suffix), .stepNames)
+    .g <- .gOf(.tr)
+    .fastOver <- if (nzchar(.fastFrom)) c(FS_HC_ELFS = .e, FS_FASTHC_FROM = .trials[[.fastFrom]][["ledger"]], FS_FASTHC_TAG = .fastFrom,
+                                         FS_HC_REPLAY_SAVE = "FALSE") # a replay saves no replay files
+    .steps <- list(fit = .step("refit", .tr, c(FS_RF_ELFS = .e, if (!is.na(.fitWorkerGB[.e])) c(FS_WORKER_MEM_GB = .fitWorkerGB[[.e]]))),
+                   hc = .step("hindcast", .tr, c(FS_HC_ELFS = .e)),
+                   score = .step("score", .tr, c(FS_HC_ELFS = .e)),
+                   fasthc = if (nzchar(.fastFrom)) .step("fasthc", .tr, .fastOver),
+                   fastscore = if (nzchar(.fastFrom)) .step("score", .tr, .fastOver))
+    .mems <- c(fit = if (!is.na(.fitMem[.e])) .fitMem[[.e]] else "", hc = "", score = Sys.getenv("FS_SCORE_MEM", "32G"),
+               fasthc = "", fastscore = Sys.getenv("FS_SCORE_MEM", "32G"))
+    .afters <- c(fit = "", hc = .g[["fit"]], score = .g[["hc"]],
+                 fasthc = if (nzchar(.fastFrom)) .gOf(.fastFrom)[["hc"]] else "", fastscore = .g[["fasthc"]])
+    for (.k in .stepsRun) {
       .x <- .steps[[.k]]$expt
-      .x$.group <- .g[.k]
-      .x$.after <- c("", .g[1:2])[.k]
-      .x$.afterType <- c("afterok", "afterok", "afterany")[.k]
+      .x$.group <- .g[[.k]]
+      ## a step whose predecessor is not in this call (an earlier launch ran it) starts at once
+      .x$.after <- if (.afters[[.k]] %in% unlist(lapply(.trialsRun, function(tr) .gOf(tr)[.stepsRun]))) .afters[[.k]] else ""
+      .x$.afterType <- c(fit = "afterok", hc = "afterok", score = "afterany", fasthc = "afterok", fastscore = "afterany")[[.k]]
       .rows[[length(.rows) + 1L]] <- .x
-      .workers[.g[.k]] <- .steps[[.k]]$n_workers
-      if (.slurm) .opts[[.g[.k]]] <- .sbatchStep(.steps[[.k]], mem = .mems[.k],
-                                                  cpus = if (.k == 1L && !is.na(.fitCpus[.e])) .fitCpus[[.e]] else "")
+      .workers[.g[[.k]]] <- .steps[[.k]]$n_workers
+      if (.slurm) .opts[[.g[[.k]]]] <- .sbatchStep(.steps[[.k]], mem = .mems[[.k]],
+                                                    cpus = if (.k == "fit" && !is.na(.fitCpus[.e])) .fitCpus[[.e]] else "")
     }
   }
   ## columns another step does not use are NA: global.R reads NA as "not set"
