@@ -94,7 +94,7 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
 .trialBase <- c(FS_FIRE_CAUSES = "natural,unknown", FS_SPREAD_GATE_REFUSAL = "simulate", FS_SPREAD_REPS = "100",
                 FS_SPREAD_INITPOP_METHOD = "emulator", FS_SPREAD_TESTS = "crps",
                 FS_SPREAD_CRPS_WEIGHTS = "fire=1,adTest=0.34,areaDist=2.6,totalArea=164,top10=16.5,annualArea=520",
-                FS_HC_ALLSETS = "TRUE", FS_HC_WORKERS = "1", FS_HC_AFTER_FITS = "TRUE")
+                FS_HC_ALLSETS = "TRUE", FS_HC_WORKERS = "13", FS_HC_AFTER_FITS = "TRUE")
 .trials <- list(
   ## 2026-11-04, GPSC, 6.6.2 14.3 11.3 11.4: δ (power-law shape) 0.3-0.5; top-10 weight x3 (t3); the tail-share term (ts);
   ## the year-effect SD capped at 1 (sd1)
