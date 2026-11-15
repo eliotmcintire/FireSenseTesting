@@ -6,6 +6,10 @@
 ##   FS_SET=phase1 [FS_NRV_ELFS=...|all] [FS_FIT_QUEUE=<fit queue>] Rscript expt.R   (inputs and caches only, ahead of the fits:
 ##     same order as the fits; skips any ELF the fit queue has claimed)
 ##   FS_SET=hindcast FS_HC_ELFS=4.1,14.4 [FS_HC_LEDGER=_boundfix_rep81] [FS_HC_IGNITIONS=observedEscapes] [FS_HC_ALLSETS=TRUE] [FS_HC_YEAR_EFFECTS=fitted] Rscript expt.R
+##     [FS_HC_REPLAY_SAVE=TRUE]: the hindcast also saves its replay files (reference for FS_SET=fasthc; needs FS_HC_ALLSETS=TRUE)
+##   FS_SET=fasthc FS_HC_ELFS=6.6.2 FS_FASTHC_FROM=<reference hindcast folder suffix> FS_FASTHC_TAG=<tag> [FS_FASTHC_SETS=<.rds|.csv>]
+##     [FS_FASTHC_REPS=<reps per set>] [FS_HC_LEDGER=...] Rscript expt.R   (replay hindcast: dataPrepPredict, spreadPredict, burn, summary,
+##     with the reference's covariates and ignitions; outputs/hindcast<ledger>_fast<tag>/. Score it: FS_SET=score FS_FASTHC_TAG=<tag> [FS_FASTHC_SETS=...])
 ##   FS_SET=refit FS_RF_ELFS=6.6.1,9.1.2 Rscript expt.R   (same rep and ledger as production, so caches are shared)
 ##   FS_SET=refit FS_PHASE1_ONLY=TRUE FS_RF_ELFS=... Rscript expt.R   (caches only: here, ahead of the same refit on the GPSC)
 ##   FS_SET=nrvreport FS_NRVR_ELFS=6.4,9.3 [FS_NRVR_TAG=phase5] [FS_NRVR_MODULES=modules] Rscript expt.R   (the NRV page's
@@ -208,6 +212,11 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
   if (.set %in% c("fit", "phase1")) {
     .phase1Only <- identical(.set, "phase1"); .set <- "nrv"; over["FS_NRV_WAVE"] <- "fit"
   }
+  .fast <- identical(.set, "fasthc") # a replay hindcast: a hindcast of the same jobs with its own folder and queue
+  if (.fast) {
+    for (.v in c("FS_FASTHC_FROM", "FS_FASTHC_TAG")) if (!nzchar(.ev(.v))) stop("FS_SET=fasthc needs ", .v)
+    .set <- "hindcast"; over["FS_HC_ALLSETS"] <- "TRUE" # the reference's 20 reps
+  }
 
   ## hindcast and score years: every fire year of the fits, 1986-2024 (decided 2026-10-25); FS_HC_YEARS=<years,...> for a subset.
   ## Y+1: SCANFI year Y may already show year Y's burns, so year Y+1 uses SCANFI Y (pre-burn vegetation)
@@ -238,7 +247,7 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
     ## in turn, so workers do not queue behind one ELF's cache build.
     if (.phase1Only) stop("FS_SET=hindcast has no phase-1 form")
     if (!nzchar(.ev("FS_HC_ELFS"))) stop("FS_SET=hindcast needs FS_HC_ELFS=<ELFs with a fit, comma-separated>")
-    .phaseSetup <- list(queue = paste0("experiment_queue_hindcast_", .ev("FS_HC_TAG", format(Sys.Date(), "%Y-%m-%d")), ".rds"),
+    .phaseSetup <- list(queue = paste0("experiment_queue_", if (.fast) "fasthc" else "hindcast", "_", .ev("FS_HC_TAG", format(Sys.Date(), "%Y-%m-%d")), if (.fast) paste0("_", .ev("FS_FASTHC_TAG")), ".rds"),
                         onlyELFs = .split(.ev("FS_HC_ELFS")),
                         ## FS_HC_ALLSETS=TRUE: one job per ELF x year runs all sets (20 reps, 5 x 4), so one .rep
                         hcAllSets = isTRUE(as.logical(.ev("FS_HC_ALLSETS", "FALSE"))),
@@ -343,6 +352,8 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
   if (!is.null(.phaseSetup$spreadPowerLawShape)) expt$.spreadPowerLawShape <- .phaseSetup$spreadPowerLawShape
   if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
   if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
+  ## FS_HC_REPLAY_SAVE=TRUE: a hindcast saves its replay files (dataPrepPredict, burn replaySave) for FS_SET=fasthc
+  if (isTRUE(as.logical(.ev("FS_HC_REPLAY_SAVE", "FALSE")))) expt$.hcReplaySave <- TRUE
   ## FS_HC_YEAR_EFFECTS=fitted: a hindcast uses each fit year's fitted ignition/escape multipliers instead of a draw (fireSense_burn yearEffects)
   if (nzchar(.ev("FS_HC_YEAR_EFFECTS"))) expt$.hcYearEffects <- .ev("FS_HC_YEAR_EFFECTS")
   if (!is.null(.phaseSetup$fireCauses)) expt$.fireCauses <- .phaseSetup$fireCauses
@@ -376,6 +387,14 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
   .optionalColumn(".afterQueue", "FS_AFTER_QUEUE")
   .optionalColumn(".diagFile", "FS_DIAG_FILE")
   .optionalColumn(".rprofPrefix", "FS_RPROF")
+  ## FS_SET=fasthc and its score: .fastTag names the folder (hindcast<ledger>_fast<tag>); FS_FASTHC_SETS=<.rds|.csv> of spread
+  ## parameter sets (fireSense_spreadPredict paramSets; the score then scores by set), FS_FASTHC_REPS the reps per set
+  if (.fast || isTRUE(.phaseSetup$score)) {
+    .optionalColumn(".fastTag", "FS_FASTHC_TAG")
+    .optionalColumn(".paramSets", "FS_FASTHC_SETS")
+    if (isTRUE(.phaseSetup$score) && nzchar(.ev("FS_FASTHC_SETS"))) expt$.scoreBySet <- TRUE
+  }
+  if (.fast) .optionalColumn(".repsPerSet", "FS_FASTHC_REPS", as.integer)
   .optionalColumn(".scoreSkip", "FS_SCORE_SKIP") # FS_SET=score: ELFs left out of the scoring, comma-separated
   .optionalColumn(".nrvReportModules", "FS_NRVR_MODULES") # FS_SET=nrvreport: the folder of the summary modules
 
@@ -396,6 +415,8 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
     .ny <- length(.phaseSetup$hindcastYears)
     expt <- expt[rep(seq_len(NROW(expt)), each = .ny), , drop = FALSE]
     expt$.hindcastYear <- rep(.phaseSetup$hindcastYears, times = NROW(expt) / .ny)
+    ## each job replays its own ELF x year folder of the reference hindcast (its set 1: one job, 20 reps)
+    if (.fast) expt$.replayFrom <- file.path(.basePath, "outputs", paste0("hindcast", .ev("FS_FASTHC_FROM")), expt$.ELFind, expt$.hindcastYear, "1")
     if (nzchar(.ev("FS_HC_JOBS")))
       expt <- expt[paste(expt$.ELFind, expt$.hindcastYear, expt$.rep, sep = "/") %in% .split(.ev("FS_HC_JOBS")), , drop = FALSE]
     if (isTRUE(as.logical(.ev("FS_HC_INTERLEAVE", "FALSE"))))

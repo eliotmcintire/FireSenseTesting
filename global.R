@@ -49,6 +49,12 @@ inSim <- SpaDES.project::setupProject(
                      .hindcastYear = NA_integer_,     # a SCANFI year makes this job a hindcast
                      .hcAllSets = FALSE,              # TRUE: one hindcast job runs every fitted spread parameter set, 20 reps (5 sets x 4; fireSense_spreadPredict paramSetByReplicate)
                      .hcIgnitions = NA_character_,    # NA: the module default ("predicted"); "observedEscapes": a hindcast spreads each year's observed escapes (spread alone)
+                     .hcReplaySave = FALSE,           # TRUE: a hindcast saves its replay files (dataPrepPredict, burn replaySave), the reference of a replay hindcast (expt.R FS_SET=fasthc)
+                     .replayFrom = NA_character_,     # a replay hindcast (FS_SET=fasthc): the reference job's folder; its covariates and ignitions are replayed, only spread is run
+                     .fastTag = NA_character_,        # a replay hindcast and its score: the folder is hindcast<ledger>_fast<tag>
+                     .paramSets = NA_character_,      # a replay hindcast: .rds/.csv of spread parameter sets (fireSense_spreadPredict paramSets); NA: the ledger's
+                     .repsPerSet = 1L,                # with .paramSets: reps per set
+                     .scoreBySet = FALSE,             # a score of a replay hindcast with .paramSets: one row per set (fireSimulator_validation bySet)
                      .hcYearEffects = NA_character_,  # NA: the module default ("draw"); "fitted": a hindcast uses each fit year's fitted ignition/escape multipliers (fireSense_burn yearEffects; fits from fireSense_ignitionFit >= 1.2.0.9013)
                      ## Phase 4 (expt.R's FS_SET=score): the job runs fireSimulator_validation alone. It scores the hindcasts of every
                      ## ELF that has finished all .hcYears, pooled, and writes wave1.rds, wave1_results.csv and validation.html
@@ -80,7 +86,8 @@ inSim <- SpaDES.project::setupProject(
   # A hindcast holds year Y's vegetation static and draws Y's climate (see fireSenseUtils::hindcastSetup)
   .hc = !is.na(.hindcastYear),
   .hcSetup = if (.hc) fireSenseUtils::hindcastSetup(.hindcastYear, allSets = .hcAllSets, ignitions = .hcIgnitions),
-  .hcSuffix = paste0(.spreadFitFileSuffix, if (identical(.hcIgnitions, "observedEscapes")) "_obsEsc"), # hindcast and score folders: an observedEscapes hindcast is kept apart
+  .fast = !is.na(.replayFrom),
+  .hcSuffix = paste0(.spreadFitFileSuffix, if (identical(.hcIgnitions, "observedEscapes")) "_obsEsc", if (!is.na(.fastTag)) paste0("_fast", .fastTag)), # hindcast and score folders: an observedEscapes hindcast is kept apart
   .doFit = if (.hc) FALSE else .doFit, # a hindcast only predicts from a fit in the ledger; it stops if there is none
   .NRV = identical(.GCM, "NRV"),
   .score = isTRUE(as.logical(.score)), # NA in a queue whose other rows score (FS_SET=chain): not a score row
@@ -103,8 +110,10 @@ inSim <- SpaDES.project::setupProject(
                inputPath = SpaDES.project::pathBuild(pre = file.path(.basePath, "inputs"), .ELFind)), # inputs vary by ELF only: not by rep, GCM or SSP (projected climate tiles carry GCM_ssp in their own folder); the folder is in prepared inputs' cache keys
   # the outputs folder may arrive as its symlink target, so name the run by what is below ".../outputs/"
   runName = gsub("/", "_", sub("^.*/outputs/", "", paths$outputPath)),
+  objects = if (.hc && .fast) list(.ELFind = .ELFind) else list(), # a replay hindcast has no fireSense_ELFs to make it
   times = if (.hc) .hcSetup$times else .times,
   modules = if (.score) "fireSimulator_validation" # modules/; none of the fire-model modules
+            else if (.hc && .fast) paste0("fireSense_", c("dataPrepPredict", "spreadPredict", "burn", "summary")) # replay: no climate, vegetation, fit or ELF modules
             else if (.hc) .hcSetup$modules else .modules, # a hindcast cannot use the parent: it would bring the vegetation modules
   # only what this file itself calls or configures; modules list their own in reqdPkgs
   packages = c("PredictiveEcology/SpaDES.core@development (>= 3.2.1.9056)",      # 9056: nested init keeps dot-named outputs (#516); event hits keep duplicate events (#505); spades.cacheKeyReachable (#500), cacheKey = FALSE (#503); module version out of event cache keys (#501); module globalVariables() (#496) without the self-referencing simList (#498), cache hit restores own outputs only (#495), chain jump restores changed objects (#497)
@@ -201,6 +210,7 @@ inSim <- SpaDES.project::setupProject(
     if (.score) list(fireSimulator_validation = list(
       hindcastPath = file.path(.basePath, "outputs", paste0("hindcast", .hcSuffix)),
       hindcastYears = .scoreYears,
+      bySet = .scoreBySet,
       skipELFs = if (!is.na(.scoreSkip)) strsplit(.scoreSkip, ",")[[1]] else character(0),
       inputsPath = file.path(.basePath, "inputs"), ledgerSuffix = .spreadFitFileSuffix,
       nCores = as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", "1")), # ELFs read in parallel on the job's CPUs
@@ -208,7 +218,11 @@ inSim <- SpaDES.project::setupProject(
       pageSubtitle = paste0("Spread fits ", sub("^_", "", .spreadFitFileSuffix), " &middot; hindcasts ",
                             paste(range(.scoreYears), collapse = "&ndash;"), ", ", length(.scoreYears), " years, 20 runs per ELF"))),
     if (.hc && !is.na(.fireCauses)) list(fireSense_summary = list(fireCauses = strsplit(.fireCauses, ",")[[1]])),
-    if (.hc && !is.na(.hcYearEffects)) list(fireSense_burn = list(yearEffects = .hcYearEffects)))
+    if (.hc && !is.na(.hcYearEffects)) list(fireSense_burn = list(yearEffects = .hcYearEffects)),
+    if (.hc && .hcReplaySave) list(.globals = list(replaySave = TRUE)), # fireSense_dataPrepPredict and fireSense_burn
+    if (.hc && .fast) list(.globals = list(replayFrom = .replayFrom), fireSense_burn = list(ignitionSource = "replay"),
+                           fireSense_summary = list(repMaps = FALSE),
+                           fireSense_spreadPredict = if (!is.na(.paramSets)) list(paramSets = .paramSets, repsPerSet = .repsPerSet)))
 )
 message(inSim$runName)
 ## The NRV page (a queue row with .nrvReport = <tag>, from expt.R's FS_SET=nrvreport): the summary modules in mode = "multi"
