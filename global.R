@@ -49,6 +49,7 @@ inSim <- SpaDES.project::setupProject(
                      .hindcastYear = NA_integer_,     # a SCANFI year makes this job a hindcast
                      .hcAllSets = FALSE,              # TRUE: one hindcast job runs every fitted spread parameter set, 20 reps (5 sets x 4; fireSense_spreadPredict paramSetByReplicate)
                      .hcIgnitions = NA_character_,    # NA: the module default ("predicted"); "observedEscapes": a hindcast spreads each year's observed escapes (spread alone)
+                     .hcYearEffects = NA_character_,  # NA: the module default ("draw"); "fitted": a hindcast uses each fit year's fitted ignition/escape multipliers (fireSense_burn yearEffects; fits from fireSense_ignitionFit >= 1.2.0.9013)
                      ## Phase 4 (expt.R's FS_SET=score): the job runs fireSimulator_validation alone. It scores the hindcasts of every
                      ## ELF that has finished all .hcYears, pooled, and writes wave1.rds, wave1_results.csv and validation.html
                      .score = FALSE,
@@ -206,7 +207,8 @@ inSim <- SpaDES.project::setupProject(
       pageTitle = "Hindcast validation, GPSC fits",
       pageSubtitle = paste0("Spread fits ", sub("^_", "", .spreadFitFileSuffix), " &middot; hindcasts ",
                             paste(range(.scoreYears), collapse = "&ndash;"), ", ", length(.scoreYears), " years, 20 runs per ELF"))),
-    if (.hc && !is.na(.fireCauses)) list(fireSense_summary = list(fireCauses = strsplit(.fireCauses, ",")[[1]])))
+    if (.hc && !is.na(.fireCauses)) list(fireSense_summary = list(fireCauses = strsplit(.fireCauses, ",")[[1]])),
+    if (.hc && !is.na(.hcYearEffects)) list(fireSense_burn = list(yearEffects = .hcYearEffects)))
 )
 message(inSim$runName)
 ## The NRV page (a queue row with .nrvReport = <tag>, from expt.R's FS_SET=nrvreport): the summary modules in mode = "multi"
