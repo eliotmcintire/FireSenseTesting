@@ -179,7 +179,8 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
 }
 ## 2026-11-15: l_rich (lri) with each fit year's fitted ignition and escape multipliers in the hindcast instead of a draw
 ## (ignitionFit#56, burn#48). Its spread ledger is lri's, copied on Drive to the new name, so only ignition and escape refit.
-.trials$lrie <- c(ledger = "_crpsCauseAnnLinkRiYE_20261115", .trials$lri[names(.trials$lri) != "ledger"], FS_HC_YEAR_EFFECTS = "fitted")
+.trials$lrie <- c(ledger = "_crpsCauseAnnLinkRiYE_20261115", .trials$lri[names(.trials$lri) != "ledger"], FS_HC_YEAR_EFFECTS = "fitted",
+                 FS_RF_DOFIT = "NA") # without it the fit step refits spread too (doFit TRUE)
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -332,7 +333,8 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
   expt <- expand.grid(.ELFind = .ELFinds, .rep = .phaseSetup$reps, stringsAsFactors = FALSE)
   expt$.GCM <- "NRV"
   expt$.basePath <- .basePath
-  if (.phaseSetup$refit) expt$.doFit <- TRUE
+  ## FS_RF_DOFIT=NA: fit only what the ledger lacks (e.g. a spread ledger copied to a new suffix: ignition and escape refit only)
+  if (.phaseSetup$refit) expt$.doFit <- as.logical(.ev("FS_RF_DOFIT", "TRUE"))
   if (nzchar(.phaseSetup$ledgerSuffix %||% "")) expt$.spreadFitFileSuffix <- .phaseSetup$ledgerSuffix
   if (!is.null(.phaseSetup$spreadLink)) expt$.spreadLink <- .phaseSetup$spreadLink
   if (!is.null(.phaseSetup$spreadLowerAsymptote)) expt$.spreadLowerAsymptote <- .phaseSetup$spreadLowerAsymptote
