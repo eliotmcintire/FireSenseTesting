@@ -161,8 +161,9 @@ inSim <- SpaDES.project::setupProject(
         .plots = "png",
         .useCache = c(".inputObjects", "init", "initPlot", "estimateThreshold", "spreadFitPrepare", "checkData")),
       canClimateData = c(list(climateGCM = .GCM, climateSSP = .SSP),
-        ## a hindcast's year-jobs share one climate folder per ELF (else each year folder gets a ~3.3 GB copy)
-        if (.hc) list(outputDir = file.path(.basePath, "outputs", paste0("hindcast", .hcSuffix), .ELFind, "climate"))),
+        ## a hindcast's year-jobs share one climate folder per ELF (else each year folder gets a ~3.3 GB copy); asPath(, 2):
+        ## the event cache key holds only hindcast<tag>/<ELF>/climate, the same on every machine (canClimateData#33)
+        if (.hc) list(outputDir = reproducible::asPath(file.path(.basePath, "outputs", paste0("hindcast", .hcSuffix), .ELFind, "climate"), 2))),
       fireSense_spreadFit = c(list(
         doFit = .doFit,
         cores = .cores,
