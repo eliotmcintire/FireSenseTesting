@@ -269,6 +269,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
                         hindcastYears = .hcYears,
                         ledgerSuffix = .ev("FS_HC_LEDGER"), # "" = production ledger
                         hcIgnitions = if (nzchar(.ev("FS_HC_IGNITIONS"))) .ev("FS_HC_IGNITIONS"), # unset: drawn ("predicted"); "observedEscapes": spread the observed escapes
+                        spreadCovariates = if (nzchar(.ev("FS_SPREAD_COVARIATES"))) .ev("FS_SPREAD_COVARIATES"), # a hindcast of a null fit ("none") builds the same intercept-only formula
                         fireCauses = if (nzchar(.ev("FS_FIRE_CAUSES"))) .ev("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (same value as the fit's)
                         n_workers = as.integer(.ev("FS_HC_WORKERS", "12")),
                         refit = FALSE,
