@@ -54,6 +54,7 @@ inSim <- SpaDES.project::setupProject(
                      .fastTag = NA_character_,        # a replay hindcast and its score: the folder is hindcast<ledger>_fast<tag>
                      .paramSets = NA_character_,      # a replay hindcast: .rds/.csv of spread parameter sets (fireSense_spreadPredict paramSets); NA: the ledger's
                      .repsPerSet = 1L,                # with .paramSets: reps per set
+                     .covariateFrom = NA_character_,  # a score of a replay hindcast: the reference hindcast folder its climate covariate is read from (fireSimulator_validation covariatePath)
                      .scoreBySet = FALSE,             # a score of a replay hindcast with .paramSets: one row per set (fireSimulator_validation bySet)
                      .hcYearEffects = NA_character_,  # NA: the module default ("draw"); "fitted": a hindcast uses each fit year's fitted ignition/escape multipliers (fireSense_burn yearEffects; fits from fireSense_ignitionFit >= 1.2.0.9013)
                      ## Phase 4 (expt.R's FS_SET=score): the job runs fireSimulator_validation alone. It scores the hindcasts of every
@@ -210,6 +211,7 @@ inSim <- SpaDES.project::setupProject(
       hindcastPath = file.path(.basePath, "outputs", paste0("hindcast", .hcSuffix)),
       hindcastYears = .scoreYears,
       bySet = .scoreBySet,
+      covariatePath = .covariateFrom,
       skipELFs = if (!is.na(.scoreSkip)) strsplit(.scoreSkip, ",")[[1]] else character(0),
       inputsPath = file.path(.basePath, "inputs"), ledgerSuffix = .spreadFitFileSuffix,
       nCores = as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", "1")), # ELFs read in parallel on the job's CPUs

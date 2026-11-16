@@ -401,6 +401,9 @@ for (.a in grep("^l(p0[45]|gz|ri)(r|r0)?$", names(.trials), value = TRUE))
     .optionalColumn(".fastTag", "FS_FASTHC_TAG")
     .optionalColumn(".paramSets", "FS_FASTHC_SETS")
     if (isTRUE(.phaseSetup$score) && nzchar(.ev("FS_FASTHC_SETS"))) expt$.scoreBySet <- TRUE
+    ## a replay saves no climate: its score reads the reference hindcast's (fireSimulator_validation covariatePath)
+    if (isTRUE(.phaseSetup$score) && nzchar(.ev("FS_FASTHC_FROM")))
+      expt$.covariateFrom <- file.path(.basePath, "outputs", paste0("hindcast", .ev("FS_FASTHC_FROM")))
   }
   if (.fast) .optionalColumn(".repsPerSet", "FS_FASTHC_REPS", as.integer)
   .optionalColumn(".scoreSkip", "FS_SCORE_SKIP") # FS_SET=score: ELFs left out of the scoring, comma-separated
