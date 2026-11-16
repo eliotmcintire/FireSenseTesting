@@ -28,6 +28,7 @@ inSim <- SpaDES.project::setupProject(
                      .spreadProfileReps = NA_character_, # with .spreadProfileAt: evaluations per profile point; NA: the module default profileReps
                      .spreadFitFileSuffix = "_bufIndep20261024", # buffer-independent spread objective (fireSenseUtils#183, fireSense_spreadFit#91), 2026-10-24; "_prod20261021" was the previous ledger
                      .ledgerFolder = NA_character_,   # NA: fireSenseUtils' default fit-ledger Drive folder (production); experiments: the testing folder (FS_LEDGER_FOLDER), so spread and ignition fits, and latestSpreadFits, read and write there
+                     .spreadCovariates = NA_character_, # NA: the module default ("all"); "none": intercept-only spread formula (fireSense_dataPrepFit spreadCovariates; the null arm)
                      .spreadLink = NA_character_,     # NA: the module default ("powerLaw"); or "ceiling", "climateOutside", "powerLawSmooth", "richards"
                      .spreadLowerAsymptote = NA_character_, # NA: the module default lowerAsymptote (fireSenseUtils::spreadProbFloor, 0.13); links "powerLawSmooth" and "richards" only, at least fireSenseUtils::spreadLowerAsymptoteMin
                      .spreadRichardsNu = NA_character_, # NA: the module default richardsNu (0.5); link "richards" only; "0" = Gompertz
@@ -192,7 +193,8 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.fireCauses)) list(fireCauses = strsplit(.fireCauses, ",")[[1]]),
         if (!is.na(.prepAreaMult)) list(areaMultiplier = as.call(list(as.name("function"), as.pairlist(alist(size = )),
                                                                       bquote(.(as.numeric(.prepAreaMult)) * fireSenseUtils::multiplier(size)), NULL))),
-        if (isTRUE(as.logical(.wholeLandscape))) list(wholeLandscapeSpreadCovariates = TRUE)),
+        if (isTRUE(as.logical(.wholeLandscape))) list(wholeLandscapeSpreadCovariates = TRUE),
+        if (!is.na(.spreadCovariates)) list(spreadCovariates = .spreadCovariates)),
       Biomass_core = c(list(),
         if (!is.na(.cohortRemoveSuppressed)) list(cohortRemoveSuppressed = as.numeric(strsplit(.cohortRemoveSuppressed, ",")[[1]])),
         if (!is.na(.cohortSquash)) list(cohortSquash = as.numeric(strsplit(.cohortSquash, ",")[[1]])),

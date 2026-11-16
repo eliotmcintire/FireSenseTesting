@@ -178,15 +178,22 @@ for (.a in names(.linkArms)) { .l <- .linkArms[[.a]]
   if (.a %in% c("lp04", "lgz"))
     .trials[[paste0(.a, "r0")]] <- .linkTrial(.l[[1]], paste0(.l[[2]], "RE0"), c(.l[[3]], FS_SPREAD_LOWER_ASYMPTOTE = "0.001"), character())
 }
+## 2026-11-16: the null arm (Eliot): lp05 with an intercept-only spread (no covariates), the baseline every spread covariate
+## choice must beat. lnull refits spread, ignition and escape (ledger LinkNull_20261116); lnulle is the same with fitted year
+## effects in the hindcast (below).
+.trials[["lnull"]] <- .linkTrial("ct3d05", "LinkNull", c(FS_SPREAD_LINK = "powerLawSmooth", FS_SPREAD_COVARIATES = "none"),
+                                 c(FS_SPREAD_FIRE_SD_BOUNDS = "NA"))
+.trials[["lnull"]][["ledger"]] <- "_crpsCauseAnnLinkNull_20261116"
 ## 2026-11-15: each link arm <a>e: <a> with each fit year's fitted ignition and escape multipliers in the hindcast instead of a
 ## draw (ignitionFit#56, burn#48). Ledger <tag>YE_20261115: the arm's spread ledger copied on Drive; lrie refit ignition and
 ## escape, and its ignition ledger was then copied to the other arms (the ignition settings are the same), so they fit nothing.
 ## The hindcast saves its replay files (reference for FS_SET=fasthc).
-for (.a in grep("^l(p0[45]|gz|ri)(r|r0)?$", names(.trials), value = TRUE))
+for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
   .trials[[paste0(.a, "e")]] <- c(ledger = sub("_20261114$", "YE_20261115", .trials[[.a]][["ledger"]]),
                                  .trials[[.a]][names(.trials[[.a]]) != "ledger"], FS_HC_YEAR_EFFECTS = "fitted",
                                  FS_RF_DOFIT = "NA", # without it the fit step refits spread too (doFit TRUE)
                                  FS_HC_REPLAY_SAVE = "TRUE")
+.trials[["lnulle"]][["ledger"]] <- "_crpsCauseAnnLinkNullYE_20261116" # lnull's ledgers copied on Drive after its fit, as for the other <a>e
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -277,6 +284,7 @@ for (.a in grep("^l(p0[45]|gz|ri)(r|r0)?$", names(.trials), value = TRUE))
                         reps = as.integer(.ev("FS_RF_REP", "1")),
                         ledgerSuffix = .ev("FS_RF_SUFFIX", ""),
                         spreadLink = if (nzchar(.ev("FS_SPREAD_LINK"))) .ev("FS_SPREAD_LINK"), # unset: the module default
+                        spreadCovariates = if (nzchar(.ev("FS_SPREAD_COVARIATES"))) .ev("FS_SPREAD_COVARIATES"), # unset: the module default ("all"); "none" = intercept-only spread (the null arm)
                         spreadLowerAsymptote = if (nzchar(.ev("FS_SPREAD_LOWER_ASYMPTOTE"))) .ev("FS_SPREAD_LOWER_ASYMPTOTE"), # unset: the module default lowerAsymptote (0.13); "0.001" = the minimum
                         spreadRichardsNu = if (nzchar(.ev("FS_SPREAD_RICHARDS_NU"))) .ev("FS_SPREAD_RICHARDS_NU"), # unset: the module default richardsNu (0.5); "0" = Gompertz
                         spreadWeighted = if (nzchar(.ev("FS_SPREAD_WEIGHTED"))) .ev("FS_SPREAD_WEIGHTED"), # unset: the module default (FALSE)
@@ -343,6 +351,7 @@ for (.a in grep("^l(p0[45]|gz|ri)(r|r0)?$", names(.trials), value = TRUE))
   if (.phaseSetup$refit) expt$.doFit <- as.logical(.ev("FS_RF_DOFIT", "TRUE"))
   if (nzchar(.phaseSetup$ledgerSuffix %||% "")) expt$.spreadFitFileSuffix <- .phaseSetup$ledgerSuffix
   if (!is.null(.phaseSetup$spreadLink)) expt$.spreadLink <- .phaseSetup$spreadLink
+  if (!is.null(.phaseSetup$spreadCovariates)) expt$.spreadCovariates <- .phaseSetup$spreadCovariates
   if (!is.null(.phaseSetup$spreadLowerAsymptote)) expt$.spreadLowerAsymptote <- .phaseSetup$spreadLowerAsymptote
   if (!is.null(.phaseSetup$spreadRichardsNu)) expt$.spreadRichardsNu <- .phaseSetup$spreadRichardsNu
   if (!is.null(.phaseSetup$spreadWeighted)) expt$.spreadWeighted <- .phaseSetup$spreadWeighted
