@@ -6,6 +6,9 @@ site <- source("site.R", local = TRUE)$value
 # tmux panes report interactive() == TRUE; batch workers run inside tmux
 userInteractive <- interactive() && !nzchar(Sys.getenv("TMUX"))
 
+## "a=1,b=2" -> list(a = 1, b = 2): the numeric key=value settings of a queue column (.spreadCrpsWeights, .ignitionXgb)
+numKV <- function(x) {kv <- strsplit(strsplit(x, ",")[[1]], "="); as.list(setNames(as.numeric(vapply(kv, `[`, "", 2L)), vapply(kv, `[`, "", 1L)))}
+
 inSim <- SpaDES.project::setupProject(
   defaultDots = list(.basePath = site$basePath, # inputs, outputs, cache, scratch and shared data live here
                      .rep = 1,
@@ -66,6 +69,7 @@ inSim <- SpaDES.project::setupProject(
                      .cohortRemoveSuppressed = NA_character_,   # NA: off; "relativeB,minAgeFrac" e.g. "0.01,0.75" (Biomass_core#131)
                      .cohortSquash = NA_character_,             # NA: off; "interval,width[,width...]" e.g. "100,20" (breaks LandR-CBM)
                      .cohortEstablishmentLimit = NA_character_, # NA: off; "interval,minCohorts" e.g. "20,5"
+                     .ignitionXgb = NA_character_,    # NA: the module defaults (fireSense_ignitionFit xgb*, as hard-coded before 1.2.0.9014); e.g. "xgbMaxDepth=5,xgbLearningRate=0.05,xgbNrounds=1500,xgbEarlyStopping=50" (ignition and escape fits)
                      .fireCauses = NA_character_,     # NA: the module defaults; e.g. "natural,unknown": fireSenseUtils::fireCauseCodes() groups for the fits (dataPrepFit) and the hindcast's observed fires (fireSense_summary)
                      .phase1Only = FALSE,             # TRUE: build every input and cache, then stop before the fit (a 1-CPU Slurm job)
                      .phase2Only = FALSE,             # TRUE: fit if this ELF has no fit, then stop; neither phase: fit if needed, then predict
@@ -177,7 +181,7 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.spreadWeighted)) list(weighted = .spreadWeighted),
         if (!is.na(.spreadGateRefusal)) list(gateRefusal = .spreadGateRefusal),
         if (!is.na(.spreadReps)) list(objfunFireReps = as.integer(.spreadReps)),
-        if (!is.na(.spreadCrpsWeights)) list(crpsWeights = local({kv <- strsplit(strsplit(.spreadCrpsWeights, ",")[[1]], "="); as.list(setNames(as.numeric(vapply(kv, `[`, "", 2L)), vapply(kv, `[`, "", 1L)))})),
+        if (!is.na(.spreadCrpsWeights)) list(crpsWeights = numKV(.spreadCrpsWeights)),
         if (!is.na(.spreadTests)) list(DEoptimTests = strsplit(.spreadTests, ",")[[1]]),
         if (!is.na(.spreadInitialPop)) list(initialpop = readRDS(.spreadInitialPop)),
         if (!is.na(.spreadInitialPopMethod)) list(initialPopMethod = .spreadInitialPopMethod),
@@ -203,7 +207,8 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.cohortEstablishmentLimit)) list(cohortEstablishmentLimit = as.numeric(strsplit(.cohortEstablishmentLimit, ",")[[1]]))),
       Biomass_speciesFactorial = list(.plots = NULL),
       Biomass_speciesParameters = list(standAgesForFitting = c(0, 100), balanceGrowth = TRUE),
-      fireSense_ignitionFit = list(.useCache = TRUE, doFit = if (is.na(.spreadProfileAt)) .doFit else NA), # a profile job fits nothing: its ignition fit is the ledger's
+      fireSense_ignitionFit = c(list(.useCache = TRUE, doFit = if (is.na(.spreadProfileAt)) .doFit else NA), # a profile job fits nothing: its ignition fit is the ledger's
+        if (!is.na(.ignitionXgb)) numKV(.ignitionXgb)),
       burnSummaries = list(reps = .rep, summaryPeriod = as.integer(c(times$start, times$end))),
       NRV_summary = list(reps = .rep)),
     # NRV samples observed climate, so no projected years (canClimateData still needs a valid GCM)

@@ -194,6 +194,12 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
                                  FS_RF_DOFIT = "NA", # without it the fit step refits spread too (doFit TRUE)
                                  FS_HC_REPLAY_SAVE = "TRUE")
 .trials[["lnulle"]][["ledger"]] <- "_crpsCauseAnnLinkNullYE_20261116" # lnull's ledgers copied on Drive after its fit, as for the other <a>e
+## 2026-11-16: ignition boosting (ignitionFit#57; Eliot: the ignition model spreads ignitions too evenly). lp05e with only the
+## ignition and escape fits redone: lp05xa with the xgb defaults (today's fits, now with the concentration diagnostic), lp05xb
+## with deeper trees, slower learning and early stopping. lp05's spread ledger was copied on Drive to each suffix.
+.trials[["lp05xa"]] <- c(ledger = "_crpsCauseAnnLinkP05XgbA_20261116", .trials[["lp05e"]][names(.trials[["lp05e"]]) != "ledger"])
+.trials[["lp05xb"]] <- c(ledger = "_crpsCauseAnnLinkP05XgbB_20261116", .trials[["lp05e"]][names(.trials[["lp05e"]]) != "ledger"],
+                         FS_IGNITION_XGB = "xgbMaxDepth=5,xgbLearningRate=0.05,xgbNrounds=1500,xgbEarlyStopping=50")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -293,6 +299,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
                         spreadReps = if (nzchar(.ev("FS_SPREAD_REPS"))) .ev("FS_SPREAD_REPS"), # unset: the module default objfunFireReps
                         spreadCrpsWeights = if (nzchar(.ev("FS_SPREAD_CRPS_WEIGHTS"))) .ev("FS_SPREAD_CRPS_WEIGHTS"), # unset: fireSenseUtils::crpsWeightsDefault(); "fire=1,adTest=0.34,..."
                         fireCauses = if (nzchar(.ev("FS_FIRE_CAUSES"))) .ev("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (ignition, escape and spread fits)
+                        ignitionXgb = if (nzchar(.ev("FS_IGNITION_XGB"))) .ev("FS_IGNITION_XGB"), # unset: the module defaults; e.g. "xgbMaxDepth=5,xgbLearningRate=0.05,xgbNrounds=1500,xgbEarlyStopping=50"
                         spreadTests = if (nzchar(.ev("FS_SPREAD_TESTS"))) .ev("FS_SPREAD_TESTS"), # unset: the module default DEoptimTests
                         spreadInitialPop = if (nzchar(.ev("FS_SPREAD_INITIALPOP"))) .ev("FS_SPREAD_INITIALPOP"), # unset: the module default start
                         spreadInitialPopMethod = if (nzchar(.ev("FS_SPREAD_INITPOP_METHOD"))) .ev("FS_SPREAD_INITPOP_METHOD"), # unset: the module default ("calibration")
@@ -353,6 +360,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
   if (nzchar(.phaseSetup$ledgerSuffix %||% "")) expt$.spreadFitFileSuffix <- .phaseSetup$ledgerSuffix
   if (!is.null(.phaseSetup$spreadLink)) expt$.spreadLink <- .phaseSetup$spreadLink
   if (!is.null(.phaseSetup$spreadCovariates)) expt$.spreadCovariates <- .phaseSetup$spreadCovariates
+  if (!is.null(.phaseSetup$ignitionXgb)) expt$.ignitionXgb <- .phaseSetup$ignitionXgb
   if (!is.null(.phaseSetup$spreadLowerAsymptote)) expt$.spreadLowerAsymptote <- .phaseSetup$spreadLowerAsymptote
   if (!is.null(.phaseSetup$spreadRichardsNu)) expt$.spreadRichardsNu <- .phaseSetup$spreadRichardsNu
   if (!is.null(.phaseSetup$spreadWeighted)) expt$.spreadWeighted <- .phaseSetup$spreadWeighted
