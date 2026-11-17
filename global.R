@@ -192,7 +192,9 @@ inSim <- SpaDES.project::setupProject(
         if (isTRUE(as.logical(.wholeLandscape))) list(wholeLandscapeSpread = TRUE)),
       fireSense_dataPrepFit = c(list(
         doFit = .doFit, # a refit chooses its spread climate variable afresh (fireSense_dataPrepFit#81)
-        seedVegInit = as.integer(.rep), # the nested vegetation in-filling is seeded by the rep (fireSense_dataPrepFit#105): reproducible per rep across machines, varies among NRV reps; in a hindcast .rep is the parameter-set number (1 with FS_HC_ALLSETS)
+        ## seedVegInit (fireSense_dataPrepFit#105) is left unset (unseeded): it seeds the nested vegetation behind the fit data,
+        ## every ledger fit so far was made from the unseeded draw, and a predicting job must rebuild the fit's covariates. Seeded
+        ## by .rep (b67706c), 11.3 lost its rare Pinu_con and the stored ignition model was refused (2026-11-16).
         dataYears = seq(1985L, 2020L, 5L), # every SCANFI year
         .useCache = c(".inputObjects", "dataPrepBuild", "prepEscapeFitData", "prepSpreadFitData",
                       "prepIgnitionFitData")),
