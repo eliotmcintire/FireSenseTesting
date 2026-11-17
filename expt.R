@@ -196,9 +196,10 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
 .trials[["lnulle"]][["ledger"]] <- "_crpsCauseAnnLinkNullYE_20261116" # lnull's ledgers copied on Drive after its fit, as for the other <a>e
 ## 2026-11-16: ignition boosting (ignitionFit#57; Eliot: the ignition model spreads ignitions too evenly). lp05e with only the
 ## ignition and escape fits redone: lp05xa with the xgb defaults (today's fits, now with the concentration diagnostic), lp05xb
-## with deeper trees, slower learning and early stopping. lp05's spread ledger was copied on Drive to each suffix.
-.trials[["lp05xa"]] <- c(ledger = "_crpsCauseAnnLinkP05XgbA_20261116", .trials[["lp05e"]][names(.trials[["lp05e"]]) != "ledger"])
-.trials[["lp05xb"]] <- c(ledger = "_crpsCauseAnnLinkP05XgbB_20261116", .trials[["lp05e"]][names(.trials[["lp05e"]]) != "ledger"],
+## with deeper trees, slower learning and early stopping. lp05's spread ledger was copied on Drive to each suffix. Ledgers
+## _20261117: the _20261116 ones were fitted on the seeded vegetation draw (b67706c, undone in 1cd4fae).
+.trials[["lp05xa"]] <- c(ledger = "_crpsCauseAnnLinkP05XgbA_20261117", .trials[["lp05e"]][names(.trials[["lp05e"]]) != "ledger"])
+.trials[["lp05xb"]] <- c(ledger = "_crpsCauseAnnLinkP05XgbB_20261117", .trials[["lp05e"]][names(.trials[["lp05e"]]) != "ledger"],
                          FS_IGNITION_XGB = "xgbMaxDepth=5,xgbLearningRate=0.05,xgbNrounds=1500,xgbEarlyStopping=50")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
