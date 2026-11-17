@@ -194,6 +194,11 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
                                  FS_RF_DOFIT = "NA", # without it the fit step refits spread too (doFit TRUE)
                                  FS_HC_REPLAY_SAVE = "TRUE")
 .trials[["lnulle"]][["ledger"]] <- "_crpsCauseAnnLinkNullYE_20261116" # lnull's ledgers copied on Drive after its fit, as for the other <a>e
+## 2026-11-17: the null arm again, in one chain: fit (spread, ignition, escape) on the fresh ELF maps (fireSense_ELFs#49/#50)
+## and hindcast with the fitted year effects the ignition fit stores, so no ledger copy is needed. Replaces lnull/lnulle,
+## whose runs used stale maps (11.3) and hit the save-time bug (SpaDES.core#534).
+.trials[["lnullf"]] <- c(ledger = "_crpsCauseAnnLinkNullYE_20261117", .trials[["lnull"]][names(.trials[["lnull"]]) != "ledger"],
+                         FS_HC_YEAR_EFFECTS = "fitted")
 ## 2026-11-16: ignition boosting (ignitionFit#57; Eliot: the ignition model spreads ignitions too evenly). lp05e with only the
 ## ignition and escape fits redone: lp05xa with the xgb defaults (today's fits, now with the concentration diagnostic), lp05xb
 ## with deeper trees, slower learning and early stopping. lp05's spread ledger was copied on Drive to each suffix. Ledgers
