@@ -505,7 +505,7 @@ if (.slurm) {
   ## a step's own options. `mem` (FS_SBATCH_MEM for one FS_SET) replaces the default memory; "" keeps it
   .sbatchStep <- function(s, mem = s$ev("FS_SBATCH_MEM"), cpus = s$ev("FS_SBATCH_CPUS")) {
     .mem <- function(default) if (nzchar(mem)) mem else default
-    if (s$phase1Only) list(cpus_per_task = 1, mem = "96G", time = "1-00:00:00") # 32G was OOM-killed (12.1_2, prepSpreadFitData); to be set from measured peaks
+    if (s$phase1Only) list(cpus_per_task = 1, mem = .mem("96G"), time = "1-00:00:00") # 32G was OOM-killed (12.1_2, prepSpreadFitData); to be set from measured peaks
     else if (identical(s$set, "nrvreport") && isTRUE(s$ps$nrvReportMap)) # the ELF map only
       list(cpus_per_task = 1, mem = "4G", time = "01:00:00") # 2.5 min, MaxRSS 1.7 GB
     else if (identical(s$set, "nrvreport")) # one ELF's 5 runs; the landscape metrics and figures use the CPUs
@@ -605,8 +605,11 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
                    nrv = if ("nrv" %in% .stepsRun) .step("nrv", .tr, c(FS_NRV_WAVE = "predict", FS_NRV_ELFS = .e,
                                                                        FS_NRV_LEDGER = .trials[[.tr]][["ledger"]])),
                    nrvreport = if ("nrvreport" %in% .stepsRun) .step("nrvreport", .tr, c(FS_NRVR_ELFS = .e, FS_NRVR_TAG = paste0(.tr, .suffix))))
-    .mems <- c(prep = "", fit = if (!is.na(.fitMem[.e])) .fitMem[[.e]] else "", hc = "", score = Sys.getenv("FS_SCORE_MEM", "32G"),
-               fasthc = "", fastscore = Sys.getenv("FS_SCORE_MEM", "32G"), nrv = "", nrvreport = "")
+    ## FS_PREP_MEM, FS_HC_MEM, FS_NRV_MEM: memory of each prep, hindcast and NRV job (unset: the .sbatchStep defaults, 96G, 64G, 64G).
+    ## The partition gives 7270 MB per CPU, so a 1-CPU job is charged ceiling(mem / 7.1 GB) CPUs: 64G = 10, 32G = 5
+    .mems <- c(prep = Sys.getenv("FS_PREP_MEM"), fit = if (!is.na(.fitMem[.e])) .fitMem[[.e]] else "", hc = Sys.getenv("FS_HC_MEM"),
+               score = Sys.getenv("FS_SCORE_MEM", "32G"), fasthc = Sys.getenv("FS_HC_MEM"), fastscore = Sys.getenv("FS_SCORE_MEM", "32G"),
+               nrv = Sys.getenv("FS_NRV_MEM"), nrvreport = "")
     .afters <- c(prep = "", fit = .g[["prep"]], hc = .g[["fit"]], score = .g[["hc"]],
                  fasthc = if (nzchar(.fastFrom)) .gOf(.fastFrom)[["hc"]] else "", fastscore = .g[["fasthc"]],
                  nrv = .g[["fit"]], nrvreport = .g[["nrv"]])
