@@ -157,7 +157,12 @@ inSim <- SpaDES.project::setupProject(
   params = Require::modifyList2(
     list(
       .globals = list(
-        fitFileSuffix = .spreadFitFileSuffix, # spread + ignition ledgers: <prefix><years><tag><suffix>.rds; "latest" reads only this suffix
+        ## the experiment's ledger files, named in full from its ID (.spreadFitFileSuffix); "" (production) reads and
+        ## writes "latest". fitFileSuffix is gone from the modules (fireSenseUtils#248 and the module PRs).
+        spreadFitFilename = if (nzchar(.spreadFitFileSuffix))
+          fireSenseUtils::spreadFitFilenameFor(.fireYears, .spreadFitFileSuffix) else "latest",
+        ignitionFitFilename = if (nzchar(.spreadFitFileSuffix))
+          fireSenseUtils::ignitionFitFilenameFor(.fireYears, .spreadFitFileSuffix) else "latest",
         .studyAreaName = .ELFind,
         heldOutFold = .heldOutFold,
         .runName = runName,
