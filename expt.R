@@ -206,6 +206,11 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
 .trials[["lp05xa"]] <- c(ledger = "_crpsCauseAnnLinkP05XgbA_20261117", .trials[["lp05e"]][names(.trials[["lp05e"]]) != "ledger"])
 .trials[["lp05xb"]] <- c(ledger = "_crpsCauseAnnLinkP05XgbB_20261117", .trials[["lp05e"]][names(.trials[["lp05e"]]) != "ledger"],
                          FS_IGNITION_XGB = "xgbMaxDepth=5,xgbLearningRate=0.05,xgbNrounds=1500,xgbEarlyStopping=50")
+## 2026-11-18: the national rerun (Eliot): lp05's settings, every fitted ELF, production ledger folder, hindcast year effects
+## drawn (the module default); the NRV runs (chain steps nrv, nrvreport) with the Biomass_core cohort cap C4 (#135)
+.trials[["nat"]] <- c(ledger = "_crpsCauseAnnNat_20261118",
+                      .trials[["lp05"]][setdiff(names(.trials[["lp05"]]), c("ledger", "FS_LEDGER_FOLDER"))],
+                      FS_COHORT_ESTABLISHMENT_LIMIT = "Inf,1,2,3,4,5")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -389,10 +394,13 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
   ## FS_HC_YEAR_EFFECTS=fitted: a hindcast uses each fit year's fitted ignition/escape multipliers instead of a draw (fireSense_burn yearEffects)
   if (nzchar(.ev("FS_HC_YEAR_EFFECTS"))) expt$.hcYearEffects <- .ev("FS_HC_YEAR_EFFECTS")
   if (!is.null(.phaseSetup$fireCauses)) expt$.fireCauses <- .phaseSetup$fireCauses
-  ## Biomass_core cohort-reduction options (#131), e.g. FS_COHORT_REMOVE_SUPPRESSED=0.01,0.75 FS_COHORT_ESTABLISHMENT_LIMIT=20,5
-  if (nzchar(.ev("FS_COHORT_REMOVE_SUPPRESSED"))) expt$.cohortRemoveSuppressed <- .ev("FS_COHORT_REMOVE_SUPPRESSED")
-  if (nzchar(.ev("FS_COHORT_SQUASH"))) expt$.cohortSquash <- .ev("FS_COHORT_SQUASH")
-  if (nzchar(.ev("FS_COHORT_ESTABLISHMENT_LIMIT"))) expt$.cohortEstablishmentLimit <- .ev("FS_COHORT_ESTABLISHMENT_LIMIT")
+  ## Biomass_core cohort-reduction options (#131), e.g. FS_COHORT_REMOVE_SUPPRESSED=0.01,0.75 FS_COHORT_ESTABLISHMENT_LIMIT=20,5;
+  ## NRV rows only: a fit's Biomass_core keeps its cache keys (hindcasts do not run Biomass_core)
+  if (identical(.set, "nrv")) {
+    if (nzchar(.ev("FS_COHORT_REMOVE_SUPPRESSED"))) expt$.cohortRemoveSuppressed <- .ev("FS_COHORT_REMOVE_SUPPRESSED")
+    if (nzchar(.ev("FS_COHORT_SQUASH"))) expt$.cohortSquash <- .ev("FS_COHORT_SQUASH")
+    if (nzchar(.ev("FS_COHORT_ESTABLISHMENT_LIMIT"))) expt$.cohortEstablishmentLimit <- .ev("FS_COHORT_ESTABLISHMENT_LIMIT")
+  }
   ## the phase and the run's diagnostics are columns, so a worker reads them as global.R's defaultDots
   if (isTRUE(.phaseSetup$score)) {expt$.score <- TRUE; expt$.hcYears <- paste(.hcYears, collapse = ",")}
   if (!is.null(.phaseSetup$nrvReport)) expt$.nrvReport <- .phaseSetup$nrvReport
@@ -517,7 +525,7 @@ if (.slurm) {
 }
 
 ## FS_SET=chain: a whole campaign in one call (Slurm: experimentSBATCH(); elsewhere tmux panes, FS_CHAIN_WORKERS), one queue experiment_queue_chain_<FS_CHAIN_SUFFIX
-## or today>.rds. For each trial (FS_TRIAL, comma-separated) x ELF (FS_RF_ELFS), tag <trial>_<ELF><FS_CHAIN_SUFFIX>, three
+## or today>.rds. For each trial (FS_TRIAL, comma-separated) x ELF (FS_RF_ELFS, or "all"), tag <trial>_<ELF><FS_CHAIN_SUFFIX>, three
 ## queue groups (SpaDES.project ?experimentGroups): fit_<tag> (the refit row), hc_<tag> (its ELF x year rows, after the
 ## fit succeeded) and score_<tag> (after every hindcast job ended, afterany). Memory per ELF: FS_FIT_MEM="6.6.2=320G,14.3=200G"
 ## (the fit job) and FS_FIT_WORKER_GB="6.6.2=6.1,14.3=3.5" (per DEoptim worker); an ELF left out takes the defaults.
@@ -556,6 +564,7 @@ if (.slurm) {
 
 if (identical(Sys.getenv("FS_SET"), "chain")) {
   .trialsRun <- .split(Sys.getenv("FS_TRIAL")); .elfsRun <- .split(Sys.getenv("FS_RF_ELFS"))
+  if (identical(.elfsRun, "all")) .elfsRun <- .ELFinds # FS_RF_ELFS=all: every ELF of the map that is fitted (no Arctic, prairie or zero-fire ELF)
   if (!length(.trialsRun) || !all(.trialsRun %in% names(.trials))) stop("FS_SET=chain needs FS_TRIAL=<trials in .trials, comma-separated>")
   if (!length(.elfsRun)) stop("FS_SET=chain needs FS_RF_ELFS")
   .perELF <- function(env) { kv <- strsplit(.split(Sys.getenv(env, "")), "="); setNames(vapply(kv, `[`, "", 2L), vapply(kv, `[`, "", 1L)) }
@@ -565,8 +574,10 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
   ## FS_CHAIN_STEPS: which of fit, hc, score, fasthc, fastscore (default fit,hc,score; FS_CHAIN_FIT_ONLY=TRUE: the fit step
   ## alone, e.g. a profile of the ledger fits, FS_SPREAD_PROFILE_AT). fasthc/fastscore need FS_CHAIN_FASTHC_FROM=<trial>: each
   ## trial's replay hindcast of that trial's hindcast (its ignitions and covariates, FS_HC_REPLAY_SAVE), after that trial's hc
-  ## step of the ELF when it is in this call, and its score
-  .stepNames <- c("fit", "hc", "score", "fasthc", "fastscore")
+  ## step of the ELF when it is in this call, and its score. nrv: the ELF's 1000-year NRV runs, reps 1-5 (FS_NRV_REPS), from the
+  ## trial's ledger, after its fit (needs FS_ARCHIVE_DIR, FS_ARCHIVE_LEDGER); nrvreport: the ELF's NRV page, after its 5 runs
+  ## (tag <trial><FS_CHAIN_SUFFIX>)
+  .stepNames <- c("fit", "hc", "score", "fasthc", "fastscore", "nrv", "nrvreport")
   .stepsRun <- if (isTRUE(as.logical(Sys.getenv("FS_CHAIN_FIT_ONLY", "FALSE")))) "fit" else .split(Sys.getenv("FS_CHAIN_STEPS", "fit,hc,score"))
   if (!all(.stepsRun %in% .stepNames)) stop("FS_CHAIN_STEPS must be among ", paste(.stepNames, collapse = ", "))
   .fastFrom <- Sys.getenv("FS_CHAIN_FASTHC_FROM")
@@ -580,17 +591,22 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
                    hc = .step("hindcast", .tr, c(FS_HC_ELFS = .e)),
                    score = .step("score", .tr, c(FS_HC_ELFS = .e)),
                    fasthc = if (nzchar(.fastFrom)) .step("fasthc", .tr, .fastOver),
-                   fastscore = if (nzchar(.fastFrom)) .step("score", .tr, .fastOver))
+                   fastscore = if (nzchar(.fastFrom)) .step("score", .tr, .fastOver),
+                   nrv = if ("nrv" %in% .stepsRun) .step("nrv", .tr, c(FS_NRV_WAVE = "predict", FS_NRV_ELFS = .e,
+                                                                       FS_NRV_LEDGER = .trials[[.tr]][["ledger"]])),
+                   nrvreport = if ("nrvreport" %in% .stepsRun) .step("nrvreport", .tr, c(FS_NRVR_ELFS = .e, FS_NRVR_TAG = paste0(.tr, .suffix))))
     .mems <- c(fit = if (!is.na(.fitMem[.e])) .fitMem[[.e]] else "", hc = "", score = Sys.getenv("FS_SCORE_MEM", "32G"),
-               fasthc = "", fastscore = Sys.getenv("FS_SCORE_MEM", "32G"))
+               fasthc = "", fastscore = Sys.getenv("FS_SCORE_MEM", "32G"), nrv = "", nrvreport = "")
     .afters <- c(fit = "", hc = .g[["fit"]], score = .g[["hc"]],
-                 fasthc = if (nzchar(.fastFrom)) .gOf(.fastFrom)[["hc"]] else "", fastscore = .g[["fasthc"]])
+                 fasthc = if (nzchar(.fastFrom)) .gOf(.fastFrom)[["hc"]] else "", fastscore = .g[["fasthc"]],
+                 nrv = .g[["fit"]], nrvreport = .g[["nrv"]])
     for (.k in .stepsRun) {
       .x <- .steps[[.k]]$expt
       .x$.group <- .g[[.k]]
       ## a step whose predecessor is not in this call (an earlier launch ran it) starts at once
       .x$.after <- if (.afters[[.k]] %in% unlist(lapply(.trialsRun, function(tr) .gOf(tr)[.stepsRun]))) .afters[[.k]] else ""
-      .x$.afterType <- c(fit = "afterok", hc = "afterok", score = "afterany", fasthc = "afterok", fastscore = "afterany")[[.k]]
+      .x$.afterType <- c(fit = "afterok", hc = "afterok", score = "afterany", fasthc = "afterok", fastscore = "afterany",
+                         nrv = "afterok", nrvreport = "afterok")[[.k]]
       .rows[[length(.rows) + 1L]] <- .x
       .workers[.g[[.k]]] <- .steps[[.k]]$n_workers
       if (.slurm) .opts[[.g[[.k]]]] <- .sbatchStep(.steps[[.k]], mem = .mems[[.k]],
