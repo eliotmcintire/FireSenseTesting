@@ -528,7 +528,8 @@ if (.slurm) {
 ## or today>.rds. For each trial (FS_TRIAL, comma-separated) x ELF (FS_RF_ELFS, or "all"), tag <trial>_<ELF><FS_CHAIN_SUFFIX>, three
 ## queue groups (SpaDES.project ?experimentGroups): fit_<tag> (the refit row), hc_<tag> (its ELF x year rows, after the
 ## fit succeeded) and score_<tag> (after every hindcast job ended, afterany). Memory per ELF: FS_FIT_MEM="6.6.2=320G,14.3=200G"
-## (the fit job) and FS_FIT_WORKER_GB="6.6.2=6.1,14.3=3.5" (per DEoptim worker); an ELF left out takes the defaults.
+## (the fit job) and FS_FIT_WORKER_GB="6.6.2=6.1,14.3=3.5" (per DEoptim worker); "all=<value>" sets every ELF not named;
+## an ELF left out takes the defaults.
 ## FS_FIT_CPUS="6.6.2=64" (the fit job's CPUs, default 42): the partition allows 7270 MB per CPU, so a whole node (64) for ~454G.
 ## FS_SCORE_MEM (default 32G): each score job, one ELF.
 ##   FS_SET=chain FS_TRIAL=wd03,wd04 FS_RF_ELFS=6.6.2,14.3 FS_FIT_MEM=... FS_FIT_WORKER_GB=... [FS_CHAIN_SUFFIX=_e] Rscript expt.R
@@ -567,7 +568,12 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
   if (identical(.elfsRun, "all")) .elfsRun <- .ELFinds # FS_RF_ELFS=all: every ELF of the map that is fitted (no Arctic, prairie or zero-fire ELF)
   if (!length(.trialsRun) || !all(.trialsRun %in% names(.trials))) stop("FS_SET=chain needs FS_TRIAL=<trials in .trials, comma-separated>")
   if (!length(.elfsRun)) stop("FS_SET=chain needs FS_RF_ELFS")
-  .perELF <- function(env) { kv <- strsplit(.split(Sys.getenv(env, "")), "="); setNames(vapply(kv, `[`, "", 2L), vapply(kv, `[`, "", 1L)) }
+  ## "6.6.2=454G,all=294G": a value per ELF; "all" is the value of every ELF not named
+  .perELF <- function(env) {
+    kv <- strsplit(.split(Sys.getenv(env, "")), "="); v <- setNames(vapply(kv, `[`, "", 2L), vapply(kv, `[`, "", 1L))
+    if ("all" %in% names(v)) {.n <- setdiff(.elfsRun, names(v)); v <- c(v[names(v) != "all"], setNames(rep(v[["all"]], length(.n)), .n))}
+    v
+  }
   .fitMem <- .perELF("FS_FIT_MEM"); .fitWorkerGB <- .perELF("FS_FIT_WORKER_GB"); .fitCpus <- .perELF("FS_FIT_CPUS")
   .suffix <- Sys.getenv("FS_CHAIN_SUFFIX")
   .rows <- list(); .workers <- integer(); .opts <- list()
