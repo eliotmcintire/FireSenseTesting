@@ -577,14 +577,16 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
   .fitMem <- .perELF("FS_FIT_MEM"); .fitWorkerGB <- .perELF("FS_FIT_WORKER_GB"); .fitCpus <- .perELF("FS_FIT_CPUS")
   .suffix <- Sys.getenv("FS_CHAIN_SUFFIX")
   .rows <- list(); .workers <- integer(); .opts <- list()
-  ## FS_CHAIN_STEPS: which of fit, hc, score, fasthc, fastscore (default fit,hc,score; FS_CHAIN_FIT_ONLY=TRUE: the fit step
+  ## FS_CHAIN_STEPS: which of prep, fit, hc, score, fasthc, fastscore, nrv, nrvreport (default prep,fit,hc,score). prep: the ELF's
+  ## data preparation alone (the refit row with FS_PHASE1_ONLY=TRUE, 1 CPU), so the fit's whole node waits for it instead of
+  ## holding 64 CPUs through hours of single-core preparation; the fit starts after it succeeds (FS_CHAIN_FIT_ONLY=TRUE: the fit step
   ## alone, e.g. a profile of the ledger fits, FS_SPREAD_PROFILE_AT). fasthc/fastscore need FS_CHAIN_FASTHC_FROM=<trial>: each
   ## trial's replay hindcast of that trial's hindcast (its ignitions and covariates, FS_HC_REPLAY_SAVE), after that trial's hc
   ## step of the ELF when it is in this call, and its score. nrv: the ELF's 1000-year NRV runs, reps 1-5 (FS_NRV_REPS), from the
   ## trial's ledger, after its fit (needs FS_ARCHIVE_DIR, FS_ARCHIVE_LEDGER); nrvreport: the ELF's NRV page, after its 5 runs
   ## (tag <trial><FS_CHAIN_SUFFIX>)
-  .stepNames <- c("fit", "hc", "score", "fasthc", "fastscore", "nrv", "nrvreport")
-  .stepsRun <- if (isTRUE(as.logical(Sys.getenv("FS_CHAIN_FIT_ONLY", "FALSE")))) "fit" else .split(Sys.getenv("FS_CHAIN_STEPS", "fit,hc,score"))
+  .stepNames <- c("prep", "fit", "hc", "score", "fasthc", "fastscore", "nrv", "nrvreport")
+  .stepsRun <- if (isTRUE(as.logical(Sys.getenv("FS_CHAIN_FIT_ONLY", "FALSE")))) "fit" else .split(Sys.getenv("FS_CHAIN_STEPS", "prep,fit,hc,score"))
   if (!all(.stepsRun %in% .stepNames)) stop("FS_CHAIN_STEPS must be among ", paste(.stepNames, collapse = ", "))
   .fastFrom <- Sys.getenv("FS_CHAIN_FASTHC_FROM")
   if (any(c("fasthc", "fastscore") %in% .stepsRun) && !.fastFrom %in% names(.trials)) stop("FS_CHAIN_STEPS fasthc needs FS_CHAIN_FASTHC_FROM=<trial>")
@@ -593,7 +595,9 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
     .g <- .gOf(.tr)
     .fastOver <- if (nzchar(.fastFrom)) c(FS_HC_ELFS = .e, FS_FASTHC_FROM = .trials[[.fastFrom]][["ledger"]], FS_FASTHC_TAG = .fastFrom,
                                          FS_HC_REPLAY_SAVE = "FALSE") # a replay saves no replay files
-    .steps <- list(fit = .step("refit", .tr, c(FS_RF_ELFS = .e, if (!is.na(.fitWorkerGB[.e])) c(FS_WORKER_MEM_GB = .fitWorkerGB[[.e]]))),
+    .fitOver <- c(FS_RF_ELFS = .e, if (!is.na(.fitWorkerGB[.e])) c(FS_WORKER_MEM_GB = .fitWorkerGB[[.e]]))
+    .steps <- list(prep = if ("prep" %in% .stepsRun) .step("refit", .tr, c(.fitOver, FS_PHASE1_ONLY = "TRUE")),
+                   fit = .step("refit", .tr, .fitOver),
                    hc = .step("hindcast", .tr, c(FS_HC_ELFS = .e)),
                    score = .step("score", .tr, c(FS_HC_ELFS = .e)),
                    fasthc = if (nzchar(.fastFrom)) .step("fasthc", .tr, .fastOver),
@@ -601,9 +605,9 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
                    nrv = if ("nrv" %in% .stepsRun) .step("nrv", .tr, c(FS_NRV_WAVE = "predict", FS_NRV_ELFS = .e,
                                                                        FS_NRV_LEDGER = .trials[[.tr]][["ledger"]])),
                    nrvreport = if ("nrvreport" %in% .stepsRun) .step("nrvreport", .tr, c(FS_NRVR_ELFS = .e, FS_NRVR_TAG = paste0(.tr, .suffix))))
-    .mems <- c(fit = if (!is.na(.fitMem[.e])) .fitMem[[.e]] else "", hc = "", score = Sys.getenv("FS_SCORE_MEM", "32G"),
+    .mems <- c(prep = "", fit = if (!is.na(.fitMem[.e])) .fitMem[[.e]] else "", hc = "", score = Sys.getenv("FS_SCORE_MEM", "32G"),
                fasthc = "", fastscore = Sys.getenv("FS_SCORE_MEM", "32G"), nrv = "", nrvreport = "")
-    .afters <- c(fit = "", hc = .g[["fit"]], score = .g[["hc"]],
+    .afters <- c(prep = "", fit = .g[["prep"]], hc = .g[["fit"]], score = .g[["hc"]],
                  fasthc = if (nzchar(.fastFrom)) .gOf(.fastFrom)[["hc"]] else "", fastscore = .g[["fasthc"]],
                  nrv = .g[["fit"]], nrvreport = .g[["nrv"]])
     for (.k in .stepsRun) {
@@ -611,7 +615,7 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
       .x$.group <- .g[[.k]]
       ## a step whose predecessor is not in this call (an earlier launch ran it) starts at once
       .x$.after <- if (.afters[[.k]] %in% unlist(lapply(.trialsRun, function(tr) .gOf(tr)[.stepsRun]))) .afters[[.k]] else ""
-      .x$.afterType <- c(fit = "afterok", hc = "afterok", score = "afterany", fasthc = "afterok", fastscore = "afterany",
+      .x$.afterType <- c(prep = "afterok", fit = "afterok", hc = "afterok", score = "afterany", fasthc = "afterok", fastscore = "afterany",
                          nrv = "afterok", nrvreport = "afterok")[[.k]]
       .rows[[length(.rows) + 1L]] <- .x
       .workers[.g[[.k]]] <- .steps[[.k]]$n_workers
