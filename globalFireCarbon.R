@@ -170,7 +170,6 @@ inSim <- SpaDES.project::setupProject(
     # When other live DEoptim builds hold every core, wait (re-measuring each minute) up to
     # this long instead of dying after hours of input preparation (clusters >= 0.0.29).
     , clusters.waitForCores = 8 * 3600
-    , reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9"
     # When a Cache call misses, say WHICH argument differed. Without this a miss is silent, and a
     # miss on fireSense_spreadFit's estimateThreshold is expensive: it re-draws the SNLL threshold,
     # which changes the objective and invalidates every cached DEoptim generation for that ELF
