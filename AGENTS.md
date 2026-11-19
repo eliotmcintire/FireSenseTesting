@@ -31,8 +31,8 @@ There is deliberately **no** `.studyAreaName` dot in `setupProject()` — a `...
 the bare ELF id: `fireSense_spreadFit` keys the shared cloud fit ledger on it.
 
 ## Queue mechanics
-`experiment_queue_fits_<date>.rds` + a Google Sheet of the same name (no `.rds`), in folder
-`1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf`. Data frame, one row per ELF × rep, 14 columns:
+`experiment_queue_fits_<date>.rds` + a Google Sheet of the same name (no `.rds`), in Drive folder
+`FireSenseData/Queues` (`18YstaRWHEGWCSVJd0mMScyIIym_YhDIj`). Data frame, one row per ELF × rep, 14 columns:
 `.ELFind`, `.rep`, `status`, `claimed_by`, `started_at`, `finished_at`, `DEoptimElapsedTime`,
 `machine_name`, `process_id`, `heartbeat_at`, `heartbeat_iter`, `iterationsTotal`, `interrupted_at`,
 `last_error`. Status values: `PENDING`, `RUNNING`, `DONE`, `INTERRUPTED`, `QUARANTINED`.

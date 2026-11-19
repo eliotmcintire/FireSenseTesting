@@ -164,10 +164,9 @@ if (!identical(.globalYears, c(.fireYearStart, .fireYearEnd)))
 ##   lp04 / lp05: "powerLawSmooth", delta 0.4 / 0.5, lower asymptote 0.13;  lgz: "richards" nu 0 (Gompertz), 0.13;
 ##   lri: "richards" nu 0.5, 0.13;  each also with the per-fire effect (suffix r);  lp04r0 / lgzr0: lower asymptote 0.001, per-fire only
 ## Experiment fit ledgers go to the Drive testing folder, not production (Eliot 2026-11-13)
-.ledgerFolderTesting <- "https://drive.google.com/drive/folders/1nqSVuGRYxIvcgZMn7TIbn5HfRiUHR2xq"
 .linkTrial <- function(base, tag, set, fireSD) c(ledger = paste0("_crpsCauseAnn", tag, "_20261114"),
                                                .trials[[base]][setdiff(names(.trials[[base]]), c("ledger", "FS_SPREAD_FIRE_SD_BOUNDS"))],
-                                               set, fireSD, FS_LEDGER_FOLDER = .ledgerFolderTesting)
+                                               set, fireSD, FS_LEDGER_TESTING = "TRUE")
 .linkArms <- list(lp04 = list("ct3d04", "LinkP04", c(FS_SPREAD_LINK = "powerLawSmooth")),
                   lp05 = list("ct3d05", "LinkP05", c(FS_SPREAD_LINK = "powerLawSmooth")),
                   lgz  = list("ct3d04", "LinkGz",  c(FS_SPREAD_LINK = "richards", FS_SPREAD_RICHARDS_NU = "0")),
@@ -209,7 +208,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
 ## 2026-11-18: the national rerun (Eliot): lp05's settings, every fitted ELF, production ledger folder, hindcast year effects
 ## drawn (the module default); the NRV runs (chain steps nrv, nrvreport) with the Biomass_core cohort cap C4 (#135)
 .trials[["nat"]] <- c(ledger = "_crpsCauseAnnNat_20261118",
-                      .trials[["lp05"]][setdiff(names(.trials[["lp05"]]), c("ledger", "FS_LEDGER_FOLDER"))],
+                      .trials[["lp05"]][setdiff(names(.trials[["lp05"]]), c("ledger", "FS_LEDGER_TESTING"))],
                       FS_COHORT_ESTABLISHMENT_LIMIT = "Inf,1,2,3,4,5")
 ## 2026-11-18: climate in the ceiling (Eliot; fireSenseUtils#250, spreadFit#140, spreadPredict#49): lp05 with
 ## spreadClimate = "ceiling" -- climate moves the power-law ceiling toward p50 instead of adding to x under a fixed ceiling
@@ -420,7 +419,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
   .optionalColumn(".workerMemoryGB", "FS_WORKER_MEM_GB", as.numeric)
   .optionalColumn(".cacheChaining", "FS_NO_CACHECHAINING", function(x) !isTRUE(as.logical(x)))
   .optionalColumn(".fitQueue", "FS_FIT_QUEUE")
-  .optionalColumn(".ledgerFolder", "FS_LEDGER_FOLDER") # experiments: the Drive testing folder for fit ledgers (production keeps the default)
+  .optionalColumn(".ledgerTesting", "FS_LEDGER_TESTING", as.logical) # experiments: the ledgers' Drive "testing" folders (production keeps the defaults)
   .optionalColumn(".deoptimWindow", "FS_DEOPTIM_WINDOW", as.integer)
   .optionalColumn(".deoptimMinGenerations", "FS_DEOPTIM_MIN_GENERATIONS", as.integer)
   ## FS_SPREAD_PROFILE_AT=<values,...>: a fit job fits nothing and profiles the ledger's spread fit (fireSense_spreadFit mode
@@ -566,9 +565,8 @@ if (.slurm) {
                                       tail(fi[order(fi$mtime),], 1) |> rownames() |> dirname()}),
     workersToMonitor = outs$params$fireSense_spreadFit$cores,
     runNameLabel = quote(colnames(q)[1]),
-    ## the queue sheet goes where the trial's fit ledgers go: an experiment's testing folder (FS_LEDGER_FOLDER), else production
-    ss_id = if (!is.null(df$.ledgerFolder) && !is.na(df$.ledgerFolder[1])) df$.ledgerFolder[1]
-            else "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
+    ## every queue sheet, production or experiment, goes in FireSenseData/Queues
+    ss_id = "https://drive.google.com/drive/folders/18YstaRWHEGWCSVJd0mMScyIIym_YhDIj"
   )
 }
 

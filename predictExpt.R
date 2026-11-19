@@ -126,7 +126,7 @@ workers <- SpaDES.project::experimentTmux(
   
   statusCalculate = SpaDES.project::statusCalculate_LandR
   ,
-  ss_id = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf"
+  ss_id = "https://drive.google.com/drive/folders/18YstaRWHEGWCSVJd0mMScyIIym_YhDIj"
 )
 
 

@@ -18,7 +18,7 @@
 
 reclaimStrayClaim <- function(elf, pid,
                               queue_path = "experiment_queue_fits_2026-09-08.rds",
-                              folder = "https://drive.google.com/drive/folders/1X9-mRjyLMNpgkP_cfqhbr_AQEPOsVCHf",
+                              folder = "https://drive.google.com/drive/folders/18YstaRWHEGWCSVJd0mMScyIIym_YhDIj",
                               started_at = NULL,
                               dryRun = FALSE) {
   stopifnot(length(elf) == 1L, length(pid) == 1L)

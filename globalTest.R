@@ -96,7 +96,6 @@ inSim <- SpaDES.project::setupProject(
     , reproducible.shapefileRead = "terra::vect"
     , reproducible.overwrite = TRUE
     , reproducible.inputPaths = "~/data"
-    , reproducible.cloudFolderID = "1oNGYVAV3goXfSzD1dziotKGCdO8P_iV9"
     , reproducible.showSimilarDepth = 8
     , reproducible.objSize = FALSE
     , reproducible.savePreDigest = FALSE
