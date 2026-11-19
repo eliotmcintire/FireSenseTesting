@@ -211,6 +211,13 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
 .trials[["nat"]] <- c(ledger = "_crpsCauseAnnNat_20261118",
                       .trials[["lp05"]][setdiff(names(.trials[["lp05"]]), c("ledger", "FS_LEDGER_FOLDER"))],
                       FS_COHORT_ESTABLISHMENT_LIMIT = "Inf,1,2,3,4,5")
+## 2026-11-18: climate in the ceiling (Eliot; fireSenseUtils#250, spreadFit#140, spreadPredict#49): lp05 with
+## spreadClimate = "ceiling" -- climate moves the power-law ceiling toward p50 instead of adding to x under a fixed ceiling
+## (lp05 simulates x2.2 area per SD of CMD vs x4 observed and bends down). Refits spread, ignition and escape; hindcast with
+## drawn year effects, as lp05 (fitted ones would absorb the climate signal). Judge by the slope of log annual area on
+## climate and the by-climate-class sim/obs table, against lp05.
+.trials[["lp05c"]] <- c(ledger = "_crpsCauseAnnLinkP05Ceil_20261119",
+                        .trials[["lp05"]][names(.trials[["lp05"]]) != "ledger"], FS_SPREAD_CLIMATE = "ceiling")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -320,6 +327,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
                         spreadSizeLikDf = if (nzchar(.ev("FS_SPREAD_SIZELIK_DF"))) .ev("FS_SPREAD_SIZELIK_DF"), # unset: the module default sizeLikDf (5); "30" = per-fire t likelihood with df 30
                         wholeLandscape = if (nzchar(.ev("FS_WHOLE_LANDSCAPE"))) .ev("FS_WHOLE_LANDSCAPE"), # unset: buffered fit; "TRUE": every fire spreads on the whole ELF (whole-ELF covariate tables from dataPrepFit)
                         spreadPowerLawShape = if (nzchar(.ev("FS_SPREAD_POWERLAW_SHAPE"))) .ev("FS_SPREAD_POWERLAW_SHAPE"), # unset: the module default powerLawShape (1); e.g. "2" = sharper rise of the power-law link toward p_c
+                        spreadClimate = if (nzchar(.ev("FS_SPREAD_CLIMATE"))) .ev("FS_SPREAD_CLIMATE"), # unset: the module default ("predictor"); "ceiling": climate moves the power-law ceiling toward p50
                         n_workers = as.integer(.ev("FS_RF_WORKERS", length(.split(.ev("FS_RF_ELFS"))))), # each fit is a cluster; FS_RF_WORKERS caps fits at once
                         refit = TRUE,
                         predict = FALSE)
@@ -387,6 +395,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
   if (!is.null(.phaseSetup$spreadSizeLikDf)) expt$.spreadSizeLikDf <- .phaseSetup$spreadSizeLikDf
   if (!is.null(.phaseSetup$wholeLandscape)) expt$.wholeLandscape <- as.logical(.phaseSetup$wholeLandscape)
   if (!is.null(.phaseSetup$spreadPowerLawShape)) expt$.spreadPowerLawShape <- .phaseSetup$spreadPowerLawShape
+  if (!is.null(.phaseSetup$spreadClimate)) expt$.spreadClimate <- .phaseSetup$spreadClimate
   if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
   if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
   ## FS_HC_REPLAY_SAVE=TRUE: a hindcast saves its replay files (dataPrepPredict, burn replaySave) for FS_SET=fasthc
