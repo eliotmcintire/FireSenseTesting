@@ -232,6 +232,10 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
 .trials[["lp1sd1"]] <- c(ledger = "_crpsCauseAnnLinkP1Sd1_20261119",
                          .trials[["lp05sd1"]][!names(.trials[["lp05sd1"]]) %in% c("ledger", "FS_SPREAD_POWERLAW_SHAPE")],
                          FS_SPREAD_POWERLAW_SHAPE = "1")
+## 2026-11-19: ignitionFit#61 turned on a year-level summer-CMD ignition term by default. The spread-structure arms keep
+## lp05's ignition model (no term), so they differ from lp05 in spread only.
+for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1"))
+  .trials[[.a]] <- c(.trials[[.a]], FS_IGNITION_YEAR_CLIMATE = "none")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -331,6 +335,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
                         spreadReps = if (nzchar(.ev("FS_SPREAD_REPS"))) .ev("FS_SPREAD_REPS"), # unset: the module default objfunFireReps
                         spreadCrpsWeights = if (nzchar(.ev("FS_SPREAD_CRPS_WEIGHTS"))) .ev("FS_SPREAD_CRPS_WEIGHTS"), # unset: fireSenseUtils::crpsWeightsDefault(); "fire=1,adTest=0.34,..."
                         fireCauses = if (nzchar(.ev("FS_FIRE_CAUSES"))) .ev("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (ignition, escape and spread fits)
+                        ignitionYearClimate = if (nzchar(.ev("FS_IGNITION_YEAR_CLIMATE"))) .ev("FS_IGNITION_YEAR_CLIMATE"), # unset: the module default ("CMDsm"); "none": no year-level climate term (ignitionFit#61)
                         ignitionXgb = if (nzchar(.ev("FS_IGNITION_XGB"))) .ev("FS_IGNITION_XGB"), # unset: the module defaults; e.g. "xgbMaxDepth=5,xgbLearningRate=0.05,xgbNrounds=1500,xgbEarlyStopping=50"
                         spreadTests = if (nzchar(.ev("FS_SPREAD_TESTS"))) .ev("FS_SPREAD_TESTS"), # unset: the module default DEoptimTests
                         spreadInitialPop = if (nzchar(.ev("FS_SPREAD_INITIALPOP"))) .ev("FS_SPREAD_INITIALPOP"), # unset: the module default start
@@ -395,6 +400,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
   if (!is.null(.phaseSetup$spreadLink)) expt$.spreadLink <- .phaseSetup$spreadLink
   if (!is.null(.phaseSetup$spreadCovariates)) expt$.spreadCovariates <- .phaseSetup$spreadCovariates
   if (!is.null(.phaseSetup$ignitionXgb)) expt$.ignitionXgb <- .phaseSetup$ignitionXgb
+  if (!is.null(.phaseSetup$ignitionYearClimate)) expt$.ignitionYearClimate <- .phaseSetup$ignitionYearClimate
   if (!is.null(.phaseSetup$spreadLowerAsymptote)) expt$.spreadLowerAsymptote <- .phaseSetup$spreadLowerAsymptote
   if (!is.null(.phaseSetup$spreadRichardsNu)) expt$.spreadRichardsNu <- .phaseSetup$spreadRichardsNu
   if (!is.null(.phaseSetup$spreadWeighted)) expt$.spreadWeighted <- .phaseSetup$spreadWeighted

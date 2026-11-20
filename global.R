@@ -71,6 +71,7 @@ inSim <- SpaDES.project::setupProject(
                      .cohortRemoveSuppressed = NA_character_,   # NA: off; "relativeB,minAgeFrac" e.g. "0.01,0.75" (Biomass_core#131)
                      .cohortSquash = NA_character_,             # NA: off; "interval,width[,width...]" e.g. "100,20" (breaks LandR-CBM)
                      .cohortEstablishmentLimit = NA_character_, # NA: off; "interval,minCohorts" e.g. "20,5"
+                     .ignitionYearClimate = NA_character_, # NA: the module default ignitionYearClimate ("CMDsm", ignitionFit#61); "none": no year-level climate term; or a climate column
                      .ignitionXgb = NA_character_,    # NA: the module defaults (fireSense_ignitionFit xgb*, as hard-coded before 1.2.0.9014); e.g. "xgbMaxDepth=5,xgbLearningRate=0.05,xgbNrounds=1500,xgbEarlyStopping=50" (ignition and escape fits)
                      .fireCauses = NA_character_,     # NA: the module defaults; e.g. "natural,unknown": fireSenseUtils::fireCauseCodes() groups for the fits (dataPrepFit) and the hindcast's observed fires (fireSense_summary)
                      .phase1Only = FALSE,             # TRUE: build every input and cache, then stop before the fit (a 1-CPU Slurm job)
@@ -218,7 +219,8 @@ inSim <- SpaDES.project::setupProject(
       Biomass_speciesFactorial = list(.plots = NULL),
       Biomass_speciesParameters = list(standAgesForFitting = c(0, 100), balanceGrowth = TRUE),
       fireSense_ignitionFit = c(list(.useCache = TRUE, doFit = if (is.na(.spreadProfileAt)) .doFit else NA), # a profile job fits nothing: its ignition fit is the ledger's
-        if (!is.na(.ignitionXgb)) numKV(.ignitionXgb)),
+        if (!is.na(.ignitionXgb)) numKV(.ignitionXgb),
+        if (!is.na(.ignitionYearClimate)) list(ignitionYearClimate = if (identical(.ignitionYearClimate, "none")) NA_character_ else .ignitionYearClimate)),
       burnSummaries = list(reps = .rep, summaryPeriod = as.integer(c(times$start, times$end))),
       NRV_summary = list(reps = .rep)),
     # NRV samples observed climate, so no projected years (canClimateData still needs a valid GCM)
