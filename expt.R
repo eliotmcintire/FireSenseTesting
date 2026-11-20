@@ -227,6 +227,10 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
 ## p50 scales with x (the Fable review's simpler form, at delta 0.5: delta 1 gives too many mid-sized fires, Eliot)
 .trials[["lp05p50sd1"]] <- c(ledger = "_crpsCauseAnnLinkP05P50Sd1_20261119",
                              .trials[["lp05sd1"]][names(.trials[["lp05sd1"]]) != "ledger"], FS_SPREAD_PC_AT_P50 = "TRUE")
+## lp05a: climate activates fuel potential (Eliot; fireSenseUtils#255, spreadFit#142, spreadPredict#51): fuel sets each
+## pixel's own ceiling below p50, climate + the year effect set how much of it is reached; delta 0.5, year SD capped at 1
+.trials[["lp05a"]] <- c(ledger = "_crpsCauseAnnLinkP05Act_20261120",
+                        .trials[["lp05sd1"]][names(.trials[["lp05sd1"]]) != "ledger"], FS_SPREAD_CLIMATE = "activation")
 ## lp1sd1 (SKIPPED 2026-11-19: delta 1 ruled out): lp05sd1 with delta 1 (one unit of x = one e-fold of distance to p50; the review's simpler form, step 1 of 2:
 ## step 2 also pins pc at p50, which needs a module option)
 .trials[["lp1sd1"]] <- c(ledger = "_crpsCauseAnnLinkP1Sd1_20261119",
@@ -234,7 +238,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
                          FS_SPREAD_POWERLAW_SHAPE = "1")
 ## 2026-11-19: ignitionFit#61 turned on a year-level summer-CMD ignition term by default. The spread-structure arms keep
 ## lp05's ignition model (no term), so they differ from lp05 in spread only.
-for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1"))
+for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
   .trials[[.a]] <- c(.trials[[.a]], FS_IGNITION_YEAR_CLIMATE = "none")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
