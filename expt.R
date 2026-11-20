@@ -566,7 +566,7 @@ if (.slurm) {
 ## (the fit job) and FS_FIT_WORKER_GB="6.6.2=6.1,14.3=3.5" (per DEoptim worker); "all=<value>" sets every ELF not named;
 ## an ELF left out takes the defaults.
 ## FS_FIT_CPUS="6.6.2=64" (the fit job's CPUs, default 42): the partition allows 7270 MB per CPU, so a whole node (64) for ~454G.
-## FS_SCORE_MEM (default 32G): each score job, one ELF.
+## FS_SCORE_MEM (unset: the .sbatchStep default, 160G): each score job. It reads 12 ELFs at once; 32G OOM-killed readers, dropping ELFs.
 ##   FS_SET=chain FS_TRIAL=wd03,wd04 FS_RF_ELFS=6.6.2,14.3 FS_FIT_MEM=... FS_FIT_WORKER_GB=... [FS_CHAIN_SUFFIX=_e] Rscript expt.R
 ## FS_DRY_RUN=TRUE writes the queue and the job scripts without submitting; delete both (queue .rds, logs/<queue>/) after.
 ## Without Slurm it only prints the rows per step and the pane count.
@@ -642,7 +642,7 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
     ## FS_PREP_MEM, FS_HC_MEM, FS_NRV_MEM: memory of each prep, hindcast and NRV job (unset: the .sbatchStep defaults, 96G, 64G, 64G).
     ## The partition gives 7270 MB per CPU, so a 1-CPU job is charged ceiling(mem / 7.1 GB) CPUs: 64G = 10, 32G = 5
     .mems <- c(prep = Sys.getenv("FS_PREP_MEM"), fit = if (!is.na(.fitMem[.e])) .fitMem[[.e]] else "", hc = Sys.getenv("FS_HC_MEM"),
-               score = Sys.getenv("FS_SCORE_MEM", "32G"), fasthc = Sys.getenv("FS_HC_MEM"), fastscore = Sys.getenv("FS_SCORE_MEM", "32G"),
+               score = Sys.getenv("FS_SCORE_MEM"), fasthc = Sys.getenv("FS_HC_MEM"), fastscore = Sys.getenv("FS_SCORE_MEM"),
                nrv = Sys.getenv("FS_NRV_MEM"), nrvreport = "")
     .afters <- c(prep = "", fit = .g[["prep"]], hc = .g[["fit"]], score = .g[["hc"]],
                  fasthc = if (nzchar(.fastFrom)) .gOf(.fastFrom)[["hc"]] else "", fastscore = .g[["fasthc"]],
