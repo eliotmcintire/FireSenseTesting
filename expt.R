@@ -223,6 +223,11 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
                           .trials[["lp05"]][names(.trials[["lp05"]]) != "ledger"], FS_SPREAD_SD_BOUNDS = "0,1")
 .trials[["lp05csd1"]] <- c(ledger = "_crpsCauseAnnLinkP05CeilSd1_20261119",
                            .trials[["lp05c"]][names(.trials[["lp05c"]]) != "ledger"], FS_SPREAD_SD_BOUNDS = "0,1")
+## lp1sd1: lp05sd1 with delta 1 (one unit of x = one e-fold of distance to p50; the review's simpler form, step 1 of 2:
+## step 2 also pins pc at p50, which needs a module option)
+.trials[["lp1sd1"]] <- c(ledger = "_crpsCauseAnnLinkP1Sd1_20261119",
+                         .trials[["lp05sd1"]][!names(.trials[["lp05sd1"]]) %in% c("ledger", "FS_SPREAD_POWERLAW_SHAPE")],
+                         FS_SPREAD_POWERLAW_SHAPE = "1")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
