@@ -9,7 +9,7 @@ list(
              else "/mnt/fast",
   cores = c("birds", "camas", "caribou", "coco", "core", "dougfir", "fire", "mpb", "sbw", "acer", "abies",
             "pinus", "landr", "kodama", "mega", "biomass", # mega added 2026-10-20; biomass added 2026-11-06 (Eliot)
-            if (Sys.time() < as.POSIXct("2026-11-09 07:00", tz = "America/Vancouver")) "carbon"), # carbon lent until Mon 2026-11-09 07:00 (Eliot 2026-11-06)
+            "carbon"), # carbon: lent 2026-11-06 to 11-09; back in the pool 2026-11-20 (Eliot)
   maxWorkersPerHost = c(mega = 60), # mega is also the master; 60 (Eliot 2026-11-01; was 55 since 2026-10-21)
   mcCores = 8
 )
