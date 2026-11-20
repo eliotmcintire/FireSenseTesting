@@ -549,12 +549,33 @@ if (.slurm) {
       list(cpus_per_task = 12, mem = .mem("160G"), time = "2-00:00:00")
     else if (s$oneCore) # one core per ELF x year (hindcast) or ELF x set (NRV) job; FS_SBATCH_MEM until the MaxRSS of the first jobs is known
       list(cpus_per_task = 1, mem = .mem("64G"), time = if (identical(s$set, "nrv")) "7-00:00:00" else "2-00:00:00")
-    else list(cpus_per_task = if (nzchar(cpus)) as.integer(cpus) else 42L, # 40 workers + 2 kept free. The partition caps memory at
-              ## 7270 MB per CPU (MaxMemPerCPU), so more than ~300G needs more CPUs: 64 (the whole node) allows ~454G
-              ## per ELF (FS_SBATCH_MEM, or FS_FIT_MEM in a chain): 40 x the worker peak clusters records in
-              ## fitMemory.rds, / 0.9 headroom, + the master. 13.1 and 6.6.1 need ~1-2 GB per worker (294G); 12.1_2 needs 8.5 (420G)
-              mem = .mem("294G"),
-              time = "7-00:00:00") # required by gpsc8, though the partition has no limit
+    else c(.fitSize(c(.split(s$ev("FS_RF_ELFS")), .split(s$ev("FS_NRV_ELFS"))), cpus = if (nzchar(cpus)) as.integer(cpus) else 42L, mem = mem),
+           time = "7-00:00:00") # required by gpsc8, though the partition has no limit
+  }
+  ## A fit job's CPUs and memory. Every CPU of the partition comes with MaxMemPerCPU (gpsc8 standard: 7270 MB, also its
+  ## default): asking for less buys nothing, more is charged as CPUs. So the job asks for exactly CPUs x MaxMemPerCPU, and
+  ## gets more CPUs (up to the node's 64) until that covers what the fit needs; a need beyond a whole node stops the launch.
+  ## Need = the main process (40 GB; 6.6.2 peaked at 36 GB, 2026-11-17) + 40 workers budgeted as clusters does
+  ## ((n - 1) x median + max) from the ELF's latest worker-memory record in fitMemory.rds, from any trial (worker memory follows
+  ## the ELF's data, not the trial), or fireSenseUtils::spreadFitWorkerMemoryGB each without one; or `mem` (FS_FIT_MEM,
+  ## FS_SBATCH_MEM), if larger. 2026-11-17 a fit asked for 100G on 42 CPUs, prepared its data for 6 h, then waited for
+  ## memory that could never come (40 x 9 GB).
+  .fitSize <- function(elfs, cpus, mem = "", workers = 40L, mainGB = 40, nodeCpus = 64L) {
+    rec <- clusters:::.fitMemoryRecent()
+    workerGB <- vapply(if (length(elfs)) elfs else NA_character_, function(e) {
+      mine <- rec[grepl(paste0("_", e, "_NRV_"), rec$runName, fixed = TRUE), , drop = FALSE] # fit run names end <ELF>_NRV_370_1
+      clusters:::.memBudgetGB(workers, if (NROW(mine)) unlist(mine[which.max(mine$time), c("memMedianGB", "memMaxGB")])
+                                      else fireSenseUtils::spreadFitWorkerMemoryGB)
+    }, numeric(1))
+    asked <- if (nzchar(mem)) as.numeric(sub("[GgMm]$", "", mem)) / (if (grepl("[Mm]$", mem)) 1024 else 1) else 0 # GB
+    needGB <- max(max(workerGB) + mainGB, asked)
+    perCpuMB <- as.numeric(sub(".*MaxMemPerCPU=([0-9]+).*", "\\1", grep("MaxMemPerCPU=", value = TRUE,
+      system2("scontrol", c("-M", .sbatchCommon$clusters, "show", "partition", .sbatchCommon$partition), stdout = TRUE))[1]))
+    n <- max(cpus, ceiling(needGB * 1024 / perCpuMB))
+    if (n > nodeCpus) stop("fit of ", paste(elfs, collapse = ", "), " needs ", round(needGB), " GB: more than a whole node (",
+                           nodeCpus, " CPUs x ", perCpuMB, " MB)")
+    message("fit of ", paste(elfs, collapse = ", "), ": needs ", round(needGB), " GB -> ", n, " CPUs, ", n * perCpuMB, " MB")
+    list(cpus_per_task = n, mem = paste0(n * perCpuMB, "M"))
   }
   .logDir <- function(queue_path) file.path("logs", sub("\\.rds$", "", basename(queue_path)))
 }
