@@ -217,6 +217,12 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
 ## climate and the by-climate-class sim/obs table, against lp05.
 .trials[["lp05c"]] <- c(ledger = "_crpsCauseAnnLinkP05Ceil_20261119",
                         .trials[["lp05"]][names(.trials[["lp05"]]) != "ledger"], FS_SPREAD_CLIMATE = "ceiling")
+## 2026-11-19: the year effect must not soak up climate (Eliot): lp05's yearSpreadSD fits at 8-10 of its bound 10, and a
+## negative draw puts every pixel at the floor. lp05sd1 and lp05csd1 are lp05 and lp05c with the year-effect SD capped at 1.
+.trials[["lp05sd1"]] <- c(ledger = "_crpsCauseAnnLinkP05Sd1_20261119",
+                          .trials[["lp05"]][names(.trials[["lp05"]]) != "ledger"], FS_SPREAD_SD_BOUNDS = "0,1")
+.trials[["lp05csd1"]] <- c(ledger = "_crpsCauseAnnLinkP05CeilSd1_20261119",
+                           .trials[["lp05c"]][names(.trials[["lp05c"]]) != "ledger"], FS_SPREAD_SD_BOUNDS = "0,1")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
