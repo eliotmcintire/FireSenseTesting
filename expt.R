@@ -223,7 +223,11 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
                           .trials[["lp05"]][names(.trials[["lp05"]]) != "ledger"], FS_SPREAD_SD_BOUNDS = "0,1")
 .trials[["lp05csd1"]] <- c(ledger = "_crpsCauseAnnLinkP05CeilSd1_20261119",
                            .trials[["lp05c"]][names(.trials[["lp05c"]]) != "ledger"], FS_SPREAD_SD_BOUNDS = "0,1")
-## lp1sd1: lp05sd1 with delta 1 (one unit of x = one e-fold of distance to p50; the review's simpler form, step 1 of 2:
+## lp05p50sd1: lp05sd1 with p_c fixed at the calibrated p50 (spreadFit#141): no early ceiling, every pixel's distance to
+## p50 scales with x (the Fable review's simpler form, at delta 0.5: delta 1 gives too many mid-sized fires, Eliot)
+.trials[["lp05p50sd1"]] <- c(ledger = "_crpsCauseAnnLinkP05P50Sd1_20261119",
+                             .trials[["lp05sd1"]][names(.trials[["lp05sd1"]]) != "ledger"], FS_SPREAD_PC_AT_P50 = "TRUE")
+## lp1sd1 (SKIPPED 2026-11-19: delta 1 ruled out): lp05sd1 with delta 1 (one unit of x = one e-fold of distance to p50; the review's simpler form, step 1 of 2:
 ## step 2 also pins pc at p50, which needs a module option)
 .trials[["lp1sd1"]] <- c(ledger = "_crpsCauseAnnLinkP1Sd1_20261119",
                          .trials[["lp05sd1"]][!names(.trials[["lp05sd1"]]) %in% c("ledger", "FS_SPREAD_POWERLAW_SHAPE")],
@@ -337,6 +341,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
                         spreadSizeLikDf = if (nzchar(.ev("FS_SPREAD_SIZELIK_DF"))) .ev("FS_SPREAD_SIZELIK_DF"), # unset: the module default sizeLikDf (5); "30" = per-fire t likelihood with df 30
                         wholeLandscape = if (nzchar(.ev("FS_WHOLE_LANDSCAPE"))) .ev("FS_WHOLE_LANDSCAPE"), # unset: buffered fit; "TRUE": every fire spreads on the whole ELF (whole-ELF covariate tables from dataPrepFit)
                         spreadPowerLawShape = if (nzchar(.ev("FS_SPREAD_POWERLAW_SHAPE"))) .ev("FS_SPREAD_POWERLAW_SHAPE"), # unset: the module default powerLawShape (1); e.g. "2" = sharper rise of the power-law link toward p_c
+                        spreadPcAtP50 = if (nzchar(.ev("FS_SPREAD_PC_AT_P50"))) as.logical(.ev("FS_SPREAD_PC_AT_P50")), # unset: the module default (FALSE); TRUE: p_c fixed at p50 (spreadFit#141)
                         spreadClimate = if (nzchar(.ev("FS_SPREAD_CLIMATE"))) .ev("FS_SPREAD_CLIMATE"), # unset: the module default ("predictor"); "ceiling": climate moves the power-law ceiling toward p50
                         n_workers = as.integer(.ev("FS_RF_WORKERS", length(.split(.ev("FS_RF_ELFS"))))), # each fit is a cluster; FS_RF_WORKERS caps fits at once
                         refit = TRUE,
@@ -406,6 +411,7 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
   if (!is.null(.phaseSetup$wholeLandscape)) expt$.wholeLandscape <- as.logical(.phaseSetup$wholeLandscape)
   if (!is.null(.phaseSetup$spreadPowerLawShape)) expt$.spreadPowerLawShape <- .phaseSetup$spreadPowerLawShape
   if (!is.null(.phaseSetup$spreadClimate)) expt$.spreadClimate <- .phaseSetup$spreadClimate
+  if (!is.null(.phaseSetup$spreadPcAtP50)) expt$.spreadPcAtP50 <- .phaseSetup$spreadPcAtP50
   if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
   if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
   ## FS_HC_REPLAY_SAVE=TRUE: a hindcast saves its replay files (dataPrepPredict, burn replaySave) for FS_SET=fasthc

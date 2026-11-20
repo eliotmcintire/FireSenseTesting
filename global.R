@@ -46,6 +46,7 @@ inSim <- SpaDES.project::setupProject(
                      .spreadFireSdBounds = NA_character_, # NA: the module default (0,10; whole-landscape fits only); or e.g. "0,1" (bounds of the per-fire SD); "NA": no per-fire effect
                      .prepAreaMult = NA_character_,   # NA: the module default (10 * multiplier(size)); or e.g. "40": the fit buffers' multiplier
                      .spreadPowerLawShape = NA_character_, # NA: the module default powerLawShape (1); or e.g. "2" (curvature of the power-law spread link)
+                     .spreadPcAtP50 = NA,             # NA: the module default powerLawPcAtP50 (FALSE); TRUE: p_c fixed at the calibrated p50 (spreadFit#141)
                      .spreadClimate = NA_character_,  # NA: the module default spreadClimate ("predictor"); "ceiling": climate moves the power-law ceiling toward p50 (spreadFit#140)
                      .spreadSizeLikDf = NA_character_, # NA: the module default sizeLikDf (5); or e.g. "30" (df of the per-fire t size likelihood)
                      .deoptimWindow = 300L,           # DEoptim early stop: generations over which the population median must stop improving (clusters.deoptimConvergenceWindow)
@@ -196,6 +197,7 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.spreadSizeLikDf)) list(sizeLikDf = as.numeric(.spreadSizeLikDf)),
         if (!is.na(.spreadPowerLawShape)) list(powerLawShape = as.numeric(.spreadPowerLawShape)),
         if (!is.na(.spreadClimate)) list(spreadClimate = .spreadClimate),
+        if (!is.na(.spreadPcAtP50)) list(powerLawPcAtP50 = as.logical(.spreadPcAtP50)),
         if (isTRUE(as.logical(.wholeLandscape))) list(wholeLandscapeSpread = TRUE)),
       fireSense_dataPrepFit = c(list(
         doFit = .doFit, # a refit chooses its spread climate variable afresh (fireSense_dataPrepFit#81)
