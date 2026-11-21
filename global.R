@@ -199,7 +199,7 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.spreadPowerLawShape)) list(powerLawShape = as.numeric(.spreadPowerLawShape)),
         if (!is.na(.spreadClimate)) list(spreadClimate = .spreadClimate),
         if (!is.na(.spreadPcAtP50)) list(powerLawPcAtP50 = as.logical(.spreadPcAtP50)),
-        if (isTRUE(as.logical(.wholeLandscape))) list(wholeLandscapeSpread = TRUE)),
+        list(wholeLandscapeSpread = isTRUE(as.logical(.wholeLandscape)))), # always set: spreadFit's default became TRUE (spreadFit#143) while dataPrepFit's stays FALSE; both must agree
       fireSense_dataPrepFit = c(list(
         doFit = .doFit, # a refit chooses its spread climate variable afresh (fireSense_dataPrepFit#81)
         ## seedVegInit (fireSense_dataPrepFit#105) is left at the module default, 1: it seeds the nested vegetation behind the
@@ -210,7 +210,7 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.fireCauses)) list(fireCauses = strsplit(.fireCauses, ",")[[1]]),
         if (!is.na(.prepAreaMult)) list(areaMultiplier = as.call(list(as.name("function"), as.pairlist(alist(size = )),
                                                                       bquote(.(as.numeric(.prepAreaMult)) * fireSenseUtils::multiplier(size)), NULL))),
-        if (isTRUE(as.logical(.wholeLandscape))) list(wholeLandscapeSpreadCovariates = TRUE),
+        list(wholeLandscapeSpreadCovariates = isTRUE(as.logical(.wholeLandscape))),
         if (!is.na(.spreadCovariates)) list(spreadCovariates = .spreadCovariates)),
       Biomass_core = c(list(),
         if (!is.na(.cohortRemoveSuppressed)) list(cohortRemoveSuppressed = as.numeric(strsplit(.cohortRemoveSuppressed, ",")[[1]])),
