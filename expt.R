@@ -198,6 +198,11 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
 ## whose runs used stale maps (11.3) and hit the save-time bug (SpaDES.core#534).
 .trials[["lnullf"]] <- c(ledger = "_crpsCauseAnnLinkNullYE_20261117", .trials[["lnull"]][names(.trials[["lnull"]]) != "ledger"],
                          FS_HC_YEAR_EFFECTS = "fitted")
+## 2026-11-20: lnulld, the null hindcast with drawn year effects, like the climate arms and nat (Eliot), for a like-for-like
+## null vs covariate comparison and the ANOVA of fit contributors. lnullf's spread and ignition ledgers copied on Drive to
+## the new suffix (its own hindcast folder); fits nothing (FS_RF_DOFIT NA); run with FS_CHAIN_STEPS=hc,score.
+.trials[["lnulld"]] <- c(ledger = "_crpsCauseAnnLinkNullDraw_20261120", .trials[["lnull"]][names(.trials[["lnull"]]) != "ledger"],
+                         FS_RF_DOFIT = "NA")
 ## 2026-11-16: ignition boosting (ignitionFit#57; Eliot: the ignition model spreads ignitions too evenly). lp05e with only the
 ## ignition and escape fits redone: lp05xa with the xgb defaults (today's fits, now with the concentration diagnostic), lp05xb
 ## with deeper trees, slower learning and early stopping. lp05's spread ledger was copied on Drive to each suffix. Ledgers
