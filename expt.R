@@ -213,6 +213,9 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
                         .anovaBase[names(.anovaBase) != "FS_SPREAD_POWERLAW_SHAPE"], FS_SPREAD_POWERLAW_SHAPE = "1")
 .trials[["anGz"]]  <- c(ledger = "_crpsCauseAnnAnovaGz_20261120", .anovaBase[names(.anovaBase) != "FS_SPREAD_LINK"],
                         FS_SPREAD_LINK = "richards", FS_SPREAD_RICHARDS_NU = "0")
+## anLg: logistic (richards nu 1, symmetric; Gompertz is nu 0) -- Eliot wants both
+.trials[["anLg"]]  <- c(ledger = "_crpsCauseAnnAnovaLg_20261120", .anovaBase[names(.anovaBase) != "FS_SPREAD_LINK"],
+                        FS_SPREAD_LINK = "richards", FS_SPREAD_RICHARDS_NU = "1")
 ## 2026-11-16: ignition boosting (ignitionFit#57; Eliot: the ignition model spreads ignitions too evenly). lp05e with only the
 ## ignition and escape fits redone: lp05xa with the xgb defaults (today's fits, now with the concentration diagnostic), lp05xb
 ## with deeper trees, slower learning and early stopping. lp05's spread ledger was copied on Drive to each suffix. Ledgers
