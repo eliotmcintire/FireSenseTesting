@@ -258,6 +258,15 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
 ## lp05's ignition model (no term), so they differ from lp05 in spread only.
 for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
   .trials[[.a]] <- c(.trials[[.a]], FS_IGNITION_YEAR_CLIMATE = "none")
+## 2026-11-21 (Eliot): the remaining ANOVA arms, spread covariates by group (fireSense_dataPrepFit#116): anFuel = youngAge,
+## fuel and non-forest only; anClim = the climate term(s) only. Same base as anAll (free signs, the spreadFit#143 default).
+.trials[["anFuel"]] <- c(ledger = "_crpsCauseAnnAnovaFuel_20261121", .anovaBase, FS_SPREAD_COVARIATES = "fuel")
+.trials[["anClim"]] <- c(ledger = "_crpsCauseAnnAnovaClim_20261121", .anovaBase, FS_SPREAD_COVARIATES = "climate")
+## lp05sd1split: lp05sd1 with the spread climate split into a between-year and a within-year term (fireSenseUtils#244,
+## dataPrepFit#108; Eliot 2026-11-20): does a separate year-to-year coefficient carry the dry-year signal? Free signs (new
+## default), so its comparison with lp05sd1 (constrained signs) also includes the sign change.
+.trials[["lp05sd1split"]] <- c(ledger = "_crpsCauseAnnLinkP05Sd1Split_20261121",
+                               .trials[["lp05sd1"]][names(.trials[["lp05sd1"]]) != "ledger"], FS_SPREAD_CLIMATE_SPLIT = "TRUE")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -334,6 +343,7 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
                         ledgerSuffix = .ev("FS_HC_LEDGER"), # "" = production ledger
                         hcIgnitions = if (nzchar(.ev("FS_HC_IGNITIONS"))) .ev("FS_HC_IGNITIONS"), # unset: drawn ("predicted"); "observedEscapes": spread the observed escapes
                         spreadCovariates = if (nzchar(.ev("FS_SPREAD_COVARIATES"))) .ev("FS_SPREAD_COVARIATES"), # a hindcast of a null fit ("none") builds the same intercept-only formula
+                        spreadClimateSplit = if (nzchar(.ev("FS_SPREAD_CLIMATE_SPLIT"))) .ev("FS_SPREAD_CLIMATE_SPLIT"), # unset: the module default (FALSE); "TRUE": between-year + within-year climate terms
                         fireCauses = if (nzchar(.ev("FS_FIRE_CAUSES"))) .ev("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (same value as the fit's)
                         n_workers = as.integer(.ev("FS_HC_WORKERS", "12")),
                         refit = FALSE,
@@ -350,6 +360,7 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
                         ledgerSuffix = .ev("FS_RF_SUFFIX", ""),
                         spreadLink = if (nzchar(.ev("FS_SPREAD_LINK"))) .ev("FS_SPREAD_LINK"), # unset: the module default
                         spreadCovariates = if (nzchar(.ev("FS_SPREAD_COVARIATES"))) .ev("FS_SPREAD_COVARIATES"), # unset: the module default ("all"); "none" = intercept-only spread (the null arm)
+                        spreadClimateSplit = if (nzchar(.ev("FS_SPREAD_CLIMATE_SPLIT"))) .ev("FS_SPREAD_CLIMATE_SPLIT"), # unset: the module default (FALSE); "TRUE": between-year + within-year climate terms
                         spreadLowerAsymptote = if (nzchar(.ev("FS_SPREAD_LOWER_ASYMPTOTE"))) .ev("FS_SPREAD_LOWER_ASYMPTOTE"), # unset: the module default lowerAsymptote (0.13); "0.001" = the minimum
                         spreadRichardsNu = if (nzchar(.ev("FS_SPREAD_RICHARDS_NU"))) .ev("FS_SPREAD_RICHARDS_NU"), # unset: the module default richardsNu (0.5); "0" = Gompertz
                         spreadWeighted = if (nzchar(.ev("FS_SPREAD_WEIGHTED"))) .ev("FS_SPREAD_WEIGHTED"), # unset: the module default (FALSE)
@@ -421,6 +432,7 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
   if (nzchar(.phaseSetup$ledgerSuffix %||% "")) expt$.spreadFitFileSuffix <- .phaseSetup$ledgerSuffix
   if (!is.null(.phaseSetup$spreadLink)) expt$.spreadLink <- .phaseSetup$spreadLink
   if (!is.null(.phaseSetup$spreadCovariates)) expt$.spreadCovariates <- .phaseSetup$spreadCovariates
+  if (!is.null(.phaseSetup$spreadClimateSplit)) expt$.spreadClimateSplit <- .phaseSetup$spreadClimateSplit
   if (!is.null(.phaseSetup$ignitionXgb)) expt$.ignitionXgb <- .phaseSetup$ignitionXgb
   if (!is.null(.phaseSetup$ignitionYearClimate)) expt$.ignitionYearClimate <- .phaseSetup$ignitionYearClimate
   if (!is.null(.phaseSetup$spreadLowerAsymptote)) expt$.spreadLowerAsymptote <- .phaseSetup$spreadLowerAsymptote
