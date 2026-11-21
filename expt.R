@@ -203,6 +203,16 @@ for (.a in grep("^l(p0[45]|gz|ri|null)(r|r0)?$", names(.trials), value = TRUE))
 ## the new suffix (its own hindcast folder); fits nothing (FS_RF_DOFIT NA); run with FS_CHAIN_STEPS=hc,score.
 .trials[["lnulld"]] <- c(ledger = "_crpsCauseAnnLinkNullDraw_20261120", .trials[["lnull"]][names(.trials[["lnull"]]) != "ledger"],
                          FS_RF_DOFIT = "NA")
+## 2026-11-20: ANOVA arms (Eliot): what moves fit quality -- covariates (none/fuel/climate/all) x link shape. Every arm is
+## lp05 on the current ELF maps, hindcast with drawn year effects, ignition without the year-climate term (as lnulld's
+## ignition fit), so arms differ in the spread model only. anAll: all covariates, delta 0.5 (also the lp05 baseline on the
+## new maps); anD1: delta 1; anGz: Gompertz (richards nu 0). anFuel/anClim wait for spreadCovariates "fuel"/"climate".
+.anovaBase <- c(.trials[["lp05"]][names(.trials[["lp05"]]) != "ledger"], FS_IGNITION_YEAR_CLIMATE = "none")
+.trials[["anAll"]] <- c(ledger = "_crpsCauseAnnAnovaAll_20261120", .anovaBase)
+.trials[["anD1"]]  <- c(ledger = "_crpsCauseAnnAnovaD1_20261120",
+                        .anovaBase[names(.anovaBase) != "FS_SPREAD_POWERLAW_SHAPE"], FS_SPREAD_POWERLAW_SHAPE = "1")
+.trials[["anGz"]]  <- c(ledger = "_crpsCauseAnnAnovaGz_20261120", .anovaBase[names(.anovaBase) != "FS_SPREAD_LINK"],
+                        FS_SPREAD_LINK = "richards", FS_SPREAD_RICHARDS_NU = "0")
 ## 2026-11-16: ignition boosting (ignitionFit#57; Eliot: the ignition model spreads ignitions too evenly). lp05e with only the
 ## ignition and escape fits redone: lp05xa with the xgb defaults (today's fits, now with the concentration diagnostic), lp05xb
 ## with deeper trees, slower learning and early stopping. lp05's spread ledger was copied on Drive to each suffix. Ledgers
