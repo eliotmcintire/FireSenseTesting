@@ -546,7 +546,7 @@ if (.slurm) {
     else if (identical(s$set, "nrvreport")) # one ELF's 5 runs; the landscape metrics and figures use the CPUs
       list(cpus_per_task = 4, mem = .mem("24G"), time = "1-00:00:00") # 6.4: 42 min, MaxRSS 13 GB
     else if (identical(s$set, "score")) # the scoring job reads 12 ELFs at once (fireSimulator_validation nCores); ~8 GB each
-      list(cpus_per_task = 12, mem = .mem("64G"), time = "2-00:00:00") # 32G OOM-killed reader forks (13-16 ELFs peaked 4-25 GB); 64G (Eliot 2026-11-20) until a measured peak
+      list(cpus_per_task = 12, mem = .mem("100G"), time = "2-00:00:00") # MaxRSS 80 GB scoring 40 ELFs (2026-11-20); memory grows with the ELF count
     else if (s$oneCore) # one core per ELF x year (hindcast) or ELF x set (NRV) job; FS_SBATCH_MEM until the MaxRSS of the first jobs is known
       list(cpus_per_task = 1, mem = .mem("64G"), time = if (identical(s$set, "nrv")) "7-00:00:00" else "2-00:00:00")
     else c(.fitSize(c(.split(s$ev("FS_RF_ELFS")), .split(s$ev("FS_NRV_ELFS"))), cpus = if (nzchar(cpus)) as.integer(cpus) else 42L, mem = mem),
@@ -587,7 +587,7 @@ if (.slurm) {
 ## (the fit job) and FS_FIT_WORKER_GB="6.6.2=6.1,14.3=3.5" (per DEoptim worker); "all=<value>" sets every ELF not named;
 ## an ELF left out takes the defaults.
 ## FS_FIT_CPUS="6.6.2=64" (the fit job's CPUs, default 42): the partition allows 7270 MB per CPU, so a whole node (64) for ~454G.
-## FS_SCORE_MEM (unset: the .sbatchStep default, 64G): each score job. It reads 12 ELFs at once; 32G OOM-killed readers, dropping ELFs.
+## FS_SCORE_MEM (unset: the .sbatchStep default, 100G): each score job. It reads 12 ELFs at once; 32G OOM-killed readers, dropping ELFs.
 ##   FS_SET=chain FS_TRIAL=wd03,wd04 FS_RF_ELFS=6.6.2,14.3 FS_FIT_MEM=... FS_FIT_WORKER_GB=... [FS_CHAIN_SUFFIX=_e] Rscript expt.R
 ## FS_DRY_RUN=TRUE writes the queue and the job scripts without submitting; delete both (queue .rds, logs/<queue>/) after.
 ## Without Slurm it only prints the rows per step and the pane count.
