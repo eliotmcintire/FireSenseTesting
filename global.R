@@ -325,13 +325,13 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
     paths = list(modulePath = get0(".nrvReportModules", ifnotfound = "modules"), outputPath = file.path(.work, "mainSim"),
                  inputPath = file.path(.base, "inputs", .ELFind), # the fire records already there (no download)
                  cachePath = file.path(.work, "cache"), scratchPath = file.path(.work, "scratch")))
-  ## the page's tables and figures
+  ## the page's tables and figures, and burnSummaries' mean annual burn maps (simulated, historic)
   .keep <- list.files(.work, recursive = TRUE, pattern = paste0(
     "(lm|st)_nrvComparison\\.csv$|st(_CC)?\\.csv$|stability\\.csv$|burnSummaries_fire(Regime|Blocks)\\.csv$|",
     "current_condition_(overview|all.*)\\.png$|_ribbon\\.png$|stand_(age|leading|biomass)\\.png$|",
     "cumulative_burn_maps\\.png$|fire_per_block\\.png$|cumulBurnMap_.*\\.png$|",
     "burnSummary_.*\\.png$|simulated_(number_size_fires|burnArea_.*|Escapes_.*|Ignitions_.*)\\.png$|stability_.*\\.png$|",
-    "^lead_.*\\.png$")) # list.files() matches the pattern against file names only; lead_<species>.png are the st species figures
+    "^lead_.*\\.png$|meanAnnualCumulBurnMap(Historic)?\\.tif$")) # the two tifs: the national burn-probability mosaic (fireSense_summary); list.files() matches the pattern against file names only; lead_<species>.png are the st species figures
   .keep <- .keep[!grepl("^rep[0-9]+/|/per-metric/", .keep)]
   ## only what this run wrote: <work> is reused across runs, so a file a module no longer writes would otherwise
   ## reach the page from an earlier run
