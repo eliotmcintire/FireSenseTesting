@@ -267,6 +267,12 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
 ## default), so its comparison with lp05sd1 (constrained signs) also includes the sign change.
 .trials[["lp05sd1split"]] <- c(ledger = "_crpsCauseAnnLinkP05Sd1Split_20261121",
                                .trials[["lp05sd1"]][names(.trials[["lp05sd1"]]) != "ledger"], FS_SPREAD_CLIMATE_SPLIT = "TRUE")
+## 2026-11-22 (Eliot): lp05 and lp05sd1 refit on the current ELF maps with free signs (the spreadFit#143 default), as the
+## like-for-like baselines of the climate split and the other free-sign arms. lp05's 11.4 hindcast was on the pre-11-17 map
+## and both were fitted with the old sign rules, so neither compared with lp05sd1split.
+.trials[["lp05f"]] <- c(ledger = "_crpsCauseAnnLinkP05Free_20261122", .trials[["lp05"]][names(.trials[["lp05"]]) != "ledger"])
+.trials[["lp05sd1f"]] <- c(ledger = "_crpsCauseAnnLinkP05Sd1Free_20261122",
+                           .trials[["lp05sd1"]][names(.trials[["lp05sd1"]]) != "ledger"])
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
