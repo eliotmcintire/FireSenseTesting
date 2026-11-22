@@ -262,6 +262,11 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
 ## fuel and non-forest only; anClim = the climate term(s) only. Same base as anAll (free signs, the spreadFit#143 default).
 .trials[["anFuel"]] <- c(ledger = "_crpsCauseAnnAnovaFuel_20261121", .anovaBase, FS_SPREAD_COVARIATES = "fuel")
 .trials[["anClim"]] <- c(ledger = "_crpsCauseAnnAnovaClim_20261121", .anovaBase, FS_SPREAD_COVARIATES = "climate")
+## 2026-11-22 (Eliot): the ANOVA's two best choices together, plus the climate split: climate-only spread, logistic link
+## (richards nu 1, as anLg), between-year + within-year climate terms. Same base as anClim/anLg, so it compares with them.
+.trials[["anClimLgSplit"]] <- c(ledger = "_crpsCauseAnnAnovaClimLgSplit_20261122", .anovaBase[names(.anovaBase) != "FS_SPREAD_LINK"],
+                                FS_SPREAD_LINK = "richards", FS_SPREAD_RICHARDS_NU = "1", FS_SPREAD_COVARIATES = "climate",
+                                FS_SPREAD_CLIMATE_SPLIT = "TRUE")
 ## lp05sd1split: lp05sd1 with the spread climate split into a between-year and a within-year term (fireSenseUtils#244,
 ## dataPrepFit#108; Eliot 2026-11-20): does a separate year-to-year coefficient carry the dry-year signal? Free signs (new
 ## default), so its comparison with lp05sd1 (constrained signs) also includes the sign change.
