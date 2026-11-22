@@ -456,7 +456,7 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
   if (!is.null(.phaseSetup$spreadSizeLikDf)) expt$.spreadSizeLikDf <- .phaseSetup$spreadSizeLikDf
   if (!is.null(.phaseSetup$wholeLandscape)) expt$.wholeLandscape <- as.logical(.phaseSetup$wholeLandscape)
   if (!is.null(.phaseSetup$spreadPowerLawShape)) expt$.spreadPowerLawShape <- .phaseSetup$spreadPowerLawShape
-  if (!is.null(.phaseSetup$spreadClimate)) expt$.spreadClimate <- .phaseSetup$spreadClimate
+  if (!is.null(.phaseSetup[["spreadClimate"]])) expt$.spreadClimate <- .phaseSetup[["spreadClimate"]] # [[ ]]: $ partial-matched spreadClimateSplit (2026-11-21 to 11-22)
   if (!is.null(.phaseSetup$spreadPcAtP50)) expt$.spreadPcAtP50 <- .phaseSetup$spreadPcAtP50
   if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
   if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
