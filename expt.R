@@ -664,6 +664,25 @@ if (identical(Sys.getenv("FS_SET"), "chain")) {
   if (identical(.elfsRun, "all")) .elfsRun <- .ELFinds # FS_RF_ELFS=all: every ELF of the map that is fitted (no Arctic, prairie or zero-fire ELF)
   if (!length(.trialsRun) || !all(.trialsRun %in% names(.trials))) stop("FS_SET=chain needs FS_TRIAL=<trials in .trials, comma-separated>")
   if (!length(.elfsRun)) stop("FS_SET=chain needs FS_RF_ELFS")
+  ## Slowest ELF first, so the long fits start at once instead of straggling: each ELF's longest earlier fit
+  ## (finished_at - started_at of its DONE fit_ rows) in the chain queues of this folder (FS_FIT_ORDER_FROM, a glob;
+  ## default every experiment_queue_chain_*.rds). ELFs with no earlier fit go first (assumed slow), in their given order.
+  .fitHours <- local({
+    qs <- Sys.glob(Sys.getenv("FS_FIT_ORDER_FROM", "experiment_queue_chain_*.rds"))
+    d <- do.call(rbind, lapply(qs, function(f) {
+      q <- tryCatch(readRDS(f), error = function(e) NULL)
+      if (is.null(q) || !all(c(".ELFind", ".group", "status", "started_at", "finished_at") %in% names(q))) return(NULL)
+      q <- q[grepl("^fit_", q$.group) & q$status == "DONE", ]
+      if (!NROW(q)) return(NULL)
+      data.frame(ELF = q$.ELFind, h = as.numeric(difftime(as.POSIXct(q$finished_at), as.POSIXct(q$started_at), units = "hours")))
+    }))
+    if (is.null(d) || !NROW(d)) return(setNames(numeric(0), character(0)))
+    d <- d[is.finite(d$h), ]
+    tapply(d$h, d$ELF, max)
+  })
+  .elfsRun <- .elfsRun[order(-ifelse(.elfsRun %in% names(.fitHours), .fitHours[.elfsRun], Inf), seq_along(.elfsRun))]
+  message("Chain order, slowest earlier fit first (hours; NA = no earlier fit): ",
+          paste0(.elfsRun, " (", round(.fitHours[.elfsRun], 1), ")", collapse = ", "))
   ## "6.6.2=454G,all=294G": a value per ELF; "all" is the value of every ELF not named
   .perELF <- function(env) {
     kv <- strsplit(.split(Sys.getenv(env, "")), "="); v <- setNames(vapply(kv, `[`, "", 2L), vapply(kv, `[`, "", 1L))
