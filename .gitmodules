@@ -94,3 +94,11 @@
 	path = modules/fireSimulator_validation
 	url = https://github.com/PredictiveEcology/fireSimulator_validation
 	branch = development
+[submodule "modules/historicHarvest"]
+	path = modules/historicHarvest
+	url = https://github.com/PredictiveEcology/historicHarvest
+	branch = development
+[submodule "modules/Biomass_genericDisturbance"]
+	path = modules/Biomass_genericDisturbance
+	url = https://github.com/camillegiuliano/Biomass_genericDisturbance
+	branch = main

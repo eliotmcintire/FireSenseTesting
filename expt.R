@@ -25,6 +25,10 @@
 ##     FS_CHAIN_STEPS=fit,hc,score (default; also fasthc,fastscore with FS_CHAIN_FASTHC_FROM=<reference trial>: a replay
 ##     hindcast of each trial on that trial's hindcast, and its score). FS_CHAIN_FIT_ONLY=TRUE: the fit step only. With FS_SPREAD_PROFILE_AT=-20,-10,0,10,20 [FS_SPREAD_PROFILE_COEFS=fuel]
 ##     [FS_SPREAD_PROFILE_REPS=30] a fit job fits nothing: it profiles the trial's ledger spread fit at those values
+##   FS_SET=attrib FS_TRIAL=attribPilot FS_NRV_ELFS=6.6.2,11.3,11.4,14.3 FS_ARCHIVE_DIR=<own Drive folder URL> FS_ARCHIVE_LEDGER=attrib_<campaign>.rds
+##     [FS_ATTRIB_REPS=<reps of C and D>] [FS_NRV_TAG=<queue tag>] [FS_NRV_WORKERS=16] Rscript expt.R   (attribution: per ELF, the vegetation from SCANFI
+##     1985 to 2024 in four runs, A observed fires + observed harvest and B observed fires only (1 rep each), C simulated fires + observed
+##     harvest and D simulated fires only (FS_ATTRIB_REPS reps each), all in one queue)
 ##   FS_DRY_RUN=TRUE with any Slurm FS_SET: write the queue and the job scripts (logs/<queue>/), submit nothing
 
 ## inputs, outputs, cache, scratch and shared data: overrides global.R's .basePath here (preRunSetupProject)
@@ -59,6 +63,7 @@ if (file.exists(.devCurrent)) .libPaths(c(readLines(.devCurrent, n = 1L), .libPa
                   "PredictiveEcology/clusters@development (HEAD)",
                   "PredictiveEcology/filelock@main (HEAD)",
                   "PredictiveEcology/climateData@modsForFireSense (HEAD)",
+                  "camillegiuliano/disturbanceMgmt@main (HEAD)", # removes the harvested cohorts (attribution runs, historicHarvest); its Remotes name LandR@development: check the dev library keeps LandR@modsForFireSense
                   "PredictiveEcology/quickPlot@development (HEAD)",
                   "googlesheets4", # the sheet-backed queue (a Suggests of SpaDES.project)
                   "PredictiveEcology/fireSenseUtils@development (HEAD)")
@@ -278,6 +283,10 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
 .trials[["lp05f"]] <- c(ledger = "_crpsCauseAnnLinkP05Free_20261122", .trials[["lp05"]][names(.trials[["lp05"]]) != "ledger"])
 .trials[["lp05sd1f"]] <- c(ledger = "_crpsCauseAnnLinkP05Sd1Free_20261122",
                            .trials[["lp05sd1"]][names(.trials[["lp05sd1"]]) != "ledger"])
+## 2026-11-23: attribution runs (FS_SET=attrib), the national fit (nat) with its NRV cohort cap. FS_ATTRIB_REPS: reps of the
+## simulated-fire arms C and D (40; the pilot 3), A and B are one rep each
+.trials[["attrib"]] <- c(.trials[["nat"]], FS_ATTRIB_REPS = "40")
+.trials[["attribPilot"]] <- c(.trials[["nat"]], FS_ATTRIB_REPS = "3")
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -305,6 +314,13 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
 
   .phase1Only <- isTRUE(as.logical(.ev("FS_PHASE1_ONLY", "FALSE")))
   .set <- set
+  ## FS_SET=attrib: the NRV predict wave with the attribution arms (.attrib rows, below), from the trial's ledger
+  .attribSet <- identical(.set, "attrib")
+  if (.attribSet) {
+    .set <- "nrv"; over["FS_NRV_WAVE"] <- "predict"
+    if (!nzchar(.ev("FS_RF_SUFFIX"))) stop("FS_SET=attrib needs FS_TRIAL=attrib or attribPilot (its ledger)")
+    if (!nzchar(.ev("FS_NRV_LEDGER"))) over["FS_NRV_LEDGER"] <- .ev("FS_RF_SUFFIX")
+  }
   ## FS_SET=fit and FS_SET=phase1: the nrv fit wave (phases 1 + 2) and its phase 1 alone, under their own labels
   .setLabel <- .set
   if (.set %in% c("fit", "phase1")) {
@@ -329,13 +345,15 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
     if (!.wave %in% names(.waves)) stop("FS_SET=nrv needs FS_NRV_WAVE=fit, predict or ignition")
     if (.phase1Only && .wave != "fit") stop("FS_SET=nrv phase 1 is only for FS_NRV_WAVE=fit")
     .ELFs <- .split(.ev("FS_NRV_ELFS", "14.4,4.1,4.2.2"))
-    .tag <- .ev("FS_NRV_TAG", paste0("2026-10-08f_", paste(.ELFs, collapse = "-")))
-    .phaseSetup <- list(queue = if (.setLabel %in% c("fit", "phase1")) paste0("experiment_queue_", .setLabel, "_", .tag, ".rds")
+    .tag <- .ev("FS_NRV_TAG", if (.attribSet) paste0(.ev("FS_HC_TAG"), "_", paste(.ELFs, collapse = "-")) else paste0("2026-10-08f_", paste(.ELFs, collapse = "-")))
+    .phaseSetup <- list(queue = if (.attribSet) paste0("experiment_queue_attrib_", .tag, ".rds")
+                                else if (.setLabel %in% c("fit", "phase1")) paste0("experiment_queue_", .setLabel, "_", .tag, ".rds")
                                 else paste0("experiment_queue_nrv_", .tag, "_wave", .wave, if (.phase1Only) "_phase1", ".rds"),
                         onlyELFs = if (!identical(.ELFs, "all")) .ELFs,
-                        reps = if (nzchar(.ev("FS_NRV_REPS"))) as.integer(.split(.ev("FS_NRV_REPS")))
+                        reps = if (.attribSet) seq_len(as.integer(.ev("FS_ATTRIB_REPS", "40"))) # the most reps any arm runs
+                               else if (nzchar(.ev("FS_NRV_REPS"))) as.integer(.split(.ev("FS_NRV_REPS")))
                                else if (.wave == "predict") 1:5 else 1L,
-                        n_workers = as.integer(.ev("FS_NRV_WORKERS", if (.phase1Only) 12L else .waves[[.wave]])),
+                        n_workers = as.integer(.ev("FS_NRV_WORKERS", if (.phase1Only) 12L else if (.attribSet) 16L else .waves[[.wave]])),
                         ledgerSuffix = .ev("FS_NRV_LEDGER"), # "" = global.R's .spreadFitFileSuffix
                         refit = .wave == "fit",
                         predict = .wave == "predict")
@@ -526,6 +544,12 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
     if (length(.missing)) warning("Not in the ELF map: ", paste(.missing, collapse = ", "))
     expt <- expt[expt$.ELFind %in% .phaseSetup$onlyELFs, , drop = FALSE]
     expt <- expt[order(match(expt$.ELFind, .phaseSetup$onlyELFs)), , drop = FALSE]
+  }
+  ## attribution: arms A and B are one rep, C and D every rep; one folder per arm (global.R). Rows by ELF, so an ELF's arms start together
+  if (.attribSet) {
+    expt <- do.call(rbind, lapply(c("A", "B", "C", "D"), function(a) {
+      x <- expt[if (a %in% c("A", "B")) expt$.rep == 1L else TRUE, , drop = FALSE]; x$.attrib <- a; x}))
+    expt <- expt[order(match(expt$.ELFind, .phaseSetup$onlyELFs), expt$.attrib, expt$.rep), , drop = FALSE]
   }
   if (!.phaseSetup$refit)
     message(sum(expt$.ELFind %in% .ELFsFitted), " of ", NROW(expt), " jobs' ELFs have a fit")

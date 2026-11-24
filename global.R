@@ -9,6 +9,15 @@ userInteractive <- interactive() && !nzchar(Sys.getenv("TMUX"))
 ## "a=1,b=2" -> list(a = 1, b = 2): the numeric key=value settings of a queue column (.spreadCrpsWeights, .ignitionXgb)
 numKV <- function(x) {kv <- strsplit(strsplit(x, ",")[[1]], "="); as.list(setNames(as.numeric(vapply(kv, `[`, "", 2L)), vapply(kv, `[`, "", 1L)))}
 
+## Attribution runs (.attrib, expt.R FS_SET=attrib), arms A and B (observed fires): the parent modules without the two that predict
+## ignitions and spread (fireSense_ignitionPredict, fireSense_spreadPredict; fireSense_dataPrepPredict then prepares nothing for them)
+observedFireModules <- c("PredictiveEcology/canClimateData@modsForFireSense", "PredictiveEcology/climateYear@modsForFireSense",
+                         "PredictiveEcology/localEcozones@development", "PredictiveEcology/Biomass_borealDataPrep@modsForFireSense",
+                         "PredictiveEcology/Biomass_regeneration@development", "PredictiveEcology/Biomass_core@modsForFireSense",
+                         paste0("PredictiveEcology/fireSense_", c("ELFs", "dataPrepFit", "ignitionFit", "spreadFit", "dataPrepPredict", "burn"),
+                                "@development"),
+                         "PredictiveEcology/fireSense_summary@modsForFireSense")
+
 inSim <- SpaDES.project::setupProject(
   defaultDots = list(.basePath = site$basePath, # inputs, outputs, cache, scratch and shared data live here
                      .rep = 1,
@@ -63,6 +72,7 @@ inSim <- SpaDES.project::setupProject(
                      .repsPerSet = 1L,                # with .paramSets: reps per set
                      .covariateFrom = NA_character_,  # a score of a replay hindcast: the reference hindcast folder its climate covariate is read from (fireSimulator_validation covariatePath)
                      .scoreBySet = FALSE,             # a score of a replay hindcast with .paramSets: one row per set (fireSimulator_validation bySet)
+                     .attrib = NA_character_,         # NA: not an attribution run; "A"-"D": the vegetation from SCANFI 1985 to the last fire year, A observed fires + observed harvest, B observed fires only, C simulated fires + observed harvest, D simulated fires only
                      .hcYearEffects = NA_character_,  # NA: the module default ("draw"); "fitted": a hindcast uses each fit year's fitted ignition/escape multipliers (fireSense_burn yearEffects; fits from fireSense_ignitionFit >= 1.2.0.9013)
                      ## Phase 4 (expt.R's FS_SET=score): the job runs fireSimulator_validation alone. It scores the hindcasts of every
                      ## ELF that has finished all .hcYears, pooled, and writes wave1.rds, wave1_results.csv and validation.html
@@ -98,7 +108,10 @@ inSim <- SpaDES.project::setupProject(
   .hcSetup = if (.hc) fireSenseUtils::hindcastSetup(.hindcastYear, allSets = .hcAllSets, ignitions = .hcIgnitions),
   .fast = !is.na(.replayFrom),
   .hcSuffix = paste0(.spreadFitFileSuffix, if (identical(.hcIgnitions, "observedEscapes")) "_obsEsc", if (!is.na(.fastTag)) paste0("_fast", .fastTag)), # hindcast and score folders: an observedEscapes hindcast is kept apart
-  .doFit = if (.hc) FALSE else .doFit, # a hindcast only predicts from a fit in the ledger; it stops if there is none
+  .attrib = if (!is.na(.attrib) && !.attrib %in% c("A", "B", "C", "D")) stop(".attrib must be A, B, C or D") else .attrib,
+  .attribObserved = .attrib %in% c("A", "B"), # the year's observed fires burn (fireSense_burn ignitionSource "observedPolygons"); C, D simulate them
+  .attribHarvest = .attrib %in% c("A", "C"),  # the harvest CanLaD records (historicHarvest, replayed through Biomass_genericDisturbance)
+  .doFit = if (.hc || .attribObserved) FALSE else .doFit, # a hindcast only predicts from a fit in the ledger; it stops if there is none. So do A and B: they need no fit, only the ledger row's species and land-cover groups
   .NRV = identical(.GCM, "NRV"),
   .score = isTRUE(as.logical(.score)), # NA in a queue whose other rows score (FS_SET=chain): not a score row
   .scoreYears = as.integer(strsplit(.hcYears, ",")[[1]]),
@@ -111,6 +124,7 @@ inSim <- SpaDES.project::setupProject(
   .uploadGSdir = .uploadGSdir, .archiveLedger = .archiveLedger, .GCM = .GCM, .SSP = .SSP,
   paths = list(outputPath = if (.score) file.path(.basePath, "outputs", paste0("score", .hcSuffix))
                             else if (.hc) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", paste0("hindcast", .hcSuffix)), .ELFind, .hindcastYear, .rep)
+                            else if (!is.na(.attrib)) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", "attrib"), .ELFind, .attrib, .rep) # one folder per arm: A-D of an ELF and rep must not overwrite each other
                             ## a fit's outputs (DEoptim progress, figures) are per ledger: fits of one ELF under different
                             ## suffixes (e.g. weightings) ran at once and wrote the same DEoptimProgress file, 2026-10-24
                             else if (isTRUE(.doFit)) SpaDES.project::pathBuild(pre = file.path(.basePath, "outputs", paste0("fit", .spreadFitFileSuffix)), .ELFind, .GCM, .SSP, .rep)
@@ -120,10 +134,13 @@ inSim <- SpaDES.project::setupProject(
                inputPath = SpaDES.project::pathBuild(pre = file.path(.basePath, "inputs"), .ELFind)), # inputs vary by ELF only: not by rep, GCM or SSP (projected climate tiles carry GCM_ssp in their own folder); the folder is in prepared inputs' cache keys
   # the outputs folder may arrive as its symlink target, so name the run by what is below ".../outputs/"
   runName = gsub("/", "_", sub("^.*/outputs/", "", paths$outputPath)),
-  times = if (.hc) .hcSetup$times else .times,
+  ## an attribution run starts at the SCANFI year before the first fire year (1985, whose vegetation feeds 1986) and ends at the last fire year
+  times = if (.hc) .hcSetup$times else if (!is.na(.attrib)) list(start = min(.fireYears) - 1L, end = max(.fireYears)) else .times,
   modules = if (.score) "fireSimulator_validation" # modules/; none of the fire-model modules
             else if (.hc && .fast) paste0("fireSense_", c("dataPrepPredict", "spreadPredict", "burn", "summary")) # replay: no climate, vegetation, fit or ELF modules
-            else if (.hc) .hcSetup$modules else .modules, # a hindcast cannot use the parent: it would bring the vegetation modules
+            else if (.hc) .hcSetup$modules # a hindcast cannot use the parent: it would bring the vegetation modules
+            else c(if (.attribObserved) c(observedFireModules, .modules[!grepl("LandR_ClimateSensitiveSimulator", .modules)]) else .modules,
+                   if (.attribHarvest) c("PredictiveEcology/historicHarvest@development", "camillegiuliano/Biomass_genericDisturbance@main")),
   # only what this file itself calls or configures; modules list their own in reqdPkgs
   packages = c("PredictiveEcology/SpaDES.core@development (>= 3.2.1.9071)",      # 9071: save init skips already-saved outputs rows (#534); 9056: nested init keeps dot-named outputs (#516); event hits keep duplicate events (#505); spades.cacheKeyReachable (#500), cacheKey = FALSE (#503); module version out of event cache keys (#501); module globalVariables() (#496) without the self-referencing simList (#498), cache hit restores own outputs only (#495), chain jump restores changed objects (#497)
                "PredictiveEcology/reproducible@development (>= 3.2.1.9084)",     # a short download is never kept, downloads staged in destinationPath (#668); clearCache(cacheId) lists only those ids (#666); offline-safe prepInputs (#657-#659) and CacheGeo with no Google credentials (#664); Copy(), the reproducible.* options and their defaults
@@ -226,9 +243,10 @@ inSim <- SpaDES.project::setupProject(
       burnSummaries = list(reps = .rep, summaryPeriod = as.integer(c(times$start, times$end))),
       NRV_summary = list(reps = .rep)),
     # NRV samples observed climate, so no projected years (canClimateData still needs a valid GCM)
-    if (.NRV) list(
-      canClimateData = list(climateGCM = "CNRM-ESM2-1", projectedClimateYears = integer(0)),
-      climateYear = list(samplingRange = fireSenseUtils::defaultFireYears(), yearSeed = as.integer(.rep))), # NRV climate years = the fire years (vegetation of t goes with climate and fires of t + 1); every ELF of a rep: one climate-year sequence
+    if (.NRV) c(list(
+      canClimateData = list(climateGCM = "CNRM-ESM2-1", projectedClimateYears = integer(0))),
+      ## an attribution run lives its own years: each year's own historical climate, no sampling
+      if (is.na(.attrib)) list(climateYear = list(samplingRange = fireSenseUtils::defaultFireYears(), yearSeed = as.integer(.rep)))), # NRV climate years = the fire years (vegetation of t goes with climate and fires of t + 1); every ELF of a rep: one climate-year sequence
     if (.hc) .hcSetup$params,
     if (.score) list(fireSimulator_validation = list(
       hindcastPath = file.path(.basePath, "outputs", paste0("hindcast", .hcSuffix)),
@@ -247,7 +265,24 @@ inSim <- SpaDES.project::setupProject(
     if (.hc && .fast) list(.globals = list(replayFrom = .replayFrom), fireSense_burn = list(ignitionSource = "replay"),
                            fireSense_summary = list(repMaps = FALSE)),
     ## not `fireSense_spreadPredict = if (...) list(...)` in the list above: a NULL there drops hindcastSetup's spreadPredict params
-    if (.hc && .fast && !is.na(.paramSets)) list(fireSense_spreadPredict = list(paramSets = .paramSets, repsPerSet = .repsPerSet)))
+    if (.hc && .fast && !is.na(.paramSets)) list(fireSense_spreadPredict = list(paramSets = .paramSets, repsPerSet = .repsPerSet)),
+    ## attribution runs: one data year for every module that has one (Biomass_borealDataPrep, fireSense_dataPrepPredict; the nested
+    ## vegetation builds of fireSense_dataPrepFit set their own), so the simulation's own vegetation is SCANFI 1985
+    ## Fires and harvest start the year after: SCANFI 1985 already shows 1985's fires and cuts (each module's own first-event parameter)
+    if (!is.na(.attrib)) list(.globals = list(dataYear = min(.fireYears) - 1L),
+                              fireSense_dataPrepPredict = list(.runInitialTime = min(.fireYears)),
+                              fireSense_ignitionPredict = list(.runInitialTime = min(.fireYears)),
+                              fireSense_spreadPredict = list(.runInitialTime = min(.fireYears)),
+                              fireSense_burn = list(.runInitialTime = min(.fireYears))),
+    ## A and B burn the observed fires (firePolys, which fireSense_dataPrepFit makes): no covariates are prepared for ignition or spread
+    if (.attribObserved) list(fireSense_burn = list(ignitionSource = "observedPolygons"),
+                              fireSense_dataPrepPredict = list(whichModulesToPrepare = character(0))),
+    ## historicHarvest sets where each year's harvest was; these two disturbances remove every cohort there, then replant from SCANFI
+    if (.attribHarvest) list(historicHarvest = list(.runInitialTime = min(.fireYears)), Biomass_genericDisturbance = list(disturbances = list(
+      list(fn = "disturbanceMgmt::processPartialDist", name = "harvestRemove", after = "historicHarvest", afterEvent = "harvest",
+           triggerObj = "rstCurrentHarvest", args = list(replanting = FALSE)),
+      list(fn = "timberSupply::plantHistoricHarvest", name = "harvestPlant", after = "historicHarvest", afterEvent = "harvest", offset = 0.2,
+           triggerObj = "rstCurrentHarvest")))))
 )
 message(inSim$runName)
 ## The NRV page (a queue row with .nrvReport = <tag>, from expt.R's FS_SET=nrvreport): the summary modules in mode = "multi"
@@ -352,6 +387,9 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
 ## "all": fit if needed, then predict and save the simList to Drive for multi.R). .fitQueue/.afterQueue: an inputs job
 ## skips an ELF the fit queue has claimed or will claim next; a fit job waits while the inputs queue is building its ELF.
 ## A score row (.score) runs its one module; nothing else here applies to it.
+
+## An attribution rep draws from one seed per arm pair: C and D of a rep start from the same random numbers
+if (!is.na(inSim$.attrib)) set.seed(as.integer(inSim$.rep))
 simOut <- if (isTRUE(inSim$.score)) SpaDES.core::simInitAndSpades2(inSim) else
   fireSenseUtils::runJob(inSim, elf = inSim$.ELFind, phase = inSim$.phase,
                                  fitQueue = inSim$.fitQueue, afterQueue = inSim$.afterQueue,
@@ -360,4 +398,5 @@ simOut <- if (isTRUE(inSim$.score)) SpaDES.core::simInitAndSpades2(inSim) else
                                  ledger = if (!is.na(inSim$.archiveLedger))
                                    reproducible::CacheGeoLedger(inSim$.archiveLedger, remote = inSim$.uploadGSdir,
                                                                 destinationPath = inSim$paths$outputPath, key = "runName"),
-                                 scenario = list(ELF = inSim$.ELFind, GCM = inSim$.GCM, SSP = inSim$.SSP, rep = as.integer(inSim$.rep)))
+                                 scenario = c(list(ELF = inSim$.ELFind, GCM = inSim$.GCM, SSP = inSim$.SSP, rep = as.integer(inSim$.rep)),
+                                              if (!is.na(inSim$.attrib)) list(attrib = inSim$.attrib)))
