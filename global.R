@@ -350,6 +350,10 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
     params = list(
       NRV_summary = c(.common, list(postprocessEvents = c("lm", "pm", "st"), plotWorkers = min(.nCores, 4L),
                                     summaryPeriod = as.integer(unlist(.times)), summaryInterval = 100L, nrvWindow = 0.3,
+                                    ## State of the Forest indicators and intact forest in 2025 and 2000 (loss since 2000
+                                    ## in csv/sof/Intact/intact_extent.csv); the IFL layers are downloaded once, shared by all ELFs
+                                    sofIndicators = TRUE, nationalReportingLayers = c("Intact", "Intact2000"),
+                                    nationalReportingLayersPath = file.path(.base, "inputs", "nationalReportingLayers"),
                                     ## northern ELFs (ecozones 2, 3, 4, 5, 15): age-class cutoffs at 80% of the module
                                     ## default (Young/Immature/Mature/Old from 0/32/64/96 instead of 0/40/80/120; Eliot 2026-11-03)
                                     ageClassCutOffs = if (sub("\\..*", "", .ELFind) %in% c("2", "3", "4", "5", "15"))
@@ -365,7 +369,8 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
   ## the page's tables and figures, and burnSummaries' mean annual burn maps (simulated, historic)
   .keep <- list.files(.work, recursive = TRUE, pattern = paste0(
     "(lm|st)_nrvComparison\\.csv$|st(_CC)?\\.csv$|stability\\.csv$|burnSummaries_fire(Regime|Blocks)\\.csv$|",
-    "current_condition_(overview|all.*)\\.png$|_ribbon\\.png$|stand_(age|leading|biomass)\\.png$|",
+    "nrvInside\\.csv$|intact_extent\\.csv$|",
+    "current_condition_(overview|all.*)\\.png$|_ribbon\\.png$|stand_(age|leading|biomass|disturbance)\\.png$|",
     "cumulative_burn_maps\\.png$|fire_per_block\\.png$|cumulBurnMap_.*\\.png$|",
     "burnSummary_.*\\.png$|simulated_(number_size_fires|burnArea_.*|Escapes_.*|Ignitions_.*)\\.png$|stability_.*\\.png$|",
     "^lead_.*\\.png$|meanAnnualCumulBurnMap(Historic)?\\.tif$")) # the two tifs: the national burn-probability mosaic (fireSense_summary); list.files() matches the pattern against file names only; lead_<species>.png are the st species figures
