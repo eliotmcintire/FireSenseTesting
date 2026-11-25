@@ -58,6 +58,7 @@ inSim <- SpaDES.project::setupProject(
                      .spreadPowerLawShape = NA_character_, # NA: the module default powerLawShape (1); or e.g. "2" (curvature of the power-law spread link)
                      .spreadPcAtP50 = NA,             # NA: the module default powerLawPcAtP50 (FALSE); TRUE: p_c fixed at the calibrated p50 (spreadFit#141)
                      .spreadClimate = NA_character_,  # NA: the module default spreadClimate ("predictor"); "ceiling": climate moves the power-law ceiling toward p50 (spreadFit#140)
+                     .spreadCoefSigns = NA_character_, # NA: the module default coefSigns ("free"); "constrained": drought and fuel terms >= 0, youngAge <= 0 (the sign rules before spreadFit#143)
                      .spreadSizeLikDf = NA_character_, # NA: the module default sizeLikDf (5); or e.g. "30" (df of the per-fire t size likelihood)
                      .deoptimWindow = 300L,           # DEoptim early stop: generations over which the population median must stop improving (clusters.deoptimConvergenceWindow)
                      .deoptimMinGenerations = 350L,   # DEoptim early stop: never before this many generations (clusters.deoptimMinGenerations)
@@ -216,6 +217,7 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.spreadSizeLikDf)) list(sizeLikDf = as.numeric(.spreadSizeLikDf)),
         if (!is.na(.spreadPowerLawShape)) list(powerLawShape = as.numeric(.spreadPowerLawShape)),
         if (!is.na(.spreadClimate)) list(spreadClimate = .spreadClimate),
+        if (!is.na(.spreadCoefSigns)) list(coefSigns = .spreadCoefSigns),
         if (!is.na(.spreadPcAtP50)) list(powerLawPcAtP50 = as.logical(.spreadPcAtP50)),
         list(wholeLandscapeSpread = isTRUE(as.logical(.wholeLandscape)))), # always set: spreadFit's default became TRUE (spreadFit#143) while dataPrepFit's stays FALSE; both must agree
       fireSense_dataPrepFit = c(list(

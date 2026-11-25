@@ -287,6 +287,32 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
 ## simulated-fire arms C and D (40; the pilot 3), A and B are one rep each
 .trials[["attrib"]] <- c(.trials[["nat"]], FS_ATTRIB_REPS = "40")
 .trials[["attribPilot"]] <- c(.trials[["nat"]], FS_ATTRIB_REPS = "3")
+## 2026-11-24 (Eliot): the gaps of the feature comparison on the 4 test ELFs (6.6.2, 11.3, 11.4, 14.3). The launch builds a newer
+## library than the older arms were fitted on, so every pair is fitted in the same campaign: each *Now trial is the comparator
+## (its older arm's settings, a new ledger) and every other trial is its comparator plus ONE change, each with its own ledger.
+## anAll vs anAllNow is the only cross-library comparison (the library and the prescribed-burn exclusion).
+## Pairs: anAllNow -> anAllSigns (constrained signs), anAllCeil (spreadClimate "ceiling"), anNone (spreadCovariates "none", the
+## ANOVA null); lp05sd1fNow -> lp05sd1fAct (spreadClimate "activation"), lp05sd1fP50 (p_c fixed at p50);
+## anClimNow -> anClimLg (logistic link), anClimSplit (climate split); anClimLgSplitNow = anClimLgSplit refit on all 4 ELFs.
+.trials[["anAllNow"]] <- c(ledger = "_crpsCauseAnnAnovaAllNow_20261124", .anovaBase)
+.trials[["anAllSigns"]] <- c(ledger = "_crpsCauseAnnAnovaAllSigns_20261124", .trials[["anAllNow"]][names(.trials[["anAllNow"]]) != "ledger"],
+                             FS_SPREAD_COEF_SIGNS = "constrained")
+.trials[["anAllCeil"]] <- c(ledger = "_crpsCauseAnnAnovaAllCeil_20261124", .trials[["anAllNow"]][names(.trials[["anAllNow"]]) != "ledger"],
+                            FS_SPREAD_CLIMATE = "ceiling")
+.trials[["anNone"]] <- c(ledger = "_crpsCauseAnnAnovaNone_20261124", .trials[["anAllNow"]][names(.trials[["anAllNow"]]) != "ledger"],
+                         FS_SPREAD_COVARIATES = "none")
+.trials[["lp05sd1fNow"]] <- c(ledger = "_crpsCauseAnnLinkP05Sd1FreeNow_20261124", .trials[["lp05sd1f"]][names(.trials[["lp05sd1f"]]) != "ledger"])
+.trials[["lp05sd1fAct"]] <- c(ledger = "_crpsCauseAnnLinkP05Sd1FreeAct_20261124",
+                              .trials[["lp05sd1fNow"]][names(.trials[["lp05sd1fNow"]]) != "ledger"], FS_SPREAD_CLIMATE = "activation")
+.trials[["lp05sd1fP50"]] <- c(ledger = "_crpsCauseAnnLinkP05Sd1FreeP50_20261124",
+                              .trials[["lp05sd1fNow"]][names(.trials[["lp05sd1fNow"]]) != "ledger"], FS_SPREAD_PC_AT_P50 = "TRUE")
+.trials[["anClimNow"]] <- c(ledger = "_crpsCauseAnnAnovaClimNow_20261124", .trials[["anClim"]][names(.trials[["anClim"]]) != "ledger"])
+.trials[["anClimLg"]] <- c(ledger = "_crpsCauseAnnAnovaClimLg_20261124", .trials[["anClimNow"]][!names(.trials[["anClimNow"]]) %in% c("ledger", "FS_SPREAD_LINK")],
+                           FS_SPREAD_LINK = "richards", FS_SPREAD_RICHARDS_NU = "1")
+.trials[["anClimSplit"]] <- c(ledger = "_crpsCauseAnnAnovaClimSplit_20261124", .trials[["anClimNow"]][names(.trials[["anClimNow"]]) != "ledger"],
+                              FS_SPREAD_CLIMATE_SPLIT = "TRUE")
+.trials[["anClimLgSplitNow"]] <- c(ledger = "_crpsCauseAnnAnovaClimLgSplitNow_20261124",
+                                   .trials[["anClimLgSplit"]][names(.trials[["anClimLgSplit"]]) != "ledger"])
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -410,6 +436,7 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
                         spreadPowerLawShape = if (nzchar(.ev("FS_SPREAD_POWERLAW_SHAPE"))) .ev("FS_SPREAD_POWERLAW_SHAPE"), # unset: the module default powerLawShape (1); e.g. "2" = sharper rise of the power-law link toward p_c
                         spreadPcAtP50 = if (nzchar(.ev("FS_SPREAD_PC_AT_P50"))) as.logical(.ev("FS_SPREAD_PC_AT_P50")), # unset: the module default (FALSE); TRUE: p_c fixed at p50 (spreadFit#141)
                         spreadClimate = if (nzchar(.ev("FS_SPREAD_CLIMATE"))) .ev("FS_SPREAD_CLIMATE"), # unset: the module default ("predictor"); "ceiling": climate moves the power-law ceiling toward p50
+                        spreadCoefSigns = if (nzchar(.ev("FS_SPREAD_COEF_SIGNS"))) .ev("FS_SPREAD_COEF_SIGNS"), # unset: the module default ("free"); "constrained": drought and fuel terms >= 0, youngAge <= 0
                         n_workers = as.integer(.ev("FS_RF_WORKERS", length(.split(.ev("FS_RF_ELFS"))))), # each fit is a cluster; FS_RF_WORKERS caps fits at once
                         refit = TRUE,
                         predict = FALSE)
@@ -481,6 +508,7 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
   if (!is.null(.phaseSetup$spreadPowerLawShape)) expt$.spreadPowerLawShape <- .phaseSetup$spreadPowerLawShape
   if (!is.null(.phaseSetup[["spreadClimate"]])) expt$.spreadClimate <- .phaseSetup[["spreadClimate"]] # [[ ]]: $ partial-matched spreadClimateSplit (2026-11-21 to 11-22)
   if (!is.null(.phaseSetup$spreadPcAtP50)) expt$.spreadPcAtP50 <- .phaseSetup$spreadPcAtP50
+  if (!is.null(.phaseSetup$spreadCoefSigns)) expt$.spreadCoefSigns <- .phaseSetup$spreadCoefSigns
   if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
   if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
   ## FS_HC_REPLAY_SAVE=TRUE: a hindcast saves its replay files (dataPrepPredict, burn replaySave) for FS_SET=fasthc
