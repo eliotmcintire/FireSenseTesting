@@ -84,6 +84,12 @@ inSim <- SpaDES.project::setupProject(
                      .cohortSquash = NA_character_,             # NA: off; "interval,width[,width...]" e.g. "100,20" (breaks LandR-CBM)
                      .cohortEstablishmentLimit = NA_character_, # NA: off; "interval,minCohorts" e.g. "20,5"
                      .ignitionYearClimate = NA_character_, # NA: the module default ignitionYearClimate ("CMDsm", ignitionFit#61); "none": no year-level climate term; or a climate column
+                     .escapeYearClimate = NA_character_, # NA: the module default (no escape year-climate term); or a climate column, e.g. "CMDsm" (ignitionFit)
+                     .yearClimateShape = NA_character_, # NA: the module default ("loglinear"); "logistic": S-curve for both ignition year-climate terms
+                     .yearClimateWeights = NA_character_, # NA: the module default ("equal"); "climate": extreme years decide the year-climate slope
+                     .annualAreaYearWeights = NA_character_, # NA: the module default ("equal"); "climate": extreme-climate years count more in the annual-area term (spreadFit)
+                     .annualClimateCovariate = NA_character_, # NA: the module default ("CMDsm"); the climate covariate behind annualAreaYearWeights and crpsWeights climateSlope
+                     .spreadClimateCurve = NA,        # NA: the module default (FALSE); TRUE: extra softplus curve term per spread climate variable (dataPrepFit)
                      .ignitionXgb = NA_character_,    # NA: the module defaults (fireSense_ignitionFit xgb*, as hard-coded before 1.2.0.9014); e.g. "xgbMaxDepth=5,xgbLearningRate=0.05,xgbNrounds=1500,xgbEarlyStopping=50" (ignition and escape fits)
                      .fireCauses = NA_character_,     # NA: the module defaults; e.g. "natural,unknown": fireSenseUtils::fireCauseCodes() groups for the fits (dataPrepFit) and the hindcast's observed fires (fireSense_summary)
                      .phase1Only = FALSE,             # TRUE: build every input and cache, then stop before the fit (a 1-CPU Slurm job)
@@ -218,6 +224,8 @@ inSim <- SpaDES.project::setupProject(
         if (!is.na(.spreadPowerLawShape)) list(powerLawShape = as.numeric(.spreadPowerLawShape)),
         if (!is.na(.spreadClimate)) list(spreadClimate = .spreadClimate),
         if (!is.na(.spreadCoefSigns)) list(coefSigns = .spreadCoefSigns),
+        if (!is.na(.annualAreaYearWeights)) list(annualAreaYearWeights = .annualAreaYearWeights),
+        if (!is.na(.annualClimateCovariate)) list(annualClimateCovariate = .annualClimateCovariate),
         if (!is.na(.spreadPcAtP50)) list(powerLawPcAtP50 = as.logical(.spreadPcAtP50)),
         list(wholeLandscapeSpread = isTRUE(as.logical(.wholeLandscape)))), # always set: spreadFit's default became TRUE (spreadFit#143) while dataPrepFit's stays FALSE; both must agree
       fireSense_dataPrepFit = c(list(
@@ -232,7 +240,8 @@ inSim <- SpaDES.project::setupProject(
                                                                       bquote(.(as.numeric(.prepAreaMult)) * fireSenseUtils::multiplier(size)), NULL))),
         list(wholeLandscapeSpreadCovariates = isTRUE(as.logical(.wholeLandscape))),
         if (!is.na(.spreadCovariates)) list(spreadCovariates = .spreadCovariates),
-        if (!is.na(.spreadClimateSplit)) list(spreadClimateSplit = as.logical(.spreadClimateSplit))),
+        if (!is.na(.spreadClimateSplit)) list(spreadClimateSplit = as.logical(.spreadClimateSplit)),
+        if (!is.na(.spreadClimateCurve)) list(spreadClimateCurve = as.logical(.spreadClimateCurve))),
       Biomass_core = c(list(),
         if (!is.na(.cohortRemoveSuppressed)) list(cohortRemoveSuppressed = as.numeric(strsplit(.cohortRemoveSuppressed, ",")[[1]])),
         if (!is.na(.cohortSquash)) list(cohortSquash = as.numeric(strsplit(.cohortSquash, ",")[[1]])),
@@ -241,7 +250,10 @@ inSim <- SpaDES.project::setupProject(
       Biomass_speciesParameters = list(standAgesForFitting = c(0, 100), balanceGrowth = TRUE),
       fireSense_ignitionFit = c(list(.useCache = TRUE, doFit = if (is.na(.spreadProfileAt)) .doFit else NA), # a profile job fits nothing: its ignition fit is the ledger's
         if (!is.na(.ignitionXgb)) numKV(.ignitionXgb),
-        if (!is.na(.ignitionYearClimate)) list(ignitionYearClimate = if (identical(.ignitionYearClimate, "none")) NA_character_ else .ignitionYearClimate)),
+        if (!is.na(.ignitionYearClimate)) list(ignitionYearClimate = if (identical(.ignitionYearClimate, "none")) NA_character_ else .ignitionYearClimate),
+        if (!is.na(.escapeYearClimate)) list(escapeYearClimate = .escapeYearClimate),
+        if (!is.na(.yearClimateShape)) list(yearClimateShape = .yearClimateShape),
+        if (!is.na(.yearClimateWeights)) list(yearClimateWeights = .yearClimateWeights)),
       burnSummaries = list(reps = .rep, summaryPeriod = as.integer(c(times$start, times$end))),
       NRV_summary = list(reps = .rep)),
     # NRV samples observed climate, so no projected years (canClimateData still needs a valid GCM)

@@ -313,6 +313,41 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
                               FS_SPREAD_CLIMATE_SPLIT = "TRUE")
 .trials[["anClimLgSplitNow"]] <- c(ledger = "_crpsCauseAnnAnovaClimLgSplitNow_20261124",
                                    .trials[["anClimLgSplit"]][names(.trials[["anClimLgSplit"]]) != "ledger"])
+## 2026-11-25 (Eliot): the ClimateSignal campaign on the 4 test ELFs. Simulated annual area responds to climate at ~60% of
+## the observed slope nationally. ClimBaseline = lp05sd1fNow with the ignition year-climate term at its default (CMDsm;
+## lp05sd1f had "none"). Each other arm changes ONE thing from it (the ones that say "+" change two), all fitted in one
+## launch (one library): NoYearEffect (no spread year effect, so climate carries all year-to-year variation);
+## AnnualTerm0.5x / 1.5x (annual-area weight 520 -> 260 / 780); ClimateWeights (extreme-climate years count more in the
+## annual-area term); ClimateSlopeTerm (CRPS term for the climate slope of annual area, weight 500); NoYearEffectSlopeTerm
+## (NoYearEffect + that term); SpreadCurve (extra softplus curve term per spread climate variable); EscapeTerm (escapes
+## get a year-climate term, CMDsm); EscapeTermLogistic (+ S-curve shape for both ignition year-climate terms);
+## EscapeTermLogisticClimW (+ extreme years decide the year-climate slope). VarPartNone/Clim/Fuel are the variance
+## partition (not validation): the commonality split of climate vs fuel needs the none / climate-only / fuel-only fits
+## on the same library as ClimBaseline (= climate + fuel).
+.trials[["ClimBaseline"]] <- c(ledger = "_ClimBaseline_20261125",
+                               .trials[["lp05sd1fNow"]][!names(.trials[["lp05sd1fNow"]]) %in% c("ledger", "FS_IGNITION_YEAR_CLIMATE")])
+.climArm <- function(name, base = "ClimBaseline", ...) { # base's settings with the named ones replaced
+  .set <- list(...)
+  .trials[[name]] <<- c(ledger = paste0("_", name, "_20261125"),
+                        .trials[[base]][!names(.trials[[base]]) %in% c("ledger", names(.set))],
+                        unlist(.set))
+}
+.climBaseW <- .trials[["ClimBaseline"]][["FS_SPREAD_CRPS_WEIGHTS"]]
+.climArm("NoYearEffect", FS_SPREAD_SD_BOUNDS = "NA")
+.climArm("AnnualTerm0.5x", FS_SPREAD_CRPS_WEIGHTS = sub("annualArea=520", "annualArea=260", .climBaseW))
+.climArm("AnnualTerm1.5x", FS_SPREAD_CRPS_WEIGHTS = sub("annualArea=520", "annualArea=780", .climBaseW))
+.climArm("ClimateWeights", FS_SPREAD_ANNUAL_YEAR_WEIGHTS = "climate")
+.climArm("ClimateSlopeTerm", FS_SPREAD_CRPS_WEIGHTS = paste0(.climBaseW, ",climateSlope=500"))
+.climArm("NoYearEffectSlopeTerm", base = "NoYearEffect", FS_SPREAD_CRPS_WEIGHTS = paste0(.climBaseW, ",climateSlope=500"))
+.climArm("SpreadCurve", FS_SPREAD_CLIMATE_CURVE = "TRUE")
+.climArm("EscapeTerm", FS_ESCAPE_YEAR_CLIMATE = "CMDsm")
+.climArm("EscapeTermLogistic", base = "EscapeTerm", FS_YEAR_CLIMATE_SHAPE = "logistic")
+.climArm("EscapeTermLogisticClimW", base = "EscapeTermLogistic", FS_YEAR_CLIMATE_WEIGHTS = "climate")
+.varPart <- c(None = "none", Clim = "climate", Fuel = "fuel")
+for (.n in names(.varPart))
+  .trials[[paste0("VarPart", .n)]] <- c(ledger = paste0("_VarPart", .n, "_20261125"),
+                                        .trials[["ClimBaseline"]][!names(.trials[["ClimBaseline"]]) %in% c("ledger", "FS_SPREAD_COVARIATES")],
+                                        FS_SPREAD_COVARIATES = .varPart[[.n]])
 ## the ELF map and which ELFs have a fit: the same for every launch of this call
 .ELFinds <- fireSenseUtils::runELFs(outs, whatOut = "allNames")
 .ELFsFitted <- fireSenseUtils::runELFs(outs, whatOut = "fittedNamesOnly")
@@ -437,6 +472,12 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
                         spreadPcAtP50 = if (nzchar(.ev("FS_SPREAD_PC_AT_P50"))) as.logical(.ev("FS_SPREAD_PC_AT_P50")), # unset: the module default (FALSE); TRUE: p_c fixed at p50 (spreadFit#141)
                         spreadClimate = if (nzchar(.ev("FS_SPREAD_CLIMATE"))) .ev("FS_SPREAD_CLIMATE"), # unset: the module default ("predictor"); "ceiling": climate moves the power-law ceiling toward p50
                         spreadCoefSigns = if (nzchar(.ev("FS_SPREAD_COEF_SIGNS"))) .ev("FS_SPREAD_COEF_SIGNS"), # unset: the module default ("free"); "constrained": drought and fuel terms >= 0, youngAge <= 0
+                        annualAreaYearWeights = if (nzchar(.ev("FS_SPREAD_ANNUAL_YEAR_WEIGHTS"))) .ev("FS_SPREAD_ANNUAL_YEAR_WEIGHTS"), # unset: the module default ("equal"); "climate": extreme-climate years count more in the annual-area term
+                        annualClimateCovariate = if (nzchar(.ev("FS_SPREAD_ANNUAL_CLIMATE"))) .ev("FS_SPREAD_ANNUAL_CLIMATE"), # unset: the module default ("CMDsm"); the climate covariate behind annualAreaYearWeights and crpsWeights climateSlope
+                        spreadClimateCurve = if (nzchar(.ev("FS_SPREAD_CLIMATE_CURVE"))) .ev("FS_SPREAD_CLIMATE_CURVE"), # unset: the module default (FALSE); "TRUE": extra softplus curve term per spread climate variable (dataPrepFit)
+                        escapeYearClimate = if (nzchar(.ev("FS_ESCAPE_YEAR_CLIMATE"))) .ev("FS_ESCAPE_YEAR_CLIMATE"), # unset: the module default (NA, no escape year-climate term); e.g. "CMDsm"
+                        yearClimateShape = if (nzchar(.ev("FS_YEAR_CLIMATE_SHAPE"))) .ev("FS_YEAR_CLIMATE_SHAPE"), # unset: the module default ("loglinear"); "logistic": S-curve of both ignition year climate terms
+                        yearClimateWeights = if (nzchar(.ev("FS_YEAR_CLIMATE_WEIGHTS"))) .ev("FS_YEAR_CLIMATE_WEIGHTS"), # unset: the module default ("equal"); "climate": extreme years decide the year climate slope
                         n_workers = as.integer(.ev("FS_RF_WORKERS", length(.split(.ev("FS_RF_ELFS"))))), # each fit is a cluster; FS_RF_WORKERS caps fits at once
                         refit = TRUE,
                         predict = FALSE)
@@ -509,6 +550,12 @@ for (.a in c("lp05c", "lp05sd1", "lp05csd1", "lp05p50sd1", "lp05a"))
   if (!is.null(.phaseSetup[["spreadClimate"]])) expt$.spreadClimate <- .phaseSetup[["spreadClimate"]] # [[ ]]: $ partial-matched spreadClimateSplit (2026-11-21 to 11-22)
   if (!is.null(.phaseSetup$spreadPcAtP50)) expt$.spreadPcAtP50 <- .phaseSetup$spreadPcAtP50
   if (!is.null(.phaseSetup$spreadCoefSigns)) expt$.spreadCoefSigns <- .phaseSetup$spreadCoefSigns
+  if (!is.null(.phaseSetup$annualAreaYearWeights)) expt$.annualAreaYearWeights <- .phaseSetup$annualAreaYearWeights
+  if (!is.null(.phaseSetup$annualClimateCovariate)) expt$.annualClimateCovariate <- .phaseSetup$annualClimateCovariate
+  if (!is.null(.phaseSetup$spreadClimateCurve)) expt$.spreadClimateCurve <- .phaseSetup$spreadClimateCurve
+  if (!is.null(.phaseSetup$escapeYearClimate)) expt$.escapeYearClimate <- .phaseSetup$escapeYearClimate
+  if (!is.null(.phaseSetup$yearClimateShape)) expt$.yearClimateShape <- .phaseSetup$yearClimateShape
+  if (!is.null(.phaseSetup$yearClimateWeights)) expt$.yearClimateWeights <- .phaseSetup$yearClimateWeights
   if (!is.null(.phaseSetup$hcIgnitions)) expt$.hcIgnitions <- .phaseSetup$hcIgnitions
   if (isTRUE(.phaseSetup$hcAllSets)) expt$.hcAllSets <- TRUE
   ## FS_HC_REPLAY_SAVE=TRUE: a hindcast saves its replay files (dataPrepPredict, burn replaySave) for FS_SET=fasthc
