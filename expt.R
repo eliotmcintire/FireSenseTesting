@@ -434,6 +434,12 @@ for (.n in names(.varPart))
                         hcIgnitions = if (nzchar(.ev("FS_HC_IGNITIONS"))) .ev("FS_HC_IGNITIONS"), # unset: drawn ("predicted"); "observedEscapes": spread the observed escapes
                         spreadCovariates = if (nzchar(.ev("FS_SPREAD_COVARIATES"))) .ev("FS_SPREAD_COVARIATES"), # a hindcast of a null fit ("none") builds the same intercept-only formula
                         spreadClimateSplit = if (nzchar(.ev("FS_SPREAD_CLIMATE_SPLIT"))) .ev("FS_SPREAD_CLIMATE_SPLIT"), # unset: the module default (FALSE); "TRUE": between-year + within-year climate terms
+                        ## the hindcast rebuilds inputs and checks the stored fits against these settings, so it needs the fit's values
+                        spreadClimateCurve = if (nzchar(.ev("FS_SPREAD_CLIMATE_CURVE"))) .ev("FS_SPREAD_CLIMATE_CURVE"), # same value as the fit
+                        ignitionYearClimate = if (nzchar(.ev("FS_IGNITION_YEAR_CLIMATE"))) .ev("FS_IGNITION_YEAR_CLIMATE"), # same value as the fit
+                        escapeYearClimate = if (nzchar(.ev("FS_ESCAPE_YEAR_CLIMATE"))) .ev("FS_ESCAPE_YEAR_CLIMATE"), # same value as the fit
+                        yearClimateShape = if (nzchar(.ev("FS_YEAR_CLIMATE_SHAPE"))) .ev("FS_YEAR_CLIMATE_SHAPE"), # same value as the fit
+                        yearClimateWeights = if (nzchar(.ev("FS_YEAR_CLIMATE_WEIGHTS"))) .ev("FS_YEAR_CLIMATE_WEIGHTS"), # same value as the fit
                         fireCauses = if (nzchar(.ev("FS_FIRE_CAUSES"))) .ev("FS_FIRE_CAUSES"), # unset: the module defaults; e.g. "natural,unknown" (same value as the fit's)
                         n_workers = as.integer(.ev("FS_HC_WORKERS", "12")),
                         refit = FALSE,
