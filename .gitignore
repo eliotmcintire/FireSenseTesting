@@ -76,3 +76,4 @@ modules/CBM_core/
 modules/CBM_dataPrep/
 modules/CBM_defaults/
 modules/LandRCBM_split3pools/
+!reportingAreas/*.gpkg

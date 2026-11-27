@@ -352,6 +352,13 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
   ## the ELF is the one reporting polygon (as multi.R)
   .sar <- .obj("studyAreaReporting")
   .rp <- sf::st_as_sf(.sar); .rp$Name <- .ELFind; .rp <- .rp[, "Name"]; attr(.rp, "field") <- "Name"
+  ## Ontario boreal ecoregions without the Hudson Bay Lowlands (for Lisa Venier, 2026-11-27): one reporting unit per
+  ## ecoregion, through the module's existing reportingPolygons input (label column "Name"); the module crops each layer
+  ## to the ELF, so ELFs outside Ontario get an empty piece. Tracked in git so mega and the GPSC read the same file.
+  .onBoreal <- sf::st_read(file.path("reportingAreas", "ON_Boreal_ecoreg_noHBL.gpkg"), quiet = TRUE)
+  .onBoreal$Name <- .onBoreal$ECOREGION_NAME
+  .onBoreal <- stats::aggregate(.onBoreal[, "Name"], by = list(Name = .onBoreal$Name), FUN = function(x) x[1])[, "Name"]
+  .onBoreal <- sf::st_transform(.onBoreal, sf::st_crs(.rp)); attr(.onBoreal, "field") <- "Name"
   .sim1 <- readRDS(.simFile(1))
   .times <- list(start = as.numeric(SpaDES.core::start(.sim1)), end = as.numeric(SpaDES.core::end(.sim1))) # years
   rm(.sim1)
@@ -366,6 +373,8 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
                                     ## in csv/sof/Intact/intact_extent.csv); the IFL layers are downloaded once, shared by all ELFs
                                     sofIndicators = TRUE, nationalReportingLayers = c("Intact", "Intact2000"),
                                     nationalReportingLayersPath = file.path(.base, "inputs", "nationalReportingLayers"),
+                                    ## lm event on forest / non-forest maps: forest edge density (NRV_summary#37)
+                                    landscapeMap = "forest", landscapeMetricFuns = "lsm_c_ed",
                                     ## northern ELFs (ecozones 2, 3, 4, 5, 15): age-class cutoffs at 80% of the module
                                     ## default (Young/Immature/Mature/Old from 0/32/64/96 instead of 0/40/80/120; Eliot 2026-11-03)
                                     ageClassCutOffs = if (sub("\\..*", "", .ELFind) %in% c("2", "3", "4", "5", "15"))
@@ -373,7 +382,7 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
       burnSummaries = c(.common, list(historicYears = c(1985L, 2024L))), # observed record: NBAC, 1985-2024
       fireSense_summary = c(.common, list(simOutputPath = .work, climateScenario = "historical",
                                            historicYears = c(1985L, 2024L)))), # observed fires: the same record as burnSummaries
-    objects = list(outputsDF = .odf, reportingPolygons = list(ELF = .rp), studyAreaReporting = .sar,
+    objects = list(outputsDF = .odf, reportingPolygons = list(ELF = .rp, ONBoreal = .onBoreal), studyAreaReporting = .sar,
                    sppEquiv = .obj("sppEquiv"), sppColorVect = .obj("sppColorVect"), rasterToMatch = .obj("rasterToMatch")),
     paths = list(modulePath = get0(".nrvReportModules", ifnotfound = "modules"), outputPath = file.path(.work, "mainSim"),
                  inputPath = file.path(.base, "inputs", .ELFind), # the fire records already there (no download)
@@ -382,10 +391,10 @@ if (!is.na(get0(".nrvReport", ifnotfound = NA))) {
   .keep <- list.files(.work, recursive = TRUE, pattern = paste0(
     "(lm|st)_nrvComparison\\.csv$|st(_CC)?\\.csv$|stability\\.csv$|burnSummaries_fire(Regime|Blocks)\\.csv$|",
     "nrvInside\\.csv$|intact_extent\\.csv$|",
-    "current_condition_(overview|all.*)\\.png$|_ribbon\\.png$|stand_(age|leading|biomass|disturbance)\\.png$|",
+    "current_condition_(overview|all.*)\\.png$|_ribbon\\.png$|stand_(age|leading|biomass|speciesBiomass|disturbance)\\.png$|",
     "cumulative_burn_maps\\.png$|fire_per_block\\.png$|cumulBurnMap_.*\\.png$|",
     "burnSummary_.*\\.png$|simulated_(number_size_fires|burnArea_.*|Escapes_.*|Ignitions_.*)\\.png$|stability_.*\\.png$|",
-    "^lead_.*\\.png$|meanAnnualCumulBurnMap(Historic)?\\.tif$")) # the two tifs: the national burn-probability mosaic (fireSense_summary); list.files() matches the pattern against file names only; lead_<species>.png are the st species figures
+    "^(lead|biomass)_.*\\.png$|meanAnnualCumulBurnMap(Historic)?\\.tif$")) # the two tifs: the national burn-probability mosaic (fireSense_summary); list.files() matches the pattern against file names only; lead_<cover type>.png and biomass_<species>.png are the st cover and species figures (NRV_summary#36)
   .keep <- .keep[!grepl("^rep[0-9]+/|/per-metric/", .keep)]
   ## only what this run wrote: <work> is reused across runs, so a file a module no longer writes would otherwise
   ## reach the page from an earlier run
