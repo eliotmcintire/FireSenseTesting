@@ -114,7 +114,7 @@ inSim <- SpaDES.project::setupProject(
   .hc = !is.na(.hindcastYear),
   .hcSetup = if (.hc) fireSenseUtils::hindcastSetup(.hindcastYear, allSets = .hcAllSets, ignitions = .hcIgnitions),
   .fast = !is.na(.replayFrom),
-  .hcSuffix = paste0(.spreadFitFileSuffix, if (identical(.hcIgnitions, "observedEscapes")) "_obsEsc", if (!is.na(.fastTag)) paste0("_fast", .fastTag)), # hindcast and score folders: an observedEscapes hindcast is kept apart
+  .hcSuffix = paste0(.spreadFitFileSuffix, if (identical(.hcIgnitions, "observedEscapes")) "_obsEsc", if (identical(.hcYearEffects, "draw")) "_yeDraw", if (!is.na(.fastTag)) paste0("_fast", .fastTag)), # hindcast and score folders: an observedEscapes hindcast is kept apart; an explicit FS_HC_YEAR_EFFECTS=draw too (2026-11-27: _obsEsc holds the fitted-year-effects run)
   .attrib = if (!is.na(.attrib) && !.attrib %in% c("A", "B", "C", "D")) stop(".attrib must be A, B, C or D") else .attrib,
   .attribObserved = .attrib %in% c("A", "B"), # the year's observed fires burn (fireSense_burn ignitionSource "observedPolygons"); C, D simulate them
   .attribHarvest = .attrib %in% c("A", "C"),  # the harvest CanLaD records (historicHarvest, replayed through Biomass_genericDisturbance)
