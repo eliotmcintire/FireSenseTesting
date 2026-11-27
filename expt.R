@@ -61,6 +61,9 @@ if (file.exists(.devCurrent)) .libPaths(c(readLines(.devCurrent, n = 1L), .libPa
                   "PredictiveEcology/SpaDES.tools@development (HEAD)",
                   "PredictiveEcology/LandR@modsForFireSense (HEAD)",
                   "PredictiveEcology/clusters@development (HEAD)",
+                  "FOR-CAST/fireregimetools@main (HEAD)", # burnSummaries/fireSense_summary floor >= 0.1.0.9012 (filter_fire_records); stable has 0.1.0.9008
+                  "FOR-CAST/nrvtools@development (HEAD)", # NRV_summary floor >= 0.3.4.9003; stable has 0.3.4.9002
+                  "PredictiveEcology/pemisc@development (HEAD)", # module floor >= 0.0.4.9016
                   "PredictiveEcology/LandWebUtils@development (HEAD)", # NRV_summary reqdPkgs floor (>= 1.1.1: nationalReportingLayers, top_species); module floors are not installed by workers, so it must be listed here
                   "PredictiveEcology/filelock@main (HEAD)",
                   "PredictiveEcology/climateData@modsForFireSense (HEAD)",
