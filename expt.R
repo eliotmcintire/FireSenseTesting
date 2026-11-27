@@ -61,6 +61,7 @@ if (file.exists(.devCurrent)) .libPaths(c(readLines(.devCurrent, n = 1L), .libPa
                   "PredictiveEcology/SpaDES.tools@development (HEAD)",
                   "PredictiveEcology/LandR@modsForFireSense (HEAD)",
                   "PredictiveEcology/clusters@development (HEAD)",
+                  "PredictiveEcology/LandWebUtils@development (HEAD)", # NRV_summary reqdPkgs floor (>= 1.1.1: nationalReportingLayers, top_species); module floors are not installed by workers, so it must be listed here
                   "PredictiveEcology/filelock@main (HEAD)",
                   "PredictiveEcology/climateData@modsForFireSense (HEAD)",
                   "camillegiuliano/disturbanceMgmt@main (HEAD)", # removes the harvested cohorts (attribution runs, historicHarvest); its Remotes name LandR@development: check the dev library keeps LandR@modsForFireSense
