@@ -461,6 +461,7 @@ for (.n in names(.varPart))
                         spreadLink = if (nzchar(.ev("FS_SPREAD_LINK"))) .ev("FS_SPREAD_LINK"), # unset: the module default
                         spreadCovariates = if (nzchar(.ev("FS_SPREAD_COVARIATES"))) .ev("FS_SPREAD_COVARIATES"), # unset: the module default ("all"); "none" = intercept-only spread (the null arm)
                         spreadClimateSplit = if (nzchar(.ev("FS_SPREAD_CLIMATE_SPLIT"))) .ev("FS_SPREAD_CLIMATE_SPLIT"), # unset: the module default (FALSE); "TRUE": between-year + within-year climate terms
+                        saveFitTables = if (nzchar(.ev("FS_SAVE_FIT_TABLES"))) .ev("FS_SAVE_FIT_TABLES"), # unset: none; "ignition,escape": dataPrepFit writes those fit tables to outputPath (fireSense_dataPrepFit#119)
                         spreadLowerAsymptote = if (nzchar(.ev("FS_SPREAD_LOWER_ASYMPTOTE"))) .ev("FS_SPREAD_LOWER_ASYMPTOTE"), # unset: the module default lowerAsymptote (0.13); "0.001" = the minimum
                         spreadRichardsNu = if (nzchar(.ev("FS_SPREAD_RICHARDS_NU"))) .ev("FS_SPREAD_RICHARDS_NU"), # unset: the module default richardsNu (0.5); "0" = Gompertz
                         spreadWeighted = if (nzchar(.ev("FS_SPREAD_WEIGHTED"))) .ev("FS_SPREAD_WEIGHTED"), # unset: the module default (FALSE)
@@ -540,6 +541,7 @@ for (.n in names(.varPart))
   if (!is.null(.phaseSetup$spreadLink)) expt$.spreadLink <- .phaseSetup$spreadLink
   if (!is.null(.phaseSetup$spreadCovariates)) expt$.spreadCovariates <- .phaseSetup$spreadCovariates
   if (!is.null(.phaseSetup$spreadClimateSplit)) expt$.spreadClimateSplit <- .phaseSetup$spreadClimateSplit
+  if (!is.null(.phaseSetup$saveFitTables)) expt$.saveFitTables <- .phaseSetup$saveFitTables
   if (!is.null(.phaseSetup$ignitionXgb)) expt$.ignitionXgb <- .phaseSetup$ignitionXgb
   if (!is.null(.phaseSetup$ignitionYearClimate)) expt$.ignitionYearClimate <- .phaseSetup$ignitionYearClimate
   if (!is.null(.phaseSetup$spreadLowerAsymptote)) expt$.spreadLowerAsymptote <- .phaseSetup$spreadLowerAsymptote
@@ -692,7 +694,7 @@ if (.slurm) {
     .mem <- function(default) if (nzchar(mem)) mem else default
     if (s$phase1Only) list(cpus_per_task = 1, mem = .mem("96G"), time = "1-00:00:00") # 32G was OOM-killed (12.1_2, prepSpreadFitData); to be set from measured peaks
     else if (identical(s$set, "nrvreport") && isTRUE(s$ps$nrvReportMap)) # the ELF map only
-      list(cpus_per_task = 1, mem = "4G", time = "01:00:00") # 2.5 min, MaxRSS 1.7 GB
+      list(cpus_per_task = 1, mem = .mem("64G"), time = "12:00:00") # the map plus the national burn-probability mosaics (fireSense_summary#55): 4G was OOM-killed twice at ~35 min (2026-11-27)
     else if (identical(s$set, "nrvreport")) # one ELF's 5 runs; the landscape metrics and figures use the CPUs
       list(cpus_per_task = 4, mem = .mem("24G"), time = "1-00:00:00") # 6.4: 42 min, MaxRSS 13 GB
     else if (identical(s$set, "score")) # the scoring job reads 12 ELFs at once (fireSimulator_validation nCores); ~8 GB each

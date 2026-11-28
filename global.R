@@ -42,6 +42,7 @@ inSim <- SpaDES.project::setupProject(
                      .ledgerTesting = FALSE,          # FALSE: fireSenseUtils' default fit-ledger Drive folders (production); TRUE (FS_LEDGER_TESTING, experiments): each ledger's "testing" folder, so spread and ignition fits, and latestSpreadFits, read and write there
                      .spreadCovariates = NA_character_, # NA: the module default ("all"); "none": intercept-only spread formula; "fuel"/"climate": one group only (fireSense_dataPrepFit spreadCovariates; the null arm)
                      .spreadClimateSplit = NA,        # NA: the module default (FALSE); TRUE: the spread climate as a between-year and a within-year term (fireSense_dataPrepFit spreadClimateSplit)
+                     .saveFitTables = NA,             # NA: none; "ignition,escape": dataPrepFit writes those fit tables (fireSense_dataPrepFit#119)
                      .spreadLink = NA_character_,     # NA: the module default ("powerLaw"); or "ceiling", "climateOutside", "powerLawSmooth", "richards"
                      .spreadLowerAsymptote = NA_character_, # NA: the module default lowerAsymptote (fireSenseUtils::spreadProbFloor, 0.13); links "powerLawSmooth" and "richards" only, at least fireSenseUtils::spreadLowerAsymptoteMin
                      .spreadRichardsNu = NA_character_, # NA: the module default richardsNu (0.5); link "richards" only; "0" = Gompertz
@@ -241,6 +242,7 @@ inSim <- SpaDES.project::setupProject(
         list(wholeLandscapeSpreadCovariates = isTRUE(as.logical(.wholeLandscape))),
         if (!is.na(.spreadCovariates)) list(spreadCovariates = .spreadCovariates),
         if (!is.na(.spreadClimateSplit)) list(spreadClimateSplit = as.logical(.spreadClimateSplit)),
+        if (!is.na(.saveFitTables)) list(saveFitTables = strsplit(.saveFitTables, ",")[[1]]),
         if (!is.na(.spreadClimateCurve)) list(spreadClimateCurve = as.logical(.spreadClimateCurve))),
       Biomass_core = c(list(),
         if (!is.na(.cohortRemoveSuppressed)) list(cohortRemoveSuppressed = as.numeric(strsplit(.cohortRemoveSuppressed, ",")[[1]])),
